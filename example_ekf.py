@@ -8,6 +8,7 @@ from typing import List
 import time
 import matplotlib.pyplot as plt
 import seaborn as sns
+
 sns.set_theme()
 
 """
@@ -29,7 +30,7 @@ range_models = [
     AnchorRangeModel([-2, 0], R),
     AnchorRangeModel([2, 0], R),
 ]
-meas_frequences = [10, 10, 10]
+meas_frequences = [50, 50, 50]
 process_model = SingleIntegrator(Q)
 input_profile = lambda t: np.array([np.sin(t), np.cos(t)])
 
@@ -39,11 +40,13 @@ input_profile = lambda t: np.array([np.sin(t), np.cos(t)])
 dg = DataGenerator(
     process_model,
     input_profile,
+    Q, 
+    200,
     range_models,
     meas_frequences,  # frequencies
 )
 
-gt_data, input_data, meas_data = dg.generate(x0, times, noise=False)
+gt_data, input_data, meas_data = dg.generate(x0, 0, 10, noise=True)
 
 # ##############################################################################
 # Run Filter
@@ -79,18 +82,18 @@ x = np.array([r.state.value for r in results])
 x_gt = np.array([r.state_gt.value for r in results])
 three_sigma = np.array([r.three_sigma for r in results])
 
-fig, ax = plt.subplots(1,1)
+fig, ax = plt.subplots(1, 1)
 ax.plot(x[:, 0], x[:, 1])
 ax.plot(x_gt[:, 0], x_gt[:, 1])
 ax.set_title("Trajectory")
 ax.set_xlabel("x (m)")
 ax.set_ylabel("y (m)")
 
-fig, axs = plt.subplots(2,1)
+fig, axs = plt.subplots(2, 1)
 axs: List[plt.Axes] = axs
 for i in range(len(axs)):
-    axs[i].fill_between(t, three_sigma[:,i], -three_sigma[:,i], alpha=0.5 )
-    axs[i].plot(t, e[:,i])
+    axs[i].fill_between(t, three_sigma[:, i], -three_sigma[:, i], alpha=0.5)
+    axs[i].plot(t, e[:, i])
 axs[0].set_title("Estimation error")
 axs[0].set_xlabel("Time (s)")
 plt.show()

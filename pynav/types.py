@@ -222,10 +222,10 @@ class MeasurementModel:
         Calculates the model jacobian with finite difference, and returns the
         difference between the user-implemented jacobian().
         """
-        N = sum(x.dof)
+        N = x.dof
         y = self.evaluate(x)
         m = y.size
-        jac_fd = np.zeros(m, N)
+        jac_fd = np.zeros((m, N))
         h = 1e-6
         for i in range(N):
             dx = np.zeros((N, 1))

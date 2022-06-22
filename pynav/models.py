@@ -2,6 +2,7 @@ from pynav.types import ProcessModel, MeasurementModel, VectorState, StampedValu
 import numpy as np
 from typing import List
 
+
 class SingleIntegrator(ProcessModel):
     """
     The single-integrator process model is a process model of the form
@@ -43,9 +44,9 @@ class AnchorRangeModel(MeasurementModel):
 
     def jacobian(self, x: VectorState) -> np.ndarray:
         r_zw_a = x.value.flatten()
-        r_cz_a: np.ndarray = self.r_cw_a - r_zw_a
-        y = np.linalg.norm(r_cz_a)
-        return r_cz_a.reshape((1, -1)) / y
+        r_zc_a: np.ndarray = r_zw_a - self.r_cw_a
+        y = np.linalg.norm(r_zc_a)
+        return r_zc_a.reshape((1, -1)) / y
 
     def covariance(self, x: VectorState) -> np.ndarray:
         return self.R
