@@ -1,6 +1,5 @@
 import numpy as np
 from typing import List, Any
-from copy import deepcopy
 from abc import ABC, abstractmethod
 
 
@@ -60,6 +59,72 @@ class State(ABC):
         pass
 
 
+class MeasurementModel(ABC):
+    """
+    A generic residual, AKA innovation, AKA measurement error.
+    """
+
+    @abstractmethod
+    def evaluate(self, x: State) -> np.ndarray:
+        pass
+    
+    @abstractmethod
+    def jacobian(self, x: State) -> np.ndarray:
+        pass
+
+    @abstractmethod
+    def covariance(self, x: State) -> np.ndarray:
+        pass
+
+    def jacobian_fd(self, x: State):
+        """
+        Calculates the model jacobian with finite difference.
+        """
+        N = x.dof
+        y = self.evaluate(x)
+        m = y.size
+        jac_fd = np.zeros((m, N))
+        h = 1e-6
+        for i in range(N):
+            dx = np.zeros((N, 1))
+            dx[i, 0] = h
+            x_temp = x.copy()
+            x_temp.plus(dx)
+            jac_fd[:, i] = (self.evaluate(x_temp) - y).flatten() / h
+
+        
+
+        return jac_fd
+
+
+class ProcessModel(ABC):
+
+    @abstractmethod
+    def evaluate(self, x: State, u: StampedValue, dt: float) -> State:
+        pass
+
+    @abstractmethod
+    def jacobian(self, x: State, u: StampedValue, dt: float) -> np.ndarray:
+        pass
+
+    @abstractmethod
+    def covariance(self, x: State, u: StampedValue, dt: float) -> np.ndarray:
+        pass
+
+
+class Measurement:
+    __slots__ = ["value", "stamp", "model"]
+
+    def __init__(
+        self,
+        value: np.ndarray,
+        stamp: float = None,
+        model: MeasurementModel = None,
+    ):
+        self.value = value
+        self.stamp = stamp
+        self.model = model
+
 class VectorState(State):
     """
     A standard vector-based state, with value represented by a 1D numpy array.
@@ -81,7 +146,6 @@ class VectorState(State):
 
     def copy(self) -> "VectorState":
         return VectorState(self.value.copy(), self.stamp, self.state_id)
-
 
 class CompositeState(State):
     """
@@ -201,64 +265,3 @@ class CompositeState(State):
         self.value[idx].plus(dx)
         if new_stamp is not None:
             self.set_stamp_by_id(new_stamp, state_id)
-
-
-class MeasurementModel:
-    """
-    A generic residual, AKA innovation, AKA measurement error.
-    """
-
-    def evaluate(self, x: State) -> np.ndarray:
-        raise NotImplementedError
-
-    def jacobian(self, x: State) -> np.ndarray:
-        raise NotImplementedError
-
-    def covariance(self, x: State) -> np.ndarray:
-        raise NotImplementedError
-
-    def check_jacobian(self, x: State):
-        """
-        Calculates the model jacobian with finite difference, and returns the
-        difference between the user-implemented jacobian().
-        """
-        N = x.dof
-        y = self.evaluate(x)
-        m = y.size
-        jac_fd = np.zeros((m, N))
-        h = 1e-6
-        for i in range(N):
-            dx = np.zeros((N, 1))
-            dx[i, 0] = h
-            x_temp = x.copy()
-            x_temp.plus(dx)
-            jac_fd[:, i] = (self.evaluate(x_temp) - y).flatten() / h
-
-        jac = self.jacobian(x)
-
-        return jac - jac_fd
-
-
-class ProcessModel:
-    def evaluate(self, x: State, u: StampedValue, dt: float) -> State:
-        raise NotImplementedError
-
-    def jacobian(self, x: State, u: StampedValue, dt: float) -> np.ndarray:
-        raise NotImplementedError
-
-    def covariance(self, x: State, u: StampedValue, dt: float) -> np.ndarray:
-        raise NotImplementedError
-
-
-class Measurement:
-    __slots__ = ["value", "stamp", "model"]
-
-    def __init__(
-        self,
-        value: np.ndarray,
-        stamp: float = None,
-        model: MeasurementModel = None,
-    ):
-        self.value = value
-        self.stamp = stamp
-        self.model = model

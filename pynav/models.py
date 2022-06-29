@@ -1,4 +1,11 @@
-from pynav.types import ProcessModel, MeasurementModel, VectorState, StampedValue
+from pynav.types import (
+    ProcessModel,
+    MeasurementModel,
+    VectorState,
+    StampedValue,
+)
+from pynav.liegroups import MatrixLieGroupState, SE3State
+from pylie import SO2, SO3
 import numpy as np
 from typing import List
 
@@ -21,7 +28,9 @@ class SingleIntegrator(ProcessModel):
         self.Q = Q
         self.dim = Q.shape[0]
 
-    def evaluate(self, x: VectorState, u: StampedValue, dt: float) -> np.ndarray:
+    def evaluate(
+        self, x: VectorState, u: StampedValue, dt: float
+    ) -> np.ndarray:
         x.value = x.value + dt * u.value
         return x
 
@@ -32,21 +41,60 @@ class SingleIntegrator(ProcessModel):
         return dt**2 * self.Q
 
 
-class AnchorRangeModel(MeasurementModel):
+class RangePointToAnchor(MeasurementModel):
     def __init__(self, anchor_position: List[float], R: float):
-        self.r_cw_a = np.array(anchor_position).flatten()
-        self.R = np.array(R)
+        self._r_cw_a = np.array(anchor_position).flatten()
+        self._R = np.array(R)
 
     def evaluate(self, x: VectorState) -> np.ndarray:
         r_zw_a = x.value.flatten()
-        y = np.linalg.norm(self.r_cw_a - r_zw_a)
+        y = np.linalg.norm(self._r_cw_a - r_zw_a)
         return y
 
     def jacobian(self, x: VectorState) -> np.ndarray:
         r_zw_a = x.value.flatten()
-        r_zc_a: np.ndarray = r_zw_a - self.r_cw_a
+        r_zc_a: np.ndarray = r_zw_a - self._r_cw_a
         y = np.linalg.norm(r_zc_a)
         return r_zc_a.reshape((1, -1)) / y
 
     def covariance(self, x: VectorState) -> np.ndarray:
-        return self.R
+        return self._R
+
+
+class RangePoseToAnchor(MeasurementModel):
+    def __init__(
+        self,
+        anchor_position: List[float],
+        tag_body_position: List[float],
+        R: float,
+    ):
+        self._r_cw_a = np.array(anchor_position).flatten()
+        self._R = R 
+        self._r_tz_b = np.array(tag_body_position).flatten()
+
+    def evaluate(self, x: MatrixLieGroupState)-> np.ndarray:
+        r_zw_a = x.position
+        C_ab = x.attitude
+
+        r_tw_a = C_ab @ self._r_tz_b.reshape((-1,1)) + r_zw_a.reshape((-1,1))
+        r_tc_a :np.ndarray = r_tw_a - self._r_cw_a.reshape((-1,1))
+        return np.linalg.norm(r_tc_a) 
+
+    def jacobian(self, x: MatrixLieGroupState) -> np.ndarray:
+        r_zw_a = x.position
+        C_ab = x.attitude
+        if C_ab.shape == (2,2):
+            att_group = SO2
+        elif C_ab.shape == (3,3):
+            att_group = SO3
+
+        r_tw_a = C_ab @ self._r_tz_b.reshape((-1,1)) + r_zw_a.reshape((-1,1))
+        r_tc_a :np.ndarray = r_tw_a - self._r_cw_a.reshape((-1,1))
+        rho = r_tc_a/np.linalg.norm(r_tc_a)
+        jac_attitude = rho.T @ C_ab @ att_group.odot(self._r_tz_b) 
+        jac_position = rho.T @ C_ab
+        jac = x.jacobian_from_blocks(attitude=jac_attitude, position=jac_position)
+        return jac
+        
+    def covariance(self, x: MatrixLieGroupState) -> np.ndarray:
+        return self._R

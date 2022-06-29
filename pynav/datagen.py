@@ -64,28 +64,29 @@ class DataGenerator:
             u = StampedValue(self.input_func(times[i]), times[i])
 
             # Generate measurements if it is time to do so
-            while times[i + 1] > meas.stamp and not meas_generated:
-                dt = meas.stamp - times[i]
-                x_meas = self.process_model.evaluate(x.copy(), u, dt)
-                meas.value = meas.model.evaluate(x_meas)
+            if not meas_generated:
+                while times[i + 1] > meas.stamp:
+                    dt = meas.stamp - times[i]
+                    x_meas = self.process_model.evaluate(x.copy(), u, dt)
+                    meas.value = meas.model.evaluate(x_meas)
 
-                # Add noise if requested.
-                if noise:
-                    R = np.atleast_2d(meas.model.covariance(x_meas))
-                    v: np.ndarray = np.linalg.cholesky(R) @ np.random.normal(
-                        0, 1, (meas.value.size, 1)
-                    )
-                    og_shape = meas.value.shape
-                    y_noisy = meas.value.flatten() + v.flatten()
-                    meas.value = y_noisy.reshape(og_shape)
+                    # Add noise if requested.
+                    if noise:
+                        R = np.atleast_2d(meas.model.covariance(x_meas))
+                        v: np.ndarray = np.linalg.cholesky(R) @ np.random.normal(
+                            0, 1, (meas.value.size, 1)
+                        )
+                        og_shape = meas.value.shape
+                        y_noisy = meas.value.flatten() + v.flatten()
+                        meas.value = y_noisy.reshape(og_shape)
 
-                # Load next measurement
-                try:
-                    meas = next(meas_iter)
-                except StopIteration:
-                    meas_generated = True
-                except Exception as e:
-                    raise e
+                    # Load next measurement
+                    try:
+                        meas = next(meas_iter)
+                    except StopIteration:
+                        meas_generated = True
+                    except Exception as e:
+                        raise e
 
             # Propagate forward
             dt = times[i + 1] - times[i]
@@ -109,3 +110,12 @@ class DataGenerator:
         input_list.sort(key=lambda x: x.stamp)
         meas_list.sort(key=lambda x: x.stamp)
         return state_list, input_list, meas_list
+
+
+def generate_measurement(x: State, model: MeasurementModel):
+    R = np.atleast_2d(model.covariance(x))
+    y = model.evaluate(x)
+    og_shape = y.shape 
+    y_noisy = y + np.linalg.cholesky(R) @ np.random.normal(0,1,(y.size, 1))
+    return Measurement(y_noisy.reshape(og_shape), x.stamp, model)
+
