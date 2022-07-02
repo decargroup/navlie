@@ -1,6 +1,7 @@
 from typing import Callable, List
 from pynav.types import State
 import numpy as np
+import matplotlib.pyplot as plt
 
 
 class GaussianResult:
@@ -82,3 +83,22 @@ def montecarlo(trial: Callable[[None], List[GaussianResult]], num_trials):
         print("Trial {0} of {1}.".format(i+1, num_trials))
 
     return MonteCarloResults(trial_results)
+
+
+def randvec(Q: np.ndarray):
+    return np.linalg.cholesky(Q) @ np.random.normal(0, 1, (Q.shape[0], 1))
+
+def plot_error(results: GaussianResultList):
+
+    dim = results.error.shape[1] 
+
+    n_rows = 3
+    n_cols = int(np.ceil(dim/3))
+    fig, axs = plt.subplots(n_rows, n_cols, sharex=True)
+    axs_og = axs
+    axs: np.ndarray = axs.ravel("F")
+    for i in range(len(axs)):
+        axs[i].fill_between(results.stamp, results.three_sigma[:, i], -results.three_sigma[:, i], alpha=0.5)
+        axs[i].plot(results.stamp, results.error[:, i])
+
+    return fig, axs_og

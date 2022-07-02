@@ -76,22 +76,6 @@ print("Average filter computation frequency (Hz):")
 print(1 / ((time.time() - start_time) / len(input_data)))
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 # ##############################################################################
 # Post processing
 t = np.array([r.stamp for r in results])

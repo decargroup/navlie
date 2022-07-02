@@ -1,10 +1,9 @@
 from pynav.types import (
     ProcessModel,
     MeasurementModel,
-    VectorState,
     StampedValue,
 )
-from pynav.liegroups import MatrixLieGroupState, SE3State
+from pynav.states import MatrixLieGroupState, SE3State, VectorState
 from pylie import SO2, SO3
 import numpy as np
 from typing import List
@@ -19,13 +18,10 @@ class SingleIntegrator(ProcessModel):
 
     def __init__(self, Q: np.ndarray):
 
-        if not isinstance(Q, np.ndarray):
-            Q = np.array(Q).reshape((1, 1))
-
         if Q.shape[0] != Q.shape[1]:
-            raise ValueError("Q must be a scalar or n x n matrix.")
+            raise ValueError("Q must be an n x n matrix.")
 
-        self.Q = Q
+        self._Q = Q
         self.dim = Q.shape[0]
 
     def evaluate(
@@ -38,9 +34,37 @@ class SingleIntegrator(ProcessModel):
         return np.identity(self.dim)
 
     def covariance(self, x, u, dt) -> np.ndarray:
-        return dt**2 * self.Q
+        return dt**2 * self._Q
 
+class BodyFrameVelocity(ProcessModel):
+    """
+    The body-frame velocity process model assumes that the input contains 
+    both translational and angular velocity measurements, both relative to 
+    a local reference frame, but resolved in the robot body frame. 
 
+    This is commonly the process model associated with SE(n). 
+    """
+
+    def __init__(self, Q: np.ndarray):
+        self._Q = Q
+
+    def evaluate(self, x: SE3State, u: StampedValue, dt: float) -> SE3State:
+        x.value = x.value @ x.group.Exp(u.value * dt)
+        return x
+
+    def jacobian(self, x: SE3State, u: StampedValue, dt: float) -> np.ndarray:
+        if x.direction == "right":
+            return x.group.adjoint(x.group.Exp(-u.value * dt))
+        else: 
+            raise NotImplementedError("TODO: left jacobian not yet implemented.")
+
+    def covariance(self, x: SE3State, u: StampedValue, dt: float) -> np.ndarray:
+        if x.direction == "right":
+            L = dt * x.group.left_jacobian(-u.value*dt)
+            return L @ self._Q @ L.T
+        else: 
+            raise NotImplementedError("TODO: left covariance not yet implemented.")
+        
 class RangePointToAnchor(MeasurementModel):
     def __init__(self, anchor_position: List[float], R: float):
         self._r_cw_a = np.array(anchor_position).flatten()
@@ -62,6 +86,7 @@ class RangePointToAnchor(MeasurementModel):
 
 
 class RangePoseToAnchor(MeasurementModel):
+    
     def __init__(
         self,
         anchor_position: List[float],
@@ -98,3 +123,6 @@ class RangePoseToAnchor(MeasurementModel):
         
     def covariance(self, x: MatrixLieGroupState) -> np.ndarray:
         return self._R
+
+class GlobalPosition(MeasurementModel):
+    pass

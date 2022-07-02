@@ -20,6 +20,9 @@ class DataGenerator:
         self.input_freq = input_freq
 
         # If only one frequency was provided, assume it was for all the models.
+        if isinstance(meas_freq_list, int) or isinstance(meas_freq_list, float):
+            meas_freq_list = [meas_freq_list]
+
         if len(meas_freq_list) == 1:
             meas_freq_list = meas_freq_list * len(meas_model_list)
 
@@ -65,7 +68,7 @@ class DataGenerator:
 
             # Generate measurements if it is time to do so
             if not meas_generated:
-                while times[i + 1] > meas.stamp:
+                while times[i + 1] > meas.stamp and not meas_generated:
                     dt = meas.stamp - times[i]
                     x_meas = self.process_model.evaluate(x.copy(), u, dt)
                     meas.value = meas.model.evaluate(x_meas)
