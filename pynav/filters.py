@@ -53,6 +53,6 @@ class ExtendedKalmanFilter:
 
         self.P = (np.identity(self.P.shape[0]) - K @ G) @ self.P
         self.P = 0.5 * (self.P + self.P.T)
-        z = (y.value.reshape((-1, 1)) - y_hat.reshape((-1, 1)))
+        z = y.value.reshape((-1, 1)) - y_hat.reshape((-1, 1))
         dx = K @ z
         self.x.plus(dx)

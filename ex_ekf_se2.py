@@ -2,24 +2,23 @@ from pynav.states import SE3State
 from pynav.models import BodyFrameVelocity, RangePoseToAnchor
 from pynav.datagen import DataGenerator
 from pynav.filters import ExtendedKalmanFilter
-from pynav.utils import GaussianResult, GaussianResultList, plot_error 
+from pynav.utils import GaussianResult, GaussianResultList, plot_error
 import time
 from pylie import SE3
 import numpy as np
 from typing import List
 import matplotlib.pyplot as plt
-import seaborn as sns 
-sns.set_theme()
 
-# %% Problem setup
+# ##############################################################################
+# Problem Setup
 x0 = SE3State(SE3.Exp([0, 0, 0, 0, 0, 0]), stamp=0.0)
 P0 = 1 * np.identity(6)
-Q =np.diag([0.01**2, 0.01**2, 0.01**2, 0.1, 0.1, 0.1])
+Q = np.diag([0.01**2, 0.01**2, 0.01**2, 0.1, 0.1, 0.1])
 process_model = BodyFrameVelocity(Q)
+
 
 def input_profile(t):
     return np.array([np.sin(0.1 * t), np.cos(0.1 * t), np.sin(0.1 * t), 1, 0, 0])
-       
 
 
 range_models = [
@@ -33,11 +32,14 @@ range_models = [
     RangePoseToAnchor([0, 2, 2], [-0.17, 0.17, 0], 0.1**2),
 ]
 
-# %% Data generation
+# ##############################################################################
+# Data Generation
 dg = DataGenerator(process_model, input_profile, Q, 200, range_models, 10)
 state_gt, input_data, meas_data = dg.generate(x0, 0, 10, noise=True)
 
-# %% Run Filter
+# %% ###########################################################################
+# Run Filter
+
 ekf = ExtendedKalmanFilter(x0, P0, process_model)
 
 meas_idx = 0
@@ -64,7 +66,9 @@ print(1 / ((time.time() - start_time) / len(input_data)))
 
 r = GaussianResultList(results)
 
-# %%
+# ##############################################################################
+# Post processing
+import seaborn as sns
 
 sns.set_theme()
 fig, axs = plot_error(r)

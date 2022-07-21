@@ -1,15 +1,11 @@
 from pynav.filters import ExtendedKalmanFilter
-from pynav.types import VectorState
+from pynav.states import VectorState
 from pynav.datagen import DataGenerator
 from pynav.utils import GaussianResult
-from pynav.models import SingleIntegrator, AnchorRangeModel
+from pynav.models import SingleIntegrator, RangePointToAnchor
 import numpy as np
 from typing import List
 import time
-import matplotlib.pyplot as plt
-import seaborn as sns
-
-sns.set_theme()
 
 """
 This is an example script showing how to define a custom process model and
@@ -25,9 +21,9 @@ P0 = np.diag([1, 1])
 R = 0.1**2
 Q = 0.1 * np.identity(2)
 range_models = [
-    AnchorRangeModel([0, 4], R),
-    AnchorRangeModel([-2, 0], R),
-    AnchorRangeModel([2, 0], R),
+    RangePointToAnchor([0, 4], R),
+    RangePointToAnchor([-2, 0], R),
+    RangePointToAnchor([2, 0], R),
 ]
 range_freqs = [50, 50, 50]
 process_model = SingleIntegrator(Q)
@@ -41,10 +37,10 @@ input_freq = 200
 dg = DataGenerator(
     process_model,
     input_profile,
-    input_covariance, 
+    input_covariance,
     input_freq,
     range_models,
-    range_freqs, 
+    range_freqs,
 )
 
 gt_data, input_data, meas_data = dg.generate(x0, 0, 10, noise=True)
@@ -84,12 +80,17 @@ x = np.array([r.state.value for r in results])
 x_gt = np.array([r.state_gt.value for r in results])
 three_sigma = np.array([r.three_sigma for r in results])
 
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+sns.set_theme()
 fig, ax = plt.subplots(1, 1)
-ax.plot(x[:, 0], x[:, 1])
-ax.plot(x_gt[:, 0], x_gt[:, 1])
+ax.plot(x[:, 0], x[:, 1], label="Estimate")
+ax.plot(x_gt[:, 0], x_gt[:, 1], label="Ground truth")
 ax.set_title("Trajectory")
 ax.set_xlabel("x (m)")
 ax.set_ylabel("y (m)")
+ax.legend()
 
 fig, axs = plt.subplots(2, 1)
 axs: List[plt.Axes] = axs
@@ -97,5 +98,5 @@ for i in range(len(axs)):
     axs[i].fill_between(t, three_sigma[:, i], -three_sigma[:, i], alpha=0.5)
     axs[i].plot(t, e[:, i])
 axs[0].set_title("Estimation error")
-axs[0].set_xlabel("Time (s)")
+axs[1].set_xlabel("Time (s)")
 plt.show()

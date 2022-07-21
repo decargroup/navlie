@@ -61,13 +61,13 @@ class State(ABC):
 
 class MeasurementModel(ABC):
     """
-    A generic residual, AKA innovation, AKA measurement error.
+    An abstract measurement model base class.
     """
 
     @abstractmethod
     def evaluate(self, x: State) -> np.ndarray:
         pass
-    
+
     @abstractmethod
     def jacobian(self, x: State) -> np.ndarray:
         pass
@@ -96,7 +96,6 @@ class MeasurementModel(ABC):
 
 
 class ProcessModel(ABC):
-
     @abstractmethod
     def evaluate(self, x: State, u: StampedValue, dt: float) -> State:
         pass
@@ -119,14 +118,19 @@ class ProcessModel(ABC):
         for i in range(x.dof):
             dx = np.zeros((x.dof, 1))
             dx[i, 0] = h
-            x_pert = x.copy() # Perturb current state
+            x_pert = x.copy()  # Perturb current state
             x_pert.plus(dx)
             Y: State = self.evaluate(x_pert, u, dt)
             jac_fd[:, i] = Y.minus(Y_bar).flatten() / h
 
         return jac_fd
 
+
 class Measurement:
+    """
+    A data container containing a generic measurement's value, timestamp,
+    and corresponding model.
+    """
     __slots__ = ["value", "stamp", "model"]
 
     def __init__(

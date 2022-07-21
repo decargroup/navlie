@@ -2,7 +2,8 @@ from pylie import SO2, SO3, SE2, SE3, SE23
 from pylie.numpy.base import MatrixLieGroup
 import numpy as np
 from .types import State
-from typing import List 
+from typing import List
+
 
 class VectorState(State):
     """
@@ -25,6 +26,7 @@ class VectorState(State):
 
     def copy(self) -> "VectorState":
         return VectorState(self.value.copy(), self.stamp, self.state_id)
+
 
 class CompositeState(State):
     """
@@ -74,7 +76,7 @@ class CompositeState(State):
         Get slice of a particular state_id in the list of states.
         """
         idx = self.get_index_by_id(state_id)
-        return self._slices[idx]  # TODO: recalculate every time?
+        return self._slices[idx]
 
     def get_value_by_id(self, state_id):
         """
@@ -82,6 +84,13 @@ class CompositeState(State):
         """
         idx = self.get_index_by_id(state_id)
         return self.value[idx].value
+
+    def get_state_by_id(self, state_id):
+        """
+        Get state object by id.
+        """
+        idx = self.get_index_by_id(state_id)
+        return self.value[idx]
 
     def get_dof_by_id(self, state_id):
         """
@@ -122,7 +131,9 @@ class CompositeState(State):
         Returns a new composite state object where the state values have also
         been copied.
         """
-        return CompositeState([state.copy() for state in self.value])
+        return CompositeState(
+            [state.copy() for state in self.value], self.stamp, self.state_id
+        )
 
     def plus(self, dx, new_stamp: float = None):
         """
@@ -136,7 +147,14 @@ class CompositeState(State):
         if new_stamp is not None:
             self.set_stamp_for_all(new_stamp)
 
-    def update_by_id(self, dx, state_id: int, new_stamp: float = None):
+    def minus(self, x: "CompositeState") -> np.ndarray:
+        dx = []
+        for i, v in enumerate(x.value):
+            dx.append(self.value[i].minus(x.value[i]).reshape((-1, 1)))
+
+        return np.vstack(dx)
+
+    def plus_by_id(self, dx, state_id: int, new_stamp: float = None):
         """
         Updates a specific sub-state.
         """
@@ -145,14 +163,20 @@ class CompositeState(State):
         if new_stamp is not None:
             self.set_stamp_by_id(new_stamp, state_id)
 
+    def jacobian_from_blocks(self, block_dict: dict):
+        block: np.ndarray = block_dict.values()[0]
+        m = block.shape[0]  # Dimension of "y" value
+        jac = np.zeros((m, self.dof))
+        for state_id, block in block_dict.items():
+            slc = self.get_slice_by_id(state_id)
+            jac[:, slc] = block
+
+        return jac
 
 
 class MatrixLieGroupState(State):
     """
-    The MatrixLieGroupState class is a "meta" class (although not actually a
-    real python metaclass). Using this group-general meta-class, one can create
-    a group-specific `State` class by passing a `pylie.numpy.base.MatrixLieGroup`
-    class as a parameter when inheriting.
+    The MatrixLieGroupState class.
     """
 
     __slots__ = ["direction"]
@@ -183,7 +207,7 @@ class MatrixLieGroupState(State):
         if self.direction == "right":
             return self.group.Log(self.group.inverse(x.value) @ self.value)
         elif self.direction == "left":
-            return self.group.Log(self.value @ self.group.inverse(x.value)) 
+            return self.group.Log(self.value @ self.group.inverse(x.value))
         else:
             raise ValueError("direction must either be 'left' or 'right'.")
 
@@ -197,15 +221,24 @@ class MatrixLieGroupState(State):
 
     @property
     def attitude(self) -> np.ndarray:
-        raise NotImplementedError("{0} does not have attitude property".format(self.__class__.__name__))
+        raise NotImplementedError(
+            "{0} does not have attitude property".format(self.__class__.__name__)
+        )
 
     @property
     def position(self) -> np.ndarray:
-        raise NotImplementedError("{0} does not have position property".format(self.__class__.__name__))
+        raise NotImplementedError(
+            "{0} does not have position property".format(self.__class__.__name__)
+        )
 
     @property
     def velocity(self) -> np.ndarray:
-        raise NotImplementedError("{0} does not have velocity property".format(self.__class__.__name__))
+        raise NotImplementedError(
+            "{0} does not have velocity property".format(self.__class__.__name__)
+        )
+
+    def jacobian_from_blocks(self, **kwargs) -> np.ndarray:
+        raise NotImplementedError()
 
 
 class SO2State(MatrixLieGroupState):
@@ -273,10 +306,7 @@ class SE2State(MatrixLieGroupState):
         self.value[0:2, 2] = r
 
     @staticmethod
-    def jacobian_from_blocks(
-        attitude: np.ndarray = None, position: np.ndarray = None
-    ):
-
+    def jacobian_from_blocks(attitude: np.ndarray = None, position: np.ndarray = None):
 
         for jac in [attitude, position]:
             if jac is not None:
@@ -317,9 +347,7 @@ class SE3State(MatrixLieGroupState):
         self.value[0:3, 3] = r
 
     @staticmethod
-    def jacobian_from_blocks(
-        attitude: np.ndarray = None, position: np.ndarray = None
-    ):
+    def jacobian_from_blocks(attitude: np.ndarray = None, position: np.ndarray = None):
 
         for jac in [attitude, position]:
             if jac is not None:

@@ -31,9 +31,9 @@ class DataGenerator:
     def add_measurement_model(self, model: MeasurementModel, freq: float):
         self._meas_model_and_freq.append((model, freq))
 
-    def generate(self, x0: State, start:float, stop:float, noise=False):
+    def generate(self, x0: State, start: float, stop: float, noise=False):
 
-        times = np.arange(start, stop, 1/self.input_freq)
+        times = np.arange(start, stop, 1 / self.input_freq)
 
         # Build large list of Measurement objects with the correct stamps,
         # but empty values.
@@ -105,7 +105,6 @@ class DataGenerator:
                 u_noisy = u.value.flatten() + w.flatten()
                 u.value = u_noisy.reshape(og_shape)
 
-
             state_list.append(x.copy())
             input_list.append(u)
 
@@ -115,10 +114,15 @@ class DataGenerator:
         return state_list, input_list, meas_list
 
 
-def generate_measurement(x: State, model: MeasurementModel):
+def generate_measurement(x: State, model: MeasurementModel, noise=True):
+    """
+    Generates a `Measurement` object given a measurement model and corresponding
+    ground truth state value. Optionally add noise.
+    """
     R = np.atleast_2d(model.covariance(x))
     y = model.evaluate(x)
-    og_shape = y.shape 
-    y_noisy = y + np.linalg.cholesky(R) @ np.random.normal(0,1,(y.size, 1))
-    return Measurement(y_noisy.reshape(og_shape), x.stamp, model)
+    og_shape = y.shape
+    if noise:
+        y = y + np.linalg.cholesky(R) @ np.random.normal(0, 1, (y.size, 1))
 
+    return Measurement(y.reshape(og_shape), x.stamp, model)
