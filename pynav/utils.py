@@ -4,7 +4,6 @@ import numpy as np
 import matplotlib.pyplot as plt
 import time
 
-
 class GaussianResult:
     """
     A data container that simultaneously computes various interesting metrics
@@ -62,6 +61,8 @@ class GaussianResultList:
         "md",
         "three_sigma",
     ]
+    # TODO: just write this explicitly..
+    
 
     def __init__(self, result_list: List[GaussianResult]):
         props = GaussianResult.__slots__
@@ -79,6 +80,10 @@ class MonteCarloResults:
     Monte Carlo experiments, such as the average estimation error squared (EES)
     and the average normalized EES.
     """
+    # TODO: add chi-squared bounds, expected NEES
+    # Should we support, or check, for time stamps that arnt aligned?
+    # probably not since MonteCarlo is only ever in simulation, where timestamps
+    # will almost always be the same from trial-to-trial.
 
     def __init__(self, trial_results: List[GaussianResultList]):
         self.num_trials = len(trial_results)
@@ -90,6 +95,13 @@ class MonteCarloResults:
             np.array([t.ees for t in trial_results]), axis=0
         )
 
+        self.rmse: np.ndarray = np.sqrt(np.average(
+            np.power(np.array([t.error for t in trial_results]),2), axis=0
+        ))
+
+        self.total_rmse: np.ndarray  = np.sqrt(self.average_ees)
+
+
 
 def montecarlo(trial: Callable[[int], List[GaussianResult]], num_trials: int):
     """
@@ -97,16 +109,20 @@ def montecarlo(trial: Callable[[int], List[GaussianResult]], num_trials: int):
     executes a trial and returns a list of `GaussianResult`.
     """
 
-    trial_results = []
+    trial_results = [None]*num_trials
     print("Starting Monte Carlo experiment...")
     for i in range(num_trials):
-        print("Trial {0} of {1}... ".format(i + 1, num_trials), end="")
+        print("Trial {0} of {1}... ".format(i + 1, num_trials))
         start_time = time.time()
-        trial_results.append(GaussianResultList(trial(i)))
+
+        # Execute the trial
+        trial_results[i] = GaussianResultList(trial(i))
+
+        # Print some info
         duration = time.time() - start_time
         remaining = (num_trials - i - 1) * duration
         print(
-            "Completed in {duration:.1f}s. Estimated time remaining: {remaining:.1f}s".format(
+            "    Completed in {duration:.1f}s. Estimated time remaining: {remaining:.1f}s".format(
                 duration=duration, remaining=remaining
             )
         )
@@ -140,13 +156,14 @@ def plot_error(
     if axs is None:
         fig, axs = plt.subplots(n_rows, n_cols, sharex=True, sharey=sharey)
     else:
-        fig = axs[0].get_figure()
+        fig = axs.ravel("F")[0].get_figure()
 
-    kwargs = []
+    axs_og = axs
+    kwargs = {}
     if color is not None:
         kwargs["color"] = color
 
-    axs_og = axs
+    
     axs: List[plt.Axes] = axs.ravel("F")
     for i in range(len(axs)):
         axs[i].fill_between(

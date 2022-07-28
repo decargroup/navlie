@@ -150,7 +150,7 @@ class CompositeState(State):
     def minus(self, x: "CompositeState") -> np.ndarray:
         dx = []
         for i, v in enumerate(x.value):
-            dx.append(self.value[i].minus(x.value[i]).reshape((-1, 1)))
+            dx.append(self.value[i].minus(x.value[i]))
 
         return np.vstack(dx)
 
@@ -278,6 +278,10 @@ class SO3State(MatrixLieGroupState):
     def attitude(self, C):
         self.value = C
 
+    @staticmethod
+    def jacobian_from_blocks(attitude: np.ndarray):
+        
+        return attitude
 
 class SE2State(MatrixLieGroupState):
     def __init__(
