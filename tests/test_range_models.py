@@ -4,13 +4,11 @@ from pynav.models import (
     GlobalPosition,
     RangePoseToAnchor,
     RangePoseToPose,
-    RangeRelativePose,
     Gravity,
 )
-from pylie import SO2, SO3, SE3, SE2, SE3, SE23
+from pylie import SO3, SE3, SE2, SE3, SE23
 import numpy as np
 
-from pynav.types import StampedValue
 
 np.random.seed(0)
 

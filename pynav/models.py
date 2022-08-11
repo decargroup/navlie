@@ -402,9 +402,9 @@ class Altitude(MeasurementModel):
 
 
 class Gravity(MeasurementModel):
-    def __init__(self, R: np.ndarray):
+    def __init__(self, R: np.ndarray, gravity_vec = [0, 0, -9.80665]):
         self.R = R
-        self._g_a = np.array([0, 0, -9.80665]).reshape((-1, 1))
+        self._g_a = np.array(gravity_vec).reshape((-1, 1))
 
     def evaluate(self, x: MatrixLieGroupState):
         return x.attitude.T @ self._g_a

@@ -1,6 +1,6 @@
 from .types import StampedValue, State, ProcessModel, Measurement
 import numpy as np
-
+from scipy.stats.distributions import chi2
 
 class ExtendedKalmanFilter:
     def __init__(self, x0: State, P0: np.ndarray, process_model: ProcessModel):
@@ -10,7 +10,7 @@ class ExtendedKalmanFilter:
     def reset(self, x0: State, P0: np.ndarray):
         self.x = x0.copy()
         self.P = P0.copy()
-        self._u = None  # Most recent input
+        self._u = None  
 
     def predict(self, u: StampedValue, dt=None, x_jac: State = None, use_last_input=True):
         """
@@ -43,7 +43,7 @@ class ExtendedKalmanFilter:
 
         self._u = u
 
-    def correct(self, y: Measurement, x_jac: State = None):
+    def correct(self, y: Measurement, x_jac: State = None, reject_outlier=False):
         """
         Fuses an arbitrary measurement to produce a corrected state estimate.
 
@@ -64,15 +64,25 @@ class ExtendedKalmanFilter:
         R = np.atleast_2d(y.model.covariance(x_jac))
         G = np.atleast_2d(y.model.jacobian(x_jac))
         y_hat = y.model.evaluate(self.x)
-
-        S = G @ self.P @ G.T + R
-        K = np.linalg.solve(S.T, (self.P @ G.T).T).T
-        #K = (self.P @ G.T) @ np.linalg.inv(S)
-
-        self.P = (np.identity(self.P.shape[0]) - K @ G) @ self.P
-        self.P = 0.5 * (self.P + self.P.T)
         z = y.value.reshape((-1, 1)) - y_hat.reshape((-1, 1))
-        dx = K @ z
-        self.x.plus(dx)
+        S = G @ self.P @ G.T + R    
+
+        outlier = False 
+
+        # Test for outlier if requested.
+        if reject_outlier:
+            S = G @ self.P @ G.T + R  
+            md = np.asscalar(z.T @ np.linalg.solve(S, z))
+            if md > chi2.ppf(0.99, df=z.size):
+                outlier = True
+
+        if not outlier:
+            K = np.linalg.solve(S.T, (self.P @ G.T).T).T
+            #K = (self.P @ G.T) @ np.linalg.inv(S)
+
+            self.P = (np.identity(self.P.shape[0]) - K @ G) @ self.P
+            self.P = 0.5 * (self.P + self.P.T)
+            dx = K @ z
+            self.x.plus(dx)
 
 # TODO: add Iterated EKF, 
