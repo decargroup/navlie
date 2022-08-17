@@ -12,11 +12,11 @@ class GaussianResult:
     the state.
     """
 
-    # All properties MUST be added to __slots__
+    
     __slots__ = [
         "stamp",
         "state",
-        "state_gt",
+        "state_true",
         "covariance",
         "error",
         "ees",
@@ -29,14 +29,14 @@ class GaussianResult:
         self,
         state: State,
         covariance: np.ndarray = None,
-        state_gt: State = None,
+        state_true: State = None,
     ):
         self.stamp = state.stamp
         self.state = state
-        self.state_gt = state_gt
+        self.state_true = state_true
         self.covariance = covariance
-        if state_gt is not None:
-            e = state.minus(state_gt).reshape((-1, 1))
+        if state_true is not None:
+            e = state.minus(state_true).reshape((-1, 1))
             cov_inv = np.linalg.inv(covariance)
             self.error = e.flatten()
             self.ees = np.asscalar(e.T @ e)
@@ -54,7 +54,7 @@ class GaussianResultList:
     __slots__ = [
         "stamp",
         "state",
-        "state_gt",
+        "state_true",
         "covariance",
         "error",
         "ees",
@@ -62,13 +62,13 @@ class GaussianResultList:
         "md",
         "three_sigma",
         "value",
-        "value_gt"
+        "value_true"
     ]
 
     def __init__(self, result_list: List[GaussianResult]):
         self.stamp = np.array([r.stamp for r in result_list])
         self.state = np.array([r.state for r in result_list])
-        self.state_gt = np.array([r.state_gt for r in result_list])
+        self.state_true = np.array([r.state_true for r in result_list])
         self.covariance = np.array([r.covariance for r in result_list])
         self.error = np.array([r.error for r in result_list])
         self.ees = np.array([r.ees for r in result_list])
@@ -76,7 +76,7 @@ class GaussianResultList:
         self.md = np.array([r.md for r in result_list])
         self.three_sigma = np.array([r.three_sigma for r in result_list])
         self.value = np.array([r.state.value for r in result_list])
-        self.value_gt = np.array([r.state_gt.value for r in result_list])
+        self.value_true = np.array([r.state_true.value for r in result_list])
 
 
 class MonteCarloResults:
@@ -146,8 +146,8 @@ def plot_error(
 ) -> Tuple[plt.Figure, List[plt.Axes]]:
     """
     A generic three-sigma bound plotter.
-
     """
+
     dim = results.error.shape[1]
 
     n_rows = 3

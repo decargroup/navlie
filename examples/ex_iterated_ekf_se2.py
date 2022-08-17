@@ -35,7 +35,7 @@ range_models = [
 # ##############################################################################
 # Data Generation
 dg = DataGenerator(process_model, input_profile, Q, 200, range_models, 10)
-state_gt, input_data, meas_data = dg.generate(x0, 0, 10, noise=True)
+state_true, input_data, meas_data = dg.generate(x0, 0, 10, noise=True)
 
 # %% ###########################################################################
 # Run Filter
@@ -61,7 +61,7 @@ for k in range(len(input_data) - 1):
             y = meas_data[meas_idx]
 
     x = ekf.predict(x, u)
-    results_list.append(GaussianResult(x.state, x.covariance, state_gt[k]))
+    results_list.append(GaussianResult(x.state, x.covariance, state_true[k]))
 
 
 print("Average filter computation frequency (Hz):")
