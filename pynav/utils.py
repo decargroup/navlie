@@ -3,6 +3,7 @@ from pynav.types import State
 import numpy as np
 import matplotlib.pyplot as plt
 import time
+from scipy.stats.distributions import chi2
 
 
 class GaussianResult:
@@ -62,7 +63,8 @@ class GaussianResultList:
         "md",
         "three_sigma",
         "value",
-        "value_true"
+        "value_true",
+        "dof"
     ]
 
     def __init__(self, result_list: List[GaussianResult]):
@@ -76,17 +78,18 @@ class GaussianResultList:
         self.md = np.array([r.md for r in result_list])
         self.three_sigma = np.array([r.three_sigma for r in result_list])
         self.value = np.array([r.state.value for r in result_list])
+        self.dof = np.array([r.state.dof for r in result_list])
         self.value_true = np.array([r.state_true.value for r in result_list])
 
 
-class MonteCarloResults:
+class MonteCarloResult:
     """
     A data container which computes various interesting metrics associated with
     Monte Carlo experiments, such as the average estimation error squared (EES)
     and the average normalized EES.
     """
 
-    # TODO: add chi-squared bounds, expected NEES
+    # TODO: add chi-squared bounds
 
     def __init__(self, trial_results: List[GaussianResultList]):
         self.num_trials = len(trial_results)
@@ -101,6 +104,28 @@ class MonteCarloResults:
         )
 
         self.total_rmse: np.ndarray = np.sqrt(self.average_ees)
+
+        self.expected_nees = np.array(trial_results[0].dof)
+        self.dof = trial_results[0].dof 
+
+    def nees_lower_bound(self, confidence_interval: float):
+        if confidence_interval >= 1 or confidence_interval <= 0:
+            raise ValueError("Confidence interval must lie in (0, 1)")
+
+        lower_bound_threshold = (1-confidence_interval)/2
+        return chi2.ppf(lower_bound_threshold, df=self.num_trials * self.dof)/self.num_trials
+
+    def nees_upper_bound(self, confidence_interval: float, double_sided=True):
+        if confidence_interval >= 1 or confidence_interval <= 0:
+            raise ValueError("Confidence interval must lie in (0, 1)")
+
+        
+        upper_bound_threshold = confidence_interval
+        if double_sided:
+            upper_bound_threshold += (1-confidence_interval)/2
+
+        return chi2.ppf(upper_bound_threshold, df=self.num_trials * self.dof)/self.num_trials
+        
 
 
 def monte_carlo(trial: Callable[[int], List[GaussianResult]], num_trials: int):
@@ -127,7 +152,7 @@ def monte_carlo(trial: Callable[[int], List[GaussianResult]], num_trials: int):
             )
         )
 
-    return MonteCarloResults(trial_results)
+    return MonteCarloResult(trial_results)
 
 
 def randvec(cov: np.ndarray):
