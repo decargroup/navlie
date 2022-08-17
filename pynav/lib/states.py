@@ -28,152 +28,6 @@ class VectorState(State):
         return VectorState(self.value.copy(), self.stamp, self.state_id)
 
 
-class CompositeState(State):
-    """
-    A "composite" state object intended to hold a list of State objects as a
-    single conceptual "state". The intended use is to hold a list of poses
-    as a single state at a specific time.
-
-    PARAMETERS:
-    -----------
-    state_list: list of states that forms this composite state
-
-    Each state in the provided list has an index (the index in the list), as
-    well as an id, which is found as an attribute in the corresponding state
-    object.
-
-    It is possible to access sub-states in the composite states both by index
-    and by ID.
-    """
-
-    __slots__ = ["substates", "_slices"]
-
-    def __init__(self, state_list: List[State], stamp: float = None, state_id=None):
-
-        self.value = state_list
-        self.dof = sum([x.dof for x in state_list])
-        self.stamp = stamp
-        self.state_id = state_id
-
-        # Alternate way to access, may be a more appropriate name
-        self.substates = self.value
-
-        # Compute the slices for each individual state.
-        self._slices = []
-        counter = 0
-        for state in state_list:
-            self._slices.append(slice(counter, counter + state.dof))
-            counter += state.dof
-
-    def get_index_by_id(self, state_id):
-        """
-        Get index of a particular state_id in the list of states.
-        """
-        return [x.state_id for x in self.value].index(state_id)
-
-    def get_slice_by_id(self, state_id):
-        """
-        Get slice of a particular state_id in the list of states.
-        """
-        idx = self.get_index_by_id(state_id)
-        return self._slices[idx]
-
-    def get_value_by_id(self, state_id):
-        """
-        Get state value by id.
-        """
-        idx = self.get_index_by_id(state_id)
-        return self.value[idx].value
-
-    def get_state_by_id(self, state_id):
-        """
-        Get state object by id.
-        """
-        idx = self.get_index_by_id(state_id)
-        return self.value[idx]
-
-    def get_dof_by_id(self, state_id):
-        """
-        Get degrees of freedom of sub-state by id.
-        """
-        idx = self.get_index_by_id(state_id)
-        return self.dof[idx]
-
-    def get_stamp_by_id(self, state_id):
-        """
-        Get timestamp of sub-state by id.
-        """
-        idx = self.get_index_by_id(state_id)
-        return self.stamp[idx]
-
-    def set_stamp_by_id(self, stamp: float, state_id):
-        """
-        Set the timestamp of a sub-state by id.
-        """
-        idx = self.get_index_by_id(state_id)
-        self.value[idx].stamp = stamp
-
-    def set_stamp_for_all(self, stamp: float):
-        """
-        Set the timestamp of all substates.
-        """
-        for state in self.value:
-            state.stamp = stamp
-
-    def to_list(self):
-        """
-        Converts the CompositeState object back into a list of states.
-        """
-        return self.value
-
-    def copy(self) -> "CompositeState":
-        """
-        Returns a new composite state object where the state values have also
-        been copied.
-        """
-        return CompositeState(
-            [state.copy() for state in self.value], self.stamp, self.state_id
-        )
-
-    def plus(self, dx, new_stamp: float = None):
-        """
-        Updates the value of each sub-state given a dx. Interally parses
-        the dx vector.
-        """
-        for i, s in enumerate(self._slices):
-            sub_dx = dx[s]
-            self.value[i].plus(sub_dx)
-
-        if new_stamp is not None:
-            self.set_stamp_for_all(new_stamp)
-
-    def minus(self, x: "CompositeState") -> np.ndarray:
-        dx = []
-        for i, v in enumerate(x.value):
-            dx.append(self.value[i].minus(x.value[i]))
-
-        return np.vstack(dx)
-
-    def plus_by_id(self, dx, state_id: int, new_stamp: float = None):
-        """
-        Updates a specific sub-state.
-        """
-        idx = self.get_index_by_id(state_id)
-        self.value[idx].plus(dx)
-        if new_stamp is not None:
-            self.set_stamp_by_id(new_stamp, state_id)
-
-    def jacobian_from_blocks(self, block_dict: dict):
-        block: np.ndarray = block_dict.values()[0]
-        m = block.shape[0]  # Dimension of "y" value
-        jac = np.zeros((m, self.dof))
-        for state_id, block in block_dict.items():
-            slc = self.get_slice_by_id(state_id)
-            jac[:, slc] = block
-
-        return jac
-
-
 class MatrixLieGroupState(State):
     """
     The MatrixLieGroupState class.
@@ -418,3 +272,149 @@ class SE23State(MatrixLieGroupState):
             velocity = np.zeros((dim, 3))
 
         return np.block([attitude, velocity, position])
+
+
+class CompositeState(State):
+    """
+    A "composite" state object intended to hold a list of State objects as a
+    single conceptual "state". The intended use is to hold a list of poses
+    as a single state at a specific time.
+
+    PARAMETERS:
+    -----------
+    state_list: list of states that forms this composite state
+
+    Each state in the provided list has an index (the index in the list), as
+    well as an id, which is found as an attribute in the corresponding state
+    object.
+
+    It is possible to access sub-states in the composite states both by index
+    and by ID.
+    """
+
+    __slots__ = ["substates", "_slices"]
+
+    def __init__(self, state_list: List[State], stamp: float = None, state_id=None):
+
+        self.value = state_list
+        self.dof = sum([x.dof for x in state_list])
+        self.stamp = stamp
+        self.state_id = state_id
+
+        # Alternate way to access, may be a more appropriate name
+        self.substates = self.value
+
+        # Compute the slices for each individual state.
+        self._slices = []
+        counter = 0
+        for state in state_list:
+            self._slices.append(slice(counter, counter + state.dof))
+            counter += state.dof
+
+    def get_index_by_id(self, state_id):
+        """
+        Get index of a particular state_id in the list of states.
+        """
+        return [x.state_id for x in self.value].index(state_id)
+
+    def get_slice_by_id(self, state_id):
+        """
+        Get slice of a particular state_id in the list of states.
+        """
+        idx = self.get_index_by_id(state_id)
+        return self._slices[idx]
+
+    def get_value_by_id(self, state_id):
+        """
+        Get state value by id.
+        """
+        idx = self.get_index_by_id(state_id)
+        return self.value[idx].value
+
+    def get_state_by_id(self, state_id):
+        """
+        Get state object by id.
+        """
+        idx = self.get_index_by_id(state_id)
+        return self.value[idx]
+
+    def get_dof_by_id(self, state_id):
+        """
+        Get degrees of freedom of sub-state by id.
+        """
+        idx = self.get_index_by_id(state_id)
+        return self.dof[idx]
+
+    def get_stamp_by_id(self, state_id):
+        """
+        Get timestamp of sub-state by id.
+        """
+        idx = self.get_index_by_id(state_id)
+        return self.stamp[idx]
+
+    def set_stamp_by_id(self, stamp: float, state_id):
+        """
+        Set the timestamp of a sub-state by id.
+        """
+        idx = self.get_index_by_id(state_id)
+        self.value[idx].stamp = stamp
+
+    def set_stamp_for_all(self, stamp: float):
+        """
+        Set the timestamp of all substates.
+        """
+        for state in self.value:
+            state.stamp = stamp
+
+    def to_list(self):
+        """
+        Converts the CompositeState object back into a list of states.
+        """
+        return self.value
+
+    def copy(self) -> "CompositeState":
+        """
+        Returns a new composite state object where the state values have also
+        been copied.
+        """
+        return CompositeState(
+            [state.copy() for state in self.value], self.stamp, self.state_id
+        )
+
+    def plus(self, dx, new_stamp: float = None):
+        """
+        Updates the value of each sub-state given a dx. Interally parses
+        the dx vector.
+        """
+        for i, s in enumerate(self._slices):
+            sub_dx = dx[s]
+            self.value[i].plus(sub_dx)
+
+        if new_stamp is not None:
+            self.set_stamp_for_all(new_stamp)
+
+    def minus(self, x: "CompositeState") -> np.ndarray:
+        dx = []
+        for i, v in enumerate(x.value):
+            dx.append(self.value[i].minus(x.value[i]))
+
+        return np.vstack(dx)
+
+    def plus_by_id(self, dx, state_id: int, new_stamp: float = None):
+        """
+        Updates a specific sub-state.
+        """
+        idx = self.get_index_by_id(state_id)
+        self.value[idx].plus(dx)
+        if new_stamp is not None:
+            self.set_stamp_by_id(new_stamp, state_id)
+
+    def jacobian_from_blocks(self, block_dict: dict):
+        block: np.ndarray = block_dict.values()[0]
+        m = block.shape[0]  # Dimension of "y" value
+        jac = np.zeros((m, self.dof))
+        for state_id, block in block_dict.items():
+            slc = self.get_slice_by_id(state_id)
+            jac[:, slc] = block
+
+        return jac

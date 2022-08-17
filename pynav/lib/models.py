@@ -317,8 +317,6 @@ class RangeRelativePose(CompositeMeasurementModel):
     Range model given a pose of another body relative to current pose.
     """
 
-    # TODO: add tests
-
     def __init__(self, tag_body_position, nb_tag_body_position, nb_state_id, R):
         model = RangePoseToAnchor(tag_body_position, nb_tag_body_position, R)
         super(RangeRelativePose, self).__init__(model, nb_state_id)

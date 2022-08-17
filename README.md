@@ -158,3 +158,34 @@ class RangePointToAnchor(MeasurementModel):
 ```
 
 In fact, for both `ProcessModel` and `MeasurementModel`, subclasses will inherit a finite-difference numerical differentiation method `jacobian_fd()`, that allows for a seamless way to check your `jacobian()` implementation! (`evaluate()` method must be implemented for this to work, see some of the files in `tests/` for an example of this.)
+
+## Built-in Library
+Many state, process, and measurement models are already written and part of the built-in library and, as an example, can be accessed with 
+
+```python
+from pynav.lib.states import VectorState, SE3State
+from pynav.lib.models import RangePoseToAnchor, Altitude
+```
+The following state types are currently part of the lib:
+- `VectorState`
+- `SO2State`
+- `SO3State`
+- `SE2State`
+- `SE3State`
+- `SE23State`
+- `CompositeState` (for holding many sub-states as a single state)
+
+The following process models are currently part of the lib:
+- `SingleIntegrator`
+- `BodyFrameVelocity`
+- `RelativeBodyFrameVelocity`
+- `CompositeProcessModel`
+
+The following measurement models are currently part of the lib:
+- `RangePointToAnchor`
+- `RangePoseToAnchor`
+- `RangePoseToPose`
+- `RangeRelativePose`
+- `GlobalPosition`
+- `Altitude` 
+- `Gravity`
