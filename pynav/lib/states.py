@@ -1,7 +1,7 @@
 from pylie import SO2, SO3, SE2, SE3, SE23
 from pylie.numpy.base import MatrixLieGroup
 import numpy as np
-from .types import State
+from ..types import State
 from typing import List
 
 
@@ -280,8 +280,9 @@ class SO3State(MatrixLieGroupState):
 
     @staticmethod
     def jacobian_from_blocks(attitude: np.ndarray):
-        
+
         return attitude
+
 
 class SE2State(MatrixLieGroupState):
     def __init__(

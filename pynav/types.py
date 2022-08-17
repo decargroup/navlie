@@ -131,6 +131,7 @@ class Measurement:
     A data container containing a generic measurement's value, timestamp,
     and corresponding model.
     """
+
     __slots__ = ["value", "stamp", "model"]
 
     def __init__(
@@ -142,3 +143,25 @@ class Measurement:
         self.value = value
         self.stamp = stamp
         self.model = model
+
+
+class StateWithCovariance:
+    """
+    A data container containing a State object and a covariance array.
+    """
+
+    __slots__ = ["state", "covariance"]
+
+    def __init__(self, state: State, covariance: np.ndarray):
+
+        if covariance.shape[0] != covariance.shape[1]:
+            raise ValueError("covariance must be an n x n array.")
+
+        if covariance.shape[0] != state.dof:
+            raise ValueError("Covariance matrix does not correspond with state DOF.")
+
+        self.state = state
+        self.covariance = covariance
+
+    def symmetrize(self):
+        self.covariance = 0.5 * (self.covariance + self.covariance.T)

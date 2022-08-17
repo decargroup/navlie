@@ -61,9 +61,7 @@ class ExtendedKalmanFilter:
 
         self._u = u
 
-    def correct(
-        self, y: Measurement, x_jac: State = None, reject_outlier=False
-    ):
+    def correct(self, y: Measurement, x_jac: State = None, reject_outlier=False):
         """
         Fuses an arbitrary measurement to produce a corrected state estimate.
 
@@ -114,9 +112,7 @@ class IteratedKalmanFilter(ExtendedKalmanFilter):
         super(IteratedKalmanFilter, self).__init__(x0, P0, process_model)
         self.step_tol = step_tol
 
-    def correct(
-        self, y: Measurement, x_jac: State = None, reject_outlier=False
-    ):
+    def correct(self, y: Measurement, x_jac: State = None, reject_outlier=False):
         """
         Fuses an arbitrary measurement to produce a corrected state estimate.
 
@@ -141,7 +137,7 @@ class IteratedKalmanFilter(ExtendedKalmanFilter):
         cost_old = 0
         while np.linalg.norm(dx) > self.step_tol:
 
-            # Load a dedicated state evaluation point for jacobian 
+            # Load a dedicated state evaluation point for jacobian
             # if the user supplied it.
             if x_jac is not None:
                 x_op_jac = x_jac.copy()
@@ -164,12 +160,10 @@ class IteratedKalmanFilter(ExtendedKalmanFilter):
             if not outlier:
                 K = np.linalg.solve(S.T, (self.P @ G.T).T).T
                 dx = e + K @ (z - G @ e)
-                x_op.plus(0.1 * dx)
+                x_op.plus(0.2 * dx)
             else:
                 break
 
-
-            
             cost_prior = np.asscalar(0.5 * e.T @ np.linalg.solve(self.P, e))
             cost_meas = np.asscalar(0.5 * z.T @ np.linalg.solve(R, z))
             cost = cost_prior + cost_meas
@@ -179,7 +173,6 @@ class IteratedKalmanFilter(ExtendedKalmanFilter):
                 )
             )
             cost_old = cost
-
 
         self.x = x_op
         self.P = (np.identity(self.P.shape[0]) - K @ G) @ self.P

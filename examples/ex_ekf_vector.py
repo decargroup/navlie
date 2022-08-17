@@ -1,8 +1,8 @@
 from pynav.filters import ExtendedKalmanFilter, IteratedKalmanFilter
-from pynav.states import VectorState
+from pynav.lib.states import VectorState
 from pynav.datagen import DataGenerator
 from pynav.utils import GaussianResult
-from pynav.models import SingleIntegrator, RangePointToAnchor
+from pynav.lib.models import SingleIntegrator, RangePointToAnchor
 import numpy as np
 from typing import List
 import time
@@ -49,7 +49,7 @@ gt_data, input_data, meas_data = dg.generate(x0, 0, 10, noise=True)
 # Run Filter
 
 ekf = ExtendedKalmanFilter(x0, P0, process_model)
-#ekf = IteratedKalmanFilter(x0, P0, process_model) # or try the IEKF!
+# ekf = IteratedKalmanFilter(x0, P0, process_model) # or try the IEKF!
 
 meas_idx = 0
 start_time = time.time()

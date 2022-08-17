@@ -4,6 +4,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import time
 
+
 class GaussianResult:
     """
     A data container that simultaneously computes various interesting metrics
@@ -31,7 +32,7 @@ class GaussianResult:
         state_gt: State = None,
     ):
         self.stamp = state.stamp
-        self.state = state
+        self.state = state.copy()
         self.state_gt = state_gt
         self.covariance = covariance
         if state_gt is not None:
@@ -62,7 +63,6 @@ class GaussianResultList:
         "three_sigma",
     ]
     # TODO: just write this explicitly..
-    
 
     def __init__(self, result_list: List[GaussianResult]):
         props = GaussianResult.__slots__
@@ -80,6 +80,7 @@ class MonteCarloResults:
     Monte Carlo experiments, such as the average estimation error squared (EES)
     and the average normalized EES.
     """
+
     # TODO: add chi-squared bounds, expected NEES
     # Should we support, or check, for time stamps that arnt aligned?
     # probably not since MonteCarlo is only ever in simulation, where timestamps
@@ -91,16 +92,13 @@ class MonteCarloResults:
         self.average_nees = np.average(
             np.array([t.nees for t in trial_results]), axis=0
         )
-        self.average_ees = np.average(
-            np.array([t.ees for t in trial_results]), axis=0
+        self.average_ees = np.average(np.array([t.ees for t in trial_results]), axis=0)
+
+        self.rmse: np.ndarray = np.sqrt(
+            np.average(np.power(np.array([t.error for t in trial_results]), 2), axis=0)
         )
 
-        self.rmse: np.ndarray = np.sqrt(np.average(
-            np.power(np.array([t.error for t in trial_results]),2), axis=0
-        ))
-
-        self.total_rmse: np.ndarray  = np.sqrt(self.average_ees)
-
+        self.total_rmse: np.ndarray = np.sqrt(self.average_ees)
 
 
 def montecarlo(trial: Callable[[int], List[GaussianResult]], num_trials: int):
@@ -109,7 +107,7 @@ def montecarlo(trial: Callable[[int], List[GaussianResult]], num_trials: int):
     executes a trial and returns a list of `GaussianResult`.
     """
 
-    trial_results = [None]*num_trials
+    trial_results = [None] * num_trials
     print("Starting Monte Carlo experiment...")
     for i in range(num_trials):
         print("Trial {0} of {1}... ".format(i + 1, num_trials))
@@ -163,7 +161,6 @@ def plot_error(
     if color is not None:
         kwargs["color"] = color
 
-    
     axs: List[plt.Axes] = axs.ravel("F")
     for i in range(len(axs)):
         axs[i].fill_between(

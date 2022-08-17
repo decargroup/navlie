@@ -1,5 +1,5 @@
-from pynav.states import SE3State
-from pynav.models import BodyFrameVelocity, RangePoseToAnchor
+from pynav.lib.states import SE3State
+from pynav.lib.models import BodyFrameVelocity, RangePoseToAnchor
 from pynav.datagen import DataGenerator
 from pynav.filters import ExtendedKalmanFilter, IteratedKalmanFilter
 from pynav.utils import GaussianResult, GaussianResultList, plot_error
@@ -40,7 +40,7 @@ state_gt, input_data, meas_data = dg.generate(x0, 0, 10, noise=True)
 # %% ###########################################################################
 # Run Filter
 
-#ekf = ExtendedKalmanFilter(x0, P0, process_model)
+# ekf = ExtendedKalmanFilter(x0, P0, process_model)
 ekf = IteratedKalmanFilter(x0, P0, process_model)
 
 meas_idx = 0
@@ -78,5 +78,3 @@ axs[-1][1].set_xlabel("Time (s)")
 axs[0][0].set_title("Rotation Error")
 axs[0][1].set_title("Translation Error")
 plt.show()
-
-
