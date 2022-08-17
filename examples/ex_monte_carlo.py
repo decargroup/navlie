@@ -55,7 +55,6 @@ def ekf_trial(trial_number:int) -> List[GaussianResult]:
     ekf = ExtendedKalmanFilter(process_model)
 
     meas_idx = 0
-    start_time = time.time()
     y = meas_data[meas_idx]
     results_list = []
     for k in range(len(input_data) - 1):
