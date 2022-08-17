@@ -189,3 +189,7 @@ The following measurement models are currently part of the lib:
 - `GlobalPosition`
 - `Altitude` 
 - `Gravity`
+
+Finally, this repo has the following state estimation algorithms implemented:
+- `ExtendedKalmanFilter`
+- `IteratedKalmanFilter`
