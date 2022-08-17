@@ -1,5 +1,5 @@
 # pynav
-A very modular, reusable, but not-that-fast state estimation library for robotics.
+A very modular, reusable state estimation library for robotics.
 
 The core idea behind this project is to abstract-away the state definition such that a single estimator implementation can operate on a variety of state manifolds, such as the usual vector space, and any Lie group. 
 
