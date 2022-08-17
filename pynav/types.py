@@ -61,7 +61,7 @@ class State(ABC):
 
 class MeasurementModel(ABC):
     """
-    An abstract measurement model base class.
+    Abstract measurement model base class.
     """
 
     @abstractmethod
@@ -96,6 +96,9 @@ class MeasurementModel(ABC):
 
 
 class ProcessModel(ABC):
+    """
+    Abstract process model base class.
+    """
     @abstractmethod
     def evaluate(self, x: State, u: StampedValue, dt: float) -> State:
         pass

@@ -1,10 +1,13 @@
 from typing import Callable, List
-from xml.etree.ElementTree import QName
 import numpy as np
 from .types import State, ProcessModel, MeasurementModel, StampedValue, Measurement
 
 
 class DataGenerator:
+    """
+    A class used for data generation given a process model, and as many measurement
+    models as you want. Frequencies of each measurement can also be specified.
+    """
     def __init__(
         self,
         process_model: ProcessModel,
@@ -114,7 +117,7 @@ class DataGenerator:
         return state_list, input_list, meas_list
 
 
-def generate_measurement(x: State, model: MeasurementModel, noise=True):
+def generate_measurement(x: State, model: MeasurementModel, noise=True) -> Measurement:
     """
     Generates a `Measurement` object given a measurement model and corresponding
     ground truth state value. Optionally add noise.

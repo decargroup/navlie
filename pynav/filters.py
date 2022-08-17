@@ -10,6 +10,10 @@ from scipy.stats.distributions import chi2
 
 
 def check_outlier(error: np.ndarray, covariance: np.ndarray):
+    """
+    Performs the Normalized-Innovation-Squared (NIS) test to identify
+    an outlier.
+    """
     error = error.reshape((-1, 1))
     md = np.asscalar(error.T @ np.linalg.solve(covariance, error))
     if md > chi2.ppf(0.99, df=error.size):
@@ -132,6 +136,9 @@ class ExtendedKalmanFilter:
 
 
 class IteratedKalmanFilter(ExtendedKalmanFilter):
+    """
+    On-manifold iterated extended Kalman filter.
+    """
     def __init__(
         self,
         process_model: ProcessModel,

@@ -87,9 +87,6 @@ class MonteCarloResults:
     """
 
     # TODO: add chi-squared bounds, expected NEES
-    # Should we support, or check, for time stamps that arnt aligned?
-    # probably not since MonteCarlo is only ever in simulation, where timestamps
-    # will almost always be the same from trial-to-trial.
 
     def __init__(self, trial_results: List[GaussianResultList]):
         self.num_trials = len(trial_results)
@@ -106,7 +103,7 @@ class MonteCarloResults:
         self.total_rmse: np.ndarray = np.sqrt(self.average_ees)
 
 
-def montecarlo(trial: Callable[[int], List[GaussianResult]], num_trials: int):
+def monte_carlo(trial: Callable[[int], List[GaussianResult]], num_trials: int):
     """
     Monte-Carlo experiment executor. Give a callable `trial` function that
     executes a trial and returns a list of `GaussianResult`.
