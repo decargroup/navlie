@@ -32,7 +32,7 @@ class GaussianResult:
         state_gt: State = None,
     ):
         self.stamp = state.stamp
-        self.state = state.copy()
+        self.state = state
         self.state_gt = state_gt
         self.covariance = covariance
         if state_gt is not None:
@@ -48,7 +48,7 @@ class GaussianResult:
 class GaussianResultList:
     """
     A data container that accepts a list of `GaussianResult` objects and
-    stacks the attributes of each object into new lists. Convenient for plotting.
+    stacks the attributes of each object numpy arrays. Convenient for plotting.
     """
 
     __slots__ = [
@@ -61,17 +61,22 @@ class GaussianResultList:
         "nees",
         "md",
         "three_sigma",
+        "value",
+        "value_gt"
     ]
-    # TODO: just write this explicitly..
 
     def __init__(self, result_list: List[GaussianResult]):
-        props = GaussianResult.__slots__
-        for p in props:
-            data_list = [getattr(r, p) for r in result_list]
-            try:
-                setattr(self, p, np.array(data_list))
-            except:
-                setattr(self, p, data_list)
+        self.stamp = np.array([r.stamp for r in result_list])
+        self.state = np.array([r.state for r in result_list])
+        self.state_gt = np.array([r.state_gt for r in result_list])
+        self.covariance = np.array([r.covariance for r in result_list])
+        self.error = np.array([r.error for r in result_list])
+        self.ees = np.array([r.ees for r in result_list])
+        self.nees = np.array([r.nees for r in result_list])
+        self.md = np.array([r.md for r in result_list])
+        self.three_sigma = np.array([r.three_sigma for r in result_list])
+        self.value = np.array([r.state.value for r in result_list])
+        self.value_gt = np.array([r.state_gt.value for r in result_list])
 
 
 class MonteCarloResults:

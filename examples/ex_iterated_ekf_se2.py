@@ -3,11 +3,11 @@ from pynav.lib.models import BodyFrameVelocity, RangePoseToAnchor
 from pynav.datagen import DataGenerator
 from pynav.filters import ExtendedKalmanFilter, IteratedKalmanFilter
 from pynav.utils import GaussianResult, GaussianResultList, plot_error
+from pynav.types import StateWithCovariance
 import time
 from pylie import SE3
 import numpy as np
 from typing import List
-import matplotlib.pyplot as plt
 
 # ##############################################################################
 # Problem Setup
@@ -39,40 +39,43 @@ state_gt, input_data, meas_data = dg.generate(x0, 0, 10, noise=True)
 
 # %% ###########################################################################
 # Run Filter
+x = StateWithCovariance(x0, P0)
 
-# ekf = ExtendedKalmanFilter(x0, P0, process_model)
-ekf = IteratedKalmanFilter(x0, P0, process_model)
+# Try an EKF or an IterEKF
+# ekf = ExtendedKalmanFilter(process_model)
+ekf = IteratedKalmanFilter(process_model)
 
 meas_idx = 0
 start_time = time.time()
 y = meas_data[meas_idx]
-results: List[GaussianResult] = []
+results_list = []
 for k in range(len(input_data) - 1):
     u = input_data[k]
 
     # Fuse any measurements that have occurred.
     while y.stamp < input_data[k + 1].stamp and meas_idx < len(meas_data):
 
-        ekf.correct(y)
+        x = ekf.correct(x, y)
         meas_idx += 1
         if meas_idx < len(meas_data):
             y = meas_data[meas_idx]
 
-    ekf.predict(u)
-    results.append(GaussianResult(ekf.x, ekf.P, state_gt[k]))
+    x = ekf.predict(x, u)
+    results_list.append(GaussianResult(x.state, x.covariance, state_gt[k]))
 
 
 print("Average filter computation frequency (Hz):")
 print(1 / ((time.time() - start_time) / len(input_data)))
 
-r = GaussianResultList(results)
+results = GaussianResultList(results_list)
 
 # ##############################################################################
-# Post processing
+# Plot
 import seaborn as sns
+import matplotlib.pyplot as plt
 
 sns.set_theme()
-fig, axs = plot_error(r)
+fig, axs = plot_error(results)
 axs[-1][0].set_xlabel("Time (s)")
 axs[-1][1].set_xlabel("Time (s)")
 axs[0][0].set_title("Rotation Error")

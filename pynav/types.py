@@ -164,4 +164,10 @@ class StateWithCovariance:
         self.covariance = covariance
 
     def symmetrize(self):
+        """
+        Enforces symmetry of the covariance matrix.
+        """
         self.covariance = 0.5 * (self.covariance + self.covariance.T)
+
+    def copy(self) -> "StateWithCovariance":
+        return StateWithCovariance(self.state.copy(), self.covariance.copy()) 

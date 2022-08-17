@@ -1,7 +1,8 @@
 from pynav.filters import ExtendedKalmanFilter, IteratedKalmanFilter
 from pynav.lib.states import VectorState
 from pynav.datagen import DataGenerator
-from pynav.utils import GaussianResult
+from pynav.types import StateWithCovariance
+from pynav.utils import GaussianResult, GaussianResultList
 from pynav.lib.models import SingleIntegrator, RangePointToAnchor
 import numpy as np
 from typing import List
@@ -47,29 +48,30 @@ gt_data, input_data, meas_data = dg.generate(x0, 0, 10, noise=True)
 
 # ##############################################################################
 # Run Filter
+x = StateWithCovariance(x0, P0)
 
-ekf = ExtendedKalmanFilter(x0, P0, process_model)
-# ekf = IteratedKalmanFilter(x0, P0, process_model) # or try the IEKF!
+ekf = ExtendedKalmanFilter(process_model)
+# ekf = IteratedKalmanFilter(process_model) # or try the IEKF!
 
 meas_idx = 0
 start_time = time.time()
 y = meas_data[meas_idx]
-results: List[GaussianResult] = []
+results_list = []
 for k in range(len(input_data) - 1):
     u = input_data[k]
 
     # Fuse any measurements that have occurred.
     while y.stamp < input_data[k + 1].stamp and meas_idx < len(meas_data):
 
-        ekf.correct(y)
+        x = ekf.correct(x, y)
 
         # Load the next measurement
         meas_idx += 1
         if meas_idx < len(meas_data):
             y = meas_data[meas_idx]
 
-    ekf.predict(u)
-    results.append(GaussianResult(ekf.x, ekf.P, gt_data[k]))
+    x = ekf.predict(x, u)
+    results_list.append(GaussianResult(x.state, x.covariance, gt_data[k]))
 
 print("Average filter computation frequency (Hz):")
 print(1 / ((time.time() - start_time) / len(input_data)))
@@ -77,19 +79,15 @@ print(1 / ((time.time() - start_time) / len(input_data)))
 
 # ##############################################################################
 # Post processing
-t = np.array([r.stamp for r in results])
-e = np.array([r.error for r in results])
-x = np.array([r.state.value for r in results])
-x_gt = np.array([r.state_gt.value for r in results])
-three_sigma = np.array([r.three_sigma for r in results])
+results = GaussianResultList(results_list)
 
 import matplotlib.pyplot as plt
 import seaborn as sns
 
 sns.set_theme()
 fig, ax = plt.subplots(1, 1)
-ax.plot(x[:, 0], x[:, 1], label="Estimate")
-ax.plot(x_gt[:, 0], x_gt[:, 1], label="Ground truth")
+ax.plot(results.value[:, 0], results.value[:, 1], label="Estimate")
+ax.plot(results.value_gt[:, 0], results.value_gt[:, 1], label="Ground truth")
 ax.set_title("Trajectory")
 ax.set_xlabel("x (m)")
 ax.set_ylabel("y (m)")
@@ -98,8 +96,13 @@ ax.legend()
 fig, axs = plt.subplots(2, 1)
 axs: List[plt.Axes] = axs
 for i in range(len(axs)):
-    axs[i].fill_between(t, three_sigma[:, i], -three_sigma[:, i], alpha=0.5)
-    axs[i].plot(t, e[:, i])
+    axs[i].fill_between(
+        results.stamp,
+        results.three_sigma[:, i],
+        -results.three_sigma[:, i],
+        alpha=0.5,
+    )
+    axs[i].plot(results.stamp, results.error[:, i])
 axs[0].set_title("Estimation error")
 axs[1].set_xlabel("Time (s)")
 plt.show()
