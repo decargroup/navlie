@@ -2,6 +2,8 @@ from pynav.lib.states import SO3State, SE2State, SE3State, SE23State, CompositeS
 from pynav.lib.models import (
     Altitude,
     GlobalPosition,
+    InvariantMeasurement,
+    Magnetometer,
     RangePoseToAnchor,
     RangePoseToPose,
     Gravity,
@@ -153,6 +155,44 @@ def test_gravity_se23():
     jac_fd = model.jacobian_fd(x)
     assert np.allclose(jac, jac_fd, atol=1e-6)
 
+def test_magnetometer_so3():
+    x = SO3State(SO3.Exp([0.3, 0.1, 0.2]), stamp=0.0, state_id=2)
+
+    model = Magnetometer(np.identity(3))
+    jac = model.jacobian(x)
+    jac_fd = model.jacobian_fd(x)
+    assert np.allclose(jac, jac_fd, atol=1e-6)
+
+def test_magnetometer_se3():
+    x = SE3State(SE3.Exp([0, 1, 2, 4, 5, 6]), stamp=0.0, state_id=2)
+
+    model = Magnetometer(np.identity(3))
+    jac = model.jacobian(x)
+    jac_fd = model.jacobian_fd(x)
+    assert np.allclose(jac, jac_fd, atol=1e-6)
+
+
+def test_magnetometer_se23():
+    x = SE23State(SE23.Exp([1, 2, 3, 4, 5, 6, 7, 8, 9]), stamp=0.0, state_id=2)
+
+    model = Magnetometer(np.identity(3))
+    jac = model.jacobian(x)
+    jac_fd = model.jacobian_fd(x)
+    assert np.allclose(jac, jac_fd, atol=1e-6)
+
+def test_invariant_magnetometer_so3():
+    x = SO3State(SO3.Exp([0.3, 0.1, 0.2]), stamp=0.0, state_id=2, direction="left")
+
+    b = [1, 0, 0]
+    y = np.array(b)
+    model = Magnetometer(np.identity(3), magnetic_vector=y)
+    meas = InvariantMeasurement(y, model, direction="right")
+    jac = meas.model.jacobian(x)
+    jac_test = -SO3.odot(b)
+    assert np.allclose(jac, jac_test, atol=1e-6)
+
+
+
 
 if __name__ == "__main__":
-    test_gravity_so3()
+    test_invariant_magnetometer_so3()

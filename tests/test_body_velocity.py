@@ -38,6 +38,34 @@ def test_body_velocity_se2():
     Q = process_model.covariance(x, u, dt)
     assert np.allclose(jac, jac_fd, atol=1e-4)
 
+def test_body_velocity_se3_left():
+    x = SE3State(
+        SE3.random(),
+        direction="left",
+    )
+    u = StampedValue(np.array([1, 2, 3, 4, 5, 6]))
+    dt = 0.1
+    Q = np.identity(6)
+    process_model = BodyFrameVelocity(Q)
+    jac = process_model.jacobian(x, u, dt)
+    jac_fd = process_model.jacobian_fd(x, u, dt)
+    assert np.allclose(jac, jac_fd, atol=1e-4)
+
+
+def test_body_velocity_se2_left():
+    x = SE2State(
+        SE2.random(),
+        direction="left",
+    )
+    u = StampedValue(np.array([1, 2, 3]))
+    dt = 0.1
+    Q = np.identity(3)
+    process_model = BodyFrameVelocity(Q)
+    jac = process_model.jacobian(x, u, dt)
+    jac_fd = process_model.jacobian_fd(x, u, dt)
+    Q = process_model.covariance(x, u, dt)
+    assert np.allclose(jac, jac_fd, atol=1e-4)
+
 
 def test_relative_body_velocity_se2():
     x = SE2State(
@@ -91,4 +119,4 @@ def test_relative_body_velocity_equivalence():
 
 
 if __name__ == "__main__":
-    test_relative_body_velocity_equivalence()
+    test_body_velocity_se3()

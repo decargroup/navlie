@@ -42,8 +42,8 @@ state_true, input_data, meas_data = dg.generate(x0, 0, 10, noise=True)
 x = StateWithCovariance(x0, P0)
 
 # Try an EKF or an IterEKF
-ekf = ExtendedKalmanFilter(process_model)
-#ekf = IteratedKalmanFilter(process_model)
+#ekf = ExtendedKalmanFilter(process_model)
+ekf = IteratedKalmanFilter(process_model)
 
 meas_idx = 0
 start_time = time.time()
