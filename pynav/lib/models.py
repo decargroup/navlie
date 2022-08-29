@@ -524,8 +524,8 @@ class _InvariantInnovation(MeasurementModel):
 
 class InvariantMeasurement(Measurement):
     """
-    Given a measurement value and a model, the class will construct a
-    left- or right-invariant innovation to be ready fused into a state estimator.
+    Given a Measurement object, the class will construct a
+    left- or right-invariant innovation ready to be fused into a state estimator.
 
     If a right-invariant innovation is chosen then the following will be formed.
 
@@ -565,12 +565,8 @@ class InvariantMeasurement(Measurement):
 
         Parameters
         ----------
-        value : np.ndarray
+        meas : Measurement
             Measurement value
-        model : MeasurementModel
-            Standard measurement model for this measurement
-        stamp : float, optional
-            timestamp
         direction : "left" or "right", optional
             whether to form a left- or right-invariant innovation, by default "right"
         """

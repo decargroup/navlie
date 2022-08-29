@@ -1238,7 +1238,7 @@ with the the keys being the substate IDs.</p>
 <td><p>Magnetometer model of the form</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="#pynav.lib.models.InvariantMeasurement" title="pynav.lib.models.InvariantMeasurement"><code class="xref py py-obj docutils literal notranslate"><span class="pre">InvariantMeasurement</span></code></a></p></td>
-<td><p>Given a measurement value and a model, the class will construct a left- or right-invariant innovation to be ready fused into a state estimator.</p></td>
+<td><p>Given a Measurement object, the class will construct a left- or right-invariant innovation ready to be fused into a state estimator.</p></td>
 </tr>
 </tbody>
 </table>
@@ -1674,8 +1674,8 @@ point).</p>
 <dt id="pynav.lib.models.InvariantMeasurement">
 <em class="property"><span class="pre">class</span> </em><code class="sig-prename descclassname"><span class="pre">pynav.lib.models.</span></code><code class="sig-name descname"><span class="pre">InvariantMeasurement</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">meas</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="types.html#pynav.types.Measurement" title="pynav.types.Measurement"><span class="pre">pynav.types.Measurement</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">direction</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'right'</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#pynav.lib.models.InvariantMeasurement" title="Permalink to this definition">¶</a></dt>
 <dd><p>Bases: <a class="reference internal" href="types.html#pynav.types.Measurement" title="pynav.types.Measurement"><code class="xref py py-class docutils literal notranslate"><span class="pre">pynav.types.Measurement</span></code></a></p>
-<p>Given a measurement value and a model, the class will construct a
-left- or right-invariant innovation to be ready fused into a state estimator.</p>
+<p>Given a Measurement object, the class will construct a
+left- or right-invariant innovation ready to be fused into a state estimator.</p>
 <p>If a right-invariant innovation is chosen then the following will be formed.</p>
 <div class="math notranslate nohighlight">
 \[ \begin{align}\begin{aligned}\mathbf{z} &amp;= \bar{\mathbf{X}}(\mathbf{y} - \bar{\mathbf{y}})\\&amp;= \bar{\mathbf{X}}(\mathbf{g}(\mathbf{X}) +
@@ -1696,9 +1696,7 @@ left- or right-invariant innovation to be ready fused into a state estimator.</p
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>value</strong> (<em>np.ndarray</em>) – Measurement value</p></li>
-<li><p><strong>model</strong> (<a class="reference internal" href="types.html#pynav.types.MeasurementModel" title="pynav.types.MeasurementModel"><em>MeasurementModel</em></a>) – Standard measurement model for this measurement</p></li>
-<li><p><strong>stamp</strong> (<em>float</em><em>, </em><em>optional</em>) – timestamp</p></li>
+<li><p><strong>meas</strong> (<a class="reference internal" href="types.html#pynav.types.Measurement" title="pynav.types.Measurement"><em>Measurement</em></a>) – Measurement value</p></li>
 <li><p><strong>direction</strong> (<em>&quot;left&quot;</em><em> or </em><em>&quot;right&quot;</em><em>, </em><em>optional</em>) – whether to form a left- or right-invariant innovation, by default “right”</p></li>
 </ul>
 </dd>
