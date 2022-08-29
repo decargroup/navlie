@@ -494,31 +494,48 @@ class _InvariantInnovation(MeasurementModel):
 
     def evaluate(self, x: MatrixLieGroupState) -> np.ndarray:
         y_hat = self.measurement_model.evaluate(x)
-        e = y_hat.ravel() - self.y.ravel()
+        e :np.ndarray = y_hat.ravel() - self.y.ravel()
+
+        # Make the "padding" matrix
+        P = np.zeros((x.value.shape[0], e.size))
+        P[0:e.size, 0:e.size] = np.identity(e.size)
+
         if self.direction == "left":
-            z = x.group.inverse(x.value) @ e
+            z = x.group.inverse(x.value) @ P @ e
         elif self.direction == "right":
-            z = x.value @ e
+            z = x.value @ P @ e
 
         return z
 
     def jacobian(self, x: MatrixLieGroupState) -> np.ndarray:
         G = self.measurement_model.jacobian(x)
 
+        # Make the "padding" matrix
+        P = np.zeros((x.value.shape[0], G.shape[0]))
+        P[0:G.shape[0], 0:G.shape[0]] = np.identity(G.shape[0])
+
         if self.direction == "left":
-            jac = x.group.inverse(x.value) @ G
+            jac = P.T @ x.group.inverse(x.value) @ P @ G
         elif self.direction == "right":
-            jac = x.value @ G
+            jac = P.T @ x.value @ P @ G
         return jac
 
     def covariance(self, x: MatrixLieGroupState) -> np.ndarray:
 
         R = np.atleast_2d(self.measurement_model.covariance(x))
+
+        # Make the "padding" matrix
+        P = np.zeros((x.value.shape[0], R.shape[0]))
+        P[0:R.shape[0], 0:R.shape[0]] = np.identity(R.shape[0])
+
+
         if self.direction == "left":
             X_inv = x.group.inverse(x.value)
-            cov = X_inv @ R @ X_inv.T
+            M = P.T @ X_inv @ P
+            cov = M @ R @ M.T
         elif self.direction == "right":
-            cov = x.value @ R @ x.value.T
+            M = P.T @  x.value @ P
+            cov = M @ R @ M.T
         return cov
 
 

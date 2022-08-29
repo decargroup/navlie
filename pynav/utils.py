@@ -1,5 +1,5 @@
 from typing import Callable, List, Tuple
-from pynav.types import State, Measurement
+from pynav.types import State, Measurement, StateWithCovariance
 import numpy as np
 import matplotlib.pyplot as plt
 import time
@@ -28,10 +28,11 @@ class GaussianResult:
 
     def __init__(
         self,
-        state: State,
-        covariance: np.ndarray = None,
+        estimate: StateWithCovariance,
         state_true: State = None,
     ):
+        state = estimate.state
+        covariance = estimate.covariance
         self.stamp = state.stamp
         self.state = state
         self.state_true = state_true

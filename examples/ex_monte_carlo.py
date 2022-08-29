@@ -69,7 +69,7 @@ def ekf_trial(trial_number:int) -> List[GaussianResult]:
                 y = meas_data[meas_idx]
 
         x = ekf.predict(x, u)
-        results_list.append(GaussianResult(x.state, x.covariance, state_true[k]))
+        results_list.append(GaussianResult(x, state_true[k]))
 
     return results_list
 

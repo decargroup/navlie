@@ -195,7 +195,7 @@ class IteratedKalmanFilter(ExtendedKalmanFilter):
     """
     On-manifold iterated extended Kalman filter.
     """
-    __slots__ = ["process_model", "_u", "reject_outliers"]
+    __slots__ = ["process_model", "_u", "reject_outliers", "step_tol", "max_iters"]
 
     def __init__(
         self,

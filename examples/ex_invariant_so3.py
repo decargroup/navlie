@@ -40,9 +40,7 @@ ekf = ExtendedKalmanFilter(process_model=process_model)
 estimate_list = run_filter(ekf, x0, P0, input_list, meas_list)
 results = GaussianResultList(
     [
-        GaussianResult(
-            estimate_list[i].state, estimate_list[i].covariance, state_true[i]
-        )
+        GaussianResult(estimate_list[i], state_true[i])
         for i in range(len(estimate_list))
     ]
 )
@@ -62,9 +60,7 @@ estimate_list = run_filter(ekf, x0, P0, input_list, invariant_meas_list)
 
 results_invariant = GaussianResultList(
     [
-        GaussianResult(
-            estimate_list[i].state, estimate_list[i].covariance, state_true[i]
-        )
+        GaussianResult(estimate_list[i], state_true[i])
         for i in range(len(estimate_list))
     ]
 )
