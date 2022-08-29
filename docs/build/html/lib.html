@@ -252,11 +252,11 @@
 <li class="toctree-l4"><a class="reference internal" href="#pynav.lib.models.Altitude.jacobian_fd"><code class="docutils literal notranslate"><span class="pre">jacobian_fd</span></code></a></li>
 </ul>
 </li>
-<li class="toctree-l3"><a class="reference internal" href="#pynav.lib.models.Gravity"><code class="docutils literal notranslate"><span class="pre">Gravity</span></code></a><ul>
-<li class="toctree-l4"><a class="reference internal" href="#pynav.lib.models.Gravity.evaluate"><code class="docutils literal notranslate"><span class="pre">evaluate</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="#pynav.lib.models.Gravity.jacobian"><code class="docutils literal notranslate"><span class="pre">jacobian</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="#pynav.lib.models.Gravity.covariance"><code class="docutils literal notranslate"><span class="pre">covariance</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="#pynav.lib.models.Gravity.jacobian_fd"><code class="docutils literal notranslate"><span class="pre">jacobian_fd</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#pynav.lib.models.Gravitometer"><code class="docutils literal notranslate"><span class="pre">Gravitometer</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#pynav.lib.models.Gravitometer.evaluate"><code class="docutils literal notranslate"><span class="pre">evaluate</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#pynav.lib.models.Gravitometer.jacobian"><code class="docutils literal notranslate"><span class="pre">jacobian</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#pynav.lib.models.Gravitometer.covariance"><code class="docutils literal notranslate"><span class="pre">covariance</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#pynav.lib.models.Gravitometer.jacobian_fd"><code class="docutils literal notranslate"><span class="pre">jacobian_fd</span></code></a></li>
 </ul>
 </li>
 <li class="toctree-l3"><a class="reference internal" href="#pynav.lib.models.Magnetometer"><code class="docutils literal notranslate"><span class="pre">Magnetometer</span></code></a><ul>
@@ -1231,11 +1231,11 @@ with the the keys being the substate IDs.</p>
 <tr class="row-odd"><td><p><a class="reference internal" href="#pynav.lib.models.Altitude" title="pynav.lib.models.Altitude"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Altitude</span></code></a></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#pynav.lib.models.Gravity" title="pynav.lib.models.Gravity"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Gravity</span></code></a></p></td>
-<td><p></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#pynav.lib.models.Gravitometer" title="pynav.lib.models.Gravitometer"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Gravitometer</span></code></a></p></td>
+<td><p>Gravitometer model of the form</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="#pynav.lib.models.Magnetometer" title="pynav.lib.models.Magnetometer"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Magnetometer</span></code></a></p></td>
-<td><p></p></td>
+<td><p>Magnetometer model of the form</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="#pynav.lib.models.InvariantMeasurement" title="pynav.lib.models.InvariantMeasurement"><code class="xref py py-obj docutils literal notranslate"><span class="pre">InvariantMeasurement</span></code></a></p></td>
 <td><p>Given a measurement value and a model, the class will construct a left- or right-invariant innovation to be ready fused into a state estimator.</p></td>
@@ -1585,31 +1585,43 @@ point).</p>
 </dd></dl>
 
 <dl class="py class">
-<dt id="pynav.lib.models.Gravity">
-<em class="property"><span class="pre">class</span> </em><code class="sig-prename descclassname"><span class="pre">pynav.lib.models.</span></code><code class="sig-name descname"><span class="pre">Gravity</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">R</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">numpy.ndarray</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">gravity_vec</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">[0,</span> <span class="pre">0,</span> <span class="pre">-</span> <span class="pre">9.80665]</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#pynav.lib.models.Gravity" title="Permalink to this definition">¶</a></dt>
+<dt id="pynav.lib.models.Gravitometer">
+<em class="property"><span class="pre">class</span> </em><code class="sig-prename descclassname"><span class="pre">pynav.lib.models.</span></code><code class="sig-name descname"><span class="pre">Gravitometer</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">R</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">numpy.ndarray</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">gravity_vector</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">float</span><span class="p"><span class="pre">]</span></span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">[0,</span> <span class="pre">0,</span> <span class="pre">-</span> <span class="pre">9.80665]</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#pynav.lib.models.Gravitometer" title="Permalink to this definition">¶</a></dt>
 <dd><p>Bases: <a class="reference internal" href="types.html#pynav.types.MeasurementModel" title="pynav.types.MeasurementModel"><code class="xref py py-class docutils literal notranslate"><span class="pre">pynav.types.MeasurementModel</span></code></a></p>
+<p>Gravitometer model of the form</p>
+<div class="math notranslate nohighlight">
+\[\mathbf{y} = \mathbf{C}_{ab}^T \mathbf{g}_a + \mathbf{v}\]</div>
+<p>where <span class="math notranslate nohighlight">\(\mathbf{g}_a\)</span> is the magnetic field vector in a world frame <cite>a</cite>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>R</strong> (<em>np.ndarray</em>) – Covariance associated with <span class="math notranslate nohighlight">\(\mathbf{v}\)</span></p></li>
+<li><p><strong>gravity_vector</strong> (<em>list</em><em>[</em><em>float</em><em>] or </em><em>numpy.ndarray</em><em>, </em><em>optional</em>) – local magnetic field vector, by default [0, 0, -9.80665]</p></li>
+</ul>
+</dd>
+</dl>
 <dl class="py method">
-<dt id="pynav.lib.models.Gravity.evaluate">
-<code class="sig-name descname"><span class="pre">evaluate</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="#pynav.lib.states.MatrixLieGroupState" title="pynav.lib.states.MatrixLieGroupState"><span class="pre">pynav.lib.states.MatrixLieGroupState</span></a></span></em><span class="sig-paren">)</span><a class="headerlink" href="#pynav.lib.models.Gravity.evaluate" title="Permalink to this definition">¶</a></dt>
+<dt id="pynav.lib.models.Gravitometer.evaluate">
+<code class="sig-name descname"><span class="pre">evaluate</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="#pynav.lib.states.MatrixLieGroupState" title="pynav.lib.states.MatrixLieGroupState"><span class="pre">pynav.lib.states.MatrixLieGroupState</span></a></span></em><span class="sig-paren">)</span><a class="headerlink" href="#pynav.lib.models.Gravitometer.evaluate" title="Permalink to this definition">¶</a></dt>
 <dd><p>Evaluates the measurement model <span class="math notranslate nohighlight">\(\mathbf{g}(\mathbf{x})\)</span>.</p>
 </dd></dl>
 
 <dl class="py method">
-<dt id="pynav.lib.models.Gravity.jacobian">
-<code class="sig-name descname"><span class="pre">jacobian</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="#pynav.lib.states.MatrixLieGroupState" title="pynav.lib.states.MatrixLieGroupState"><span class="pre">pynav.lib.states.MatrixLieGroupState</span></a></span></em><span class="sig-paren">)</span><a class="headerlink" href="#pynav.lib.models.Gravity.jacobian" title="Permalink to this definition">¶</a></dt>
+<dt id="pynav.lib.models.Gravitometer.jacobian">
+<code class="sig-name descname"><span class="pre">jacobian</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="#pynav.lib.states.MatrixLieGroupState" title="pynav.lib.states.MatrixLieGroupState"><span class="pre">pynav.lib.states.MatrixLieGroupState</span></a></span></em><span class="sig-paren">)</span><a class="headerlink" href="#pynav.lib.models.Gravitometer.jacobian" title="Permalink to this definition">¶</a></dt>
 <dd><p>Evaluates the measurement model Jacobian
 <span class="math notranslate nohighlight">\(\mathbf{G} = \partial \mathbf{g}(\mathbf{x})/ \partial \mathbf{x}\)</span>.</p>
 </dd></dl>
 
 <dl class="py method">
-<dt id="pynav.lib.models.Gravity.covariance">
-<code class="sig-name descname"><span class="pre">covariance</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="#pynav.lib.states.MatrixLieGroupState" title="pynav.lib.states.MatrixLieGroupState"><span class="pre">pynav.lib.states.MatrixLieGroupState</span></a></span></em><span class="sig-paren">)</span> &#x2192; <span class="pre">numpy.ndarray</span><a class="headerlink" href="#pynav.lib.models.Gravity.covariance" title="Permalink to this definition">¶</a></dt>
+<dt id="pynav.lib.models.Gravitometer.covariance">
+<code class="sig-name descname"><span class="pre">covariance</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="#pynav.lib.states.MatrixLieGroupState" title="pynav.lib.states.MatrixLieGroupState"><span class="pre">pynav.lib.states.MatrixLieGroupState</span></a></span></em><span class="sig-paren">)</span> &#x2192; <span class="pre">numpy.ndarray</span><a class="headerlink" href="#pynav.lib.models.Gravitometer.covariance" title="Permalink to this definition">¶</a></dt>
 <dd><p>Returns the covariance <span class="math notranslate nohighlight">\(\mathbf{R}\)</span> associated with additive Gaussian noise.</p>
 </dd></dl>
 
 <dl class="py method">
-<dt id="pynav.lib.models.Gravity.jacobian_fd">
-<code class="sig-name descname"><span class="pre">jacobian_fd</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="types.html#pynav.types.State" title="pynav.types.State"><span class="pre">pynav.types.State</span></a></span></em><span class="sig-paren">)</span><a class="headerlink" href="#pynav.lib.models.Gravity.jacobian_fd" title="Permalink to this definition">¶</a></dt>
+<dt id="pynav.lib.models.Gravitometer.jacobian_fd">
+<code class="sig-name descname"><span class="pre">jacobian_fd</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="types.html#pynav.types.State" title="pynav.types.State"><span class="pre">pynav.types.State</span></a></span></em><span class="sig-paren">)</span><a class="headerlink" href="#pynav.lib.models.Gravitometer.jacobian_fd" title="Permalink to this definition">¶</a></dt>
 <dd><p>Calculates the model jacobian with finite difference.</p>
 </dd></dl>
 
@@ -1617,8 +1629,20 @@ point).</p>
 
 <dl class="py class">
 <dt id="pynav.lib.models.Magnetometer">
-<em class="property"><span class="pre">class</span> </em><code class="sig-prename descclassname"><span class="pre">pynav.lib.models.</span></code><code class="sig-name descname"><span class="pre">Magnetometer</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">R</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">numpy.ndarray</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">magnetic_vector</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">[1,</span> <span class="pre">0,</span> <span class="pre">0]</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#pynav.lib.models.Magnetometer" title="Permalink to this definition">¶</a></dt>
+<em class="property"><span class="pre">class</span> </em><code class="sig-prename descclassname"><span class="pre">pynav.lib.models.</span></code><code class="sig-name descname"><span class="pre">Magnetometer</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">R</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">numpy.ndarray</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">magnetic_vector</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">float</span><span class="p"><span class="pre">]</span></span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">[1,</span> <span class="pre">0,</span> <span class="pre">0]</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#pynav.lib.models.Magnetometer" title="Permalink to this definition">¶</a></dt>
 <dd><p>Bases: <a class="reference internal" href="types.html#pynav.types.MeasurementModel" title="pynav.types.MeasurementModel"><code class="xref py py-class docutils literal notranslate"><span class="pre">pynav.types.MeasurementModel</span></code></a></p>
+<p>Magnetometer model of the form</p>
+<div class="math notranslate nohighlight">
+\[\mathbf{y} = \mathbf{C}_{ab}^T \mathbf{m}_a + \mathbf{v}\]</div>
+<p>where <span class="math notranslate nohighlight">\(\mathbf{m}_a\)</span> is the magnetic field vector in a world frame <cite>a</cite>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>R</strong> (<em>np.ndarray</em>) – Covariance associated with <span class="math notranslate nohighlight">\(\mathbf{v}\)</span></p></li>
+<li><p><strong>magnetic_vector</strong> (<em>list</em><em>[</em><em>float</em><em>] or </em><em>numpy.ndarray</em><em>, </em><em>optional</em>) – local magnetic field vector, by default [1, 0, 0]</p></li>
+</ul>
+</dd>
+</dl>
 <dl class="py method">
 <dt id="pynav.lib.models.Magnetometer.evaluate">
 <code class="sig-name descname"><span class="pre">evaluate</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="#pynav.lib.states.MatrixLieGroupState" title="pynav.lib.states.MatrixLieGroupState"><span class="pre">pynav.lib.states.MatrixLieGroupState</span></a></span></em><span class="sig-paren">)</span><a class="headerlink" href="#pynav.lib.models.Magnetometer.evaluate" title="Permalink to this definition">¶</a></dt>
@@ -1648,7 +1672,7 @@ point).</p>
 
 <dl class="py class">
 <dt id="pynav.lib.models.InvariantMeasurement">
-<em class="property"><span class="pre">class</span> </em><code class="sig-prename descclassname"><span class="pre">pynav.lib.models.</span></code><code class="sig-name descname"><span class="pre">InvariantMeasurement</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">value</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">numpy.ndarray</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">model</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="types.html#pynav.types.MeasurementModel" title="pynav.types.MeasurementModel"><span class="pre">pynav.types.MeasurementModel</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">stamp</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><span class="pre">float</span><span class="p"><span class="pre">]</span></span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">direction</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'right'</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#pynav.lib.models.InvariantMeasurement" title="Permalink to this definition">¶</a></dt>
+<em class="property"><span class="pre">class</span> </em><code class="sig-prename descclassname"><span class="pre">pynav.lib.models.</span></code><code class="sig-name descname"><span class="pre">InvariantMeasurement</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">meas</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="types.html#pynav.types.Measurement" title="pynav.types.Measurement"><span class="pre">pynav.types.Measurement</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">direction</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'right'</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#pynav.lib.models.InvariantMeasurement" title="Permalink to this definition">¶</a></dt>
 <dd><p>Bases: <a class="reference internal" href="types.html#pynav.types.Measurement" title="pynav.types.Measurement"><code class="xref py py-class docutils literal notranslate"><span class="pre">pynav.types.Measurement</span></code></a></p>
 <p>Given a measurement value and a model, the class will construct a
 left- or right-invariant innovation to be ready fused into a state estimator.</p>

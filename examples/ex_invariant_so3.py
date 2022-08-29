@@ -3,7 +3,7 @@ from pynav.lib.models import (
     BodyFrameVelocity,
     InvariantMeasurement,
     Magnetometer,
-    Gravity,
+    Gravitometer,
 )
 from pynav.datagen import DataGenerator
 from pynav.filters import ExtendedKalmanFilter, run_filter
@@ -20,7 +20,7 @@ Q = 0.1**2 * np.identity(3)
 # Define the process model and measurement models.
 process_model = BodyFrameVelocity(Q)
 mag_model = Magnetometer(0.1**2 * np.identity(3))
-grav_model = Gravity(0.1**2 * np.identity(3))
+grav_model = Gravitometer(0.1**2 * np.identity(3))
 
 # Generate some data
 dg = DataGenerator(

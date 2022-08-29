@@ -402,11 +402,11 @@ class Altitude(MeasurementModel):
 
 class Gravitometer(MeasurementModel):
     """
-    Gravity model of the form
+    Gravitometer model of the form
 
     .. math::
 
-        \mathbf{y} = \mathbf{C}_{ab} \mathbf{g}_a + \mathbf{v}
+        \mathbf{y} = \mathbf{C}_{ab}^T \mathbf{g}_a + \mathbf{v}
 
     where :math:`\mathbf{g}_a` is the magnetic field vector in a world frame `a`.
     """
@@ -448,7 +448,7 @@ class Magnetometer(MeasurementModel):
 
     .. math::
 
-        \mathbf{y} = \mathbf{C}_{ab} \mathbf{m}_a + \mathbf{v}
+        \mathbf{y} = \mathbf{C}_{ab}^T \mathbf{m}_a + \mathbf{v}
 
     where :math:`\mathbf{m}_a` is the magnetic field vector in a world frame `a`.
     """

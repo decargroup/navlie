@@ -139,7 +139,7 @@
 <td><p>Produces a random zero-mean column vector with covariance given by <cite>cov</cite></p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="#pynav.utils.plot_error" title="pynav.utils.plot_error"><code class="xref py py-obj docutils literal notranslate"><span class="pre">plot_error</span></code></a></p></td>
-<td><p>A generic three-sigma bound plotter.</p></td>
+<td><p>_summary_</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="#pynav.utils.plot_meas" title="pynav.utils.plot_meas"><code class="xref py py-obj docutils literal notranslate"><span class="pre">plot_meas</span></code></a></p></td>
 <td><p>Given measurement data, make time-domain plots of the measurement values and their ground-truth model-based values.</p></td>
@@ -303,7 +303,25 @@ executes a trial and returns a list of <cite>GaussianResult</cite>.</p>
 <dl class="py function">
 <dt id="pynav.utils.plot_error">
 <code class="sig-prename descclassname"><span class="pre">pynav.utils.</span></code><code class="sig-name descname"><span class="pre">plot_error</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">results</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="#pynav.utils.GaussianResultList" title="pynav.utils.GaussianResultList"><span class="pre">pynav.utils.GaussianResultList</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">axs</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">matplotlib.axes._axes.Axes</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">label</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sharey</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">color</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> &#x2192; <span class="pre">Tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">matplotlib.figure.Figure</span><span class="p"><span class="pre">,</span> </span><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">matplotlib.axes._axes.Axes</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span><a class="headerlink" href="#pynav.utils.plot_error" title="Permalink to this definition">¶</a></dt>
-<dd><p>A generic three-sigma bound plotter.</p>
+<dd><p>_summary_</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>results</strong> (<a class="reference internal" href="#pynav.utils.GaussianResultList" title="pynav.utils.GaussianResultList"><em>GaussianResultList</em></a>) – _description_</p></li>
+<li><p><strong>axs</strong> (<em>List</em><em>[</em><em>plt.Axes</em><em>]</em><em>, </em><em>optional</em>) – _description_, by default None</p></li>
+<li><p><strong>label</strong> (<em>_type_</em><em>, </em><em>optional</em>) – _description_, by default None</p></li>
+<li><p><strong>sharey</strong> (<em>bool</em><em>, </em><em>optional</em>) – _description_, by default False</p></li>
+<li><p><strong>color</strong> (<em>_type_</em><em>, </em><em>optional</em>) – _description_, by default None</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p><ul class="simple">
+<li><p><em>plt.Figure</em> – _description_</p></li>
+<li><p><em>List[plt.Axes]</em> – _description</p></li>
+</ul>
+</p>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="py function">
