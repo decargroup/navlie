@@ -1,3 +1,8 @@
+"""
+This module contains the core primitive types used throughout pynav.
+
+"""
+
 import numpy as np
 from typing import List, Any
 from abc import ABC, abstractmethod
@@ -5,19 +10,20 @@ from abc import ABC, abstractmethod
 
 class StampedValue:
     """
-    Generic data container with timestamped information.
+    Generic data container for timestamped information.
     """
 
     __slots__ = ["value", "stamp"]
 
     def __init__(self, value: np.ndarray, stamp: float = 0.0):
-        self.value = value
-        self.stamp = stamp
+        self.value = value #:numpy.ndarray:  Cariable containing the data values
+        self.stamp = stamp #:float: Timestamp
 
 
 class State(ABC):
-    """
-    An abstract state is an object containing the following attributes:
+    """ 
+    An abstract state :math:`\mathbf{x}` is an object containing the following attributes:
+
         - a value of some sort;
         - a certain number of degrees of freedom (dof);
         - an update rule that modified the state value given an update vector
@@ -30,16 +36,16 @@ class State(ABC):
     __slots__ = ["value", "dof", "stamp", "state_id"]
 
     def __init__(self, value: Any, dof: int, stamp: float = None, state_id=None):
-        self.value = value
-        self.stamp = stamp
-        self.dof = dof
-        self.state_id = state_id
+        self.value = value #:Any: State value
+        self.dof = dof #:int: Degree of freedom of the state
+        self.stamp = stamp #:float: Timestamp 
+        self.state_id = state_id #:Any: Some identifier associated with the state 
 
     @abstractmethod
     def plus(self, dx: np.ndarray):
         """
-        A generic "addition" operation given a `dx` vector with as many
-        elements as the dof of this state.
+        A generic "addition" operation given a `dx` numpy array with as many
+        elements as the `dof` of this state.
         """
         pass
 
@@ -47,7 +53,7 @@ class State(ABC):
     def minus(self, x: "State") -> np.ndarray:
         """
         A generic "subtraction" operation given another State object of the same
-        type.
+        type, always returning a numpy array.
         """
         pass
 
@@ -59,21 +65,45 @@ class State(ABC):
         pass
 
 
+    def jacobian(self, x: np.ndarray) -> np.ndarray:
+        """
+        Jacobian of the `plus` operator. For Lie groups, this is known as the
+        *group Jacobian*.
+        """
+        return np.identity(self.dof)
+
 class MeasurementModel(ABC):
     """
-    Abstract measurement model base class.
+    Abstract measurement model base class, used to implement measurement models
+    of the form 
+
+    .. math::
+        \mathbf{y} = \mathbf{g}(\mathbf{x}) + \mathbf{v}
+
+    where :math:`\mathbf{v} \sim \mathcal{N}(\mathbf{0}, \mathbf{R})`.
+
     """
 
     @abstractmethod
     def evaluate(self, x: State) -> np.ndarray:
+        """ 
+        Evaluates the measurement model :math:`\mathbf{g}(\mathbf{x})`.
+        """
         pass
 
     @abstractmethod
     def jacobian(self, x: State) -> np.ndarray:
+        """ 
+        Evaluates the measurement model Jacobian 
+        :math:`\mathbf{G} = \partial \mathbf{g}(\mathbf{x})/ \partial \mathbf{x}`.
+        """
         pass
 
     @abstractmethod
     def covariance(self, x: State) -> np.ndarray:
+        """
+        Returns the covariance :math:`\mathbf{R}` associated with additive Gaussian noise.
+        """
         pass
 
     def jacobian_fd(self, x: State):
@@ -97,7 +127,14 @@ class MeasurementModel(ABC):
 
 class ProcessModel(ABC):
     """
-    Abstract process model base class.
+    Abstract process model base class for process models of the form 
+
+    .. math::
+        \mathbf{x}_k = \mathbf{f}(\mathbf{x}_{k-1}, \mathbf{u}_{k-1}, \Delta t) + \mathbf{w}_{k-1}
+
+    where :math:`\mathbf{u}_{k-1}` is the input and :math:`\Delta t` is the time 
+    period between the two states.
+
     """
     @abstractmethod
     def evaluate(self, x: State, u: StampedValue, dt: float) -> State:
@@ -143,8 +180,11 @@ class Measurement:
         stamp: float = None,
         model: MeasurementModel = None,
     ):
-        self.value = value
+        #:numpy.ndarray: Container for the measurement value
+        self.value = np.array(value) if np.isscalar(value) else value
+        #:float: Timestamp
         self.stamp = stamp
+        #:pynav.types.MeasurementModel: measurement model associated with this measurement.
         self.model = model
 
 
@@ -163,7 +203,10 @@ class StateWithCovariance:
         if covariance.shape[0] != state.dof:
             raise ValueError("Covariance matrix does not correspond with state DOF.")
 
+        #:pynav.types.State: state object
         self.state = state
+
+        #:numpy.ndarray: covariance associated with state
         self.covariance = covariance
 
     def symmetrize(self):

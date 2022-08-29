@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>pynav.utils &mdash; pynav 0.1.0 documentation</title><link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  <script id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+        <script src="_static/jquery.js"></script>
+        <script src="_static/underscore.js"></script>
+        <script src="_static/doctools.js"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="pynav.datagen" href="datagen.html" />
+    <link rel="prev" title="pynav.types" href="types.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+            <a href="index.html" class="icon icon-home"> pynav
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption"><span class="caption-text">Contents</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="filters.html">pynav.filters</a></li>
+<li class="toctree-l1"><a class="reference internal" href="types.html">pynav.types</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">pynav.utils</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#pynav.utils.GaussianResult"><code class="docutils literal notranslate"><span class="pre">GaussianResult</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#pynav.utils.GaussianResult.stamp"><code class="docutils literal notranslate"><span class="pre">stamp</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#pynav.utils.GaussianResult.state"><code class="docutils literal notranslate"><span class="pre">state</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#pynav.utils.GaussianResult.state_true"><code class="docutils literal notranslate"><span class="pre">state_true</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#pynav.utils.GaussianResult.covariance"><code class="docutils literal notranslate"><span class="pre">covariance</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#pynav.utils.GaussianResult.error"><code class="docutils literal notranslate"><span class="pre">error</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#pynav.utils.GaussianResult.ees"><code class="docutils literal notranslate"><span class="pre">ees</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#pynav.utils.GaussianResult.nees"><code class="docutils literal notranslate"><span class="pre">nees</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#pynav.utils.GaussianResult.md"><code class="docutils literal notranslate"><span class="pre">md</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#pynav.utils.GaussianResult.three_sigma"><code class="docutils literal notranslate"><span class="pre">three_sigma</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#pynav.utils.GaussianResultList"><code class="docutils literal notranslate"><span class="pre">GaussianResultList</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#pynav.utils.GaussianResultList.stamp"><code class="docutils literal notranslate"><span class="pre">stamp</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#pynav.utils.GaussianResultList.state"><code class="docutils literal notranslate"><span class="pre">state</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#pynav.utils.GaussianResultList.state_true"><code class="docutils literal notranslate"><span class="pre">state_true</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#pynav.utils.GaussianResultList.covariance"><code class="docutils literal notranslate"><span class="pre">covariance</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#pynav.utils.GaussianResultList.error"><code class="docutils literal notranslate"><span class="pre">error</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#pynav.utils.GaussianResultList.ees"><code class="docutils literal notranslate"><span class="pre">ees</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#pynav.utils.GaussianResultList.nees"><code class="docutils literal notranslate"><span class="pre">nees</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#pynav.utils.GaussianResultList.md"><code class="docutils literal notranslate"><span class="pre">md</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#pynav.utils.GaussianResultList.three_sigma"><code class="docutils literal notranslate"><span class="pre">three_sigma</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#pynav.utils.GaussianResultList.value"><code class="docutils literal notranslate"><span class="pre">value</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#pynav.utils.GaussianResultList.dof"><code class="docutils literal notranslate"><span class="pre">dof</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#pynav.utils.GaussianResultList.value_true"><code class="docutils literal notranslate"><span class="pre">value_true</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#pynav.utils.MonteCarloResult"><code class="docutils literal notranslate"><span class="pre">MonteCarloResult</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#pynav.utils.MonteCarloResult.nees_lower_bound"><code class="docutils literal notranslate"><span class="pre">nees_lower_bound</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#pynav.utils.MonteCarloResult.nees_upper_bound"><code class="docutils literal notranslate"><span class="pre">nees_upper_bound</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#pynav.utils.monte_carlo"><code class="docutils literal notranslate"><span class="pre">monte_carlo</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="#pynav.utils.randvec"><code class="docutils literal notranslate"><span class="pre">randvec</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="#pynav.utils.plot_error"><code class="docutils literal notranslate"><span class="pre">plot_error</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="#pynav.utils.plot_meas"><code class="docutils literal notranslate"><span class="pre">plot_meas</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="datagen.html">pynav.datagen</a></li>
+<li class="toctree-l1"><a class="reference internal" href="lib.html">Built-in Library</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">pynav</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home"></a> &raquo;</li>
+      <li>pynav.utils</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/utils.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <div class="section" id="module-pynav.utils">
+<span id="pynav-utils"></span><h1>pynav.utils<a class="headerlink" href="#module-pynav.utils" title="Permalink to this headline">¶</a></h1>
+<p><strong>Classes:</strong></p>
+<table class="longtable docutils align-default">
+<colgroup>
+<col style="width: 10%" />
+<col style="width: 90%" />
+</colgroup>
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="#pynav.utils.GaussianResult" title="pynav.utils.GaussianResult"><code class="xref py py-obj docutils literal notranslate"><span class="pre">GaussianResult</span></code></a></p></td>
+<td><p>A data container that simultaneously computes various interesting metrics about a Gaussian filter’s state estimate, given the ground-truth value of the state.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#pynav.utils.GaussianResultList" title="pynav.utils.GaussianResultList"><code class="xref py py-obj docutils literal notranslate"><span class="pre">GaussianResultList</span></code></a></p></td>
+<td><p>A data container that accepts a list of <cite>GaussianResult</cite> objects and stacks the attributes of each object numpy arrays.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#pynav.utils.MonteCarloResult" title="pynav.utils.MonteCarloResult"><code class="xref py py-obj docutils literal notranslate"><span class="pre">MonteCarloResult</span></code></a></p></td>
+<td><p>A data container which computes various interesting metrics associated with Monte Carlo experiments, such as the average estimation error squared (EES) and the average normalized EES.</p></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Functions:</strong></p>
+<table class="longtable docutils align-default">
+<colgroup>
+<col style="width: 10%" />
+<col style="width: 90%" />
+</colgroup>
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="#pynav.utils.monte_carlo" title="pynav.utils.monte_carlo"><code class="xref py py-obj docutils literal notranslate"><span class="pre">monte_carlo</span></code></a></p></td>
+<td><p>Monte-Carlo experiment executor.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#pynav.utils.randvec" title="pynav.utils.randvec"><code class="xref py py-obj docutils literal notranslate"><span class="pre">randvec</span></code></a></p></td>
+<td><p>Produces a random zero-mean column vector with covariance given by <cite>cov</cite></p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#pynav.utils.plot_error" title="pynav.utils.plot_error"><code class="xref py py-obj docutils literal notranslate"><span class="pre">plot_error</span></code></a></p></td>
+<td><p>A generic three-sigma bound plotter.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#pynav.utils.plot_meas" title="pynav.utils.plot_meas"><code class="xref py py-obj docutils literal notranslate"><span class="pre">plot_meas</span></code></a></p></td>
+<td><p>Given measurement data, make time-domain plots of the measurement values and their ground-truth model-based values.</p></td>
+</tr>
+</tbody>
+</table>
+<dl class="py class">
+<dt id="pynav.utils.GaussianResult">
+<em class="property"><span class="pre">class</span> </em><code class="sig-prename descclassname"><span class="pre">pynav.utils.</span></code><code class="sig-name descname"><span class="pre">GaussianResult</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">state</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="types.html#pynav.types.State" title="pynav.types.State"><span class="pre">pynav.types.State</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">covariance</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><span class="pre">numpy.ndarray</span><span class="p"><span class="pre">]</span></span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">state_true</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="types.html#pynav.types.State" title="pynav.types.State"><span class="pre">pynav.types.State</span></a><span class="p"><span class="pre">]</span></span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#pynav.utils.GaussianResult" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>A data container that simultaneously computes various interesting metrics
+about a Gaussian filter’s state estimate, given the ground-truth value of
+the state.</p>
+<dl class="py attribute">
+<dt id="pynav.utils.GaussianResult.stamp">
+<code class="sig-name descname"><span class="pre">stamp</span></code><a class="headerlink" href="#pynav.utils.GaussianResult.stamp" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt id="pynav.utils.GaussianResult.state">
+<code class="sig-name descname"><span class="pre">state</span></code><a class="headerlink" href="#pynav.utils.GaussianResult.state" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt id="pynav.utils.GaussianResult.state_true">
+<code class="sig-name descname"><span class="pre">state_true</span></code><a class="headerlink" href="#pynav.utils.GaussianResult.state_true" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt id="pynav.utils.GaussianResult.covariance">
+<code class="sig-name descname"><span class="pre">covariance</span></code><a class="headerlink" href="#pynav.utils.GaussianResult.covariance" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt id="pynav.utils.GaussianResult.error">
+<code class="sig-name descname"><span class="pre">error</span></code><a class="headerlink" href="#pynav.utils.GaussianResult.error" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt id="pynav.utils.GaussianResult.ees">
+<code class="sig-name descname"><span class="pre">ees</span></code><a class="headerlink" href="#pynav.utils.GaussianResult.ees" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt id="pynav.utils.GaussianResult.nees">
+<code class="sig-name descname"><span class="pre">nees</span></code><a class="headerlink" href="#pynav.utils.GaussianResult.nees" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt id="pynav.utils.GaussianResult.md">
+<code class="sig-name descname"><span class="pre">md</span></code><a class="headerlink" href="#pynav.utils.GaussianResult.md" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt id="pynav.utils.GaussianResult.three_sigma">
+<code class="sig-name descname"><span class="pre">three_sigma</span></code><a class="headerlink" href="#pynav.utils.GaussianResult.three_sigma" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt id="pynav.utils.GaussianResultList">
+<em class="property"><span class="pre">class</span> </em><code class="sig-prename descclassname"><span class="pre">pynav.utils.</span></code><code class="sig-name descname"><span class="pre">GaussianResultList</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">result_list</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#pynav.utils.GaussianResult" title="pynav.utils.GaussianResult"><span class="pre">pynav.utils.GaussianResult</span></a><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#pynav.utils.GaussianResultList" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>A data container that accepts a list of <cite>GaussianResult</cite> objects and
+stacks the attributes of each object numpy arrays. Convenient for plotting.</p>
+<dl class="py attribute">
+<dt id="pynav.utils.GaussianResultList.stamp">
+<code class="sig-name descname"><span class="pre">stamp</span></code><a class="headerlink" href="#pynav.utils.GaussianResultList.stamp" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt id="pynav.utils.GaussianResultList.state">
+<code class="sig-name descname"><span class="pre">state</span></code><a class="headerlink" href="#pynav.utils.GaussianResultList.state" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt id="pynav.utils.GaussianResultList.state_true">
+<code class="sig-name descname"><span class="pre">state_true</span></code><a class="headerlink" href="#pynav.utils.GaussianResultList.state_true" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt id="pynav.utils.GaussianResultList.covariance">
+<code class="sig-name descname"><span class="pre">covariance</span></code><a class="headerlink" href="#pynav.utils.GaussianResultList.covariance" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt id="pynav.utils.GaussianResultList.error">
+<code class="sig-name descname"><span class="pre">error</span></code><a class="headerlink" href="#pynav.utils.GaussianResultList.error" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt id="pynav.utils.GaussianResultList.ees">
+<code class="sig-name descname"><span class="pre">ees</span></code><a class="headerlink" href="#pynav.utils.GaussianResultList.ees" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt id="pynav.utils.GaussianResultList.nees">
+<code class="sig-name descname"><span class="pre">nees</span></code><a class="headerlink" href="#pynav.utils.GaussianResultList.nees" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt id="pynav.utils.GaussianResultList.md">
+<code class="sig-name descname"><span class="pre">md</span></code><a class="headerlink" href="#pynav.utils.GaussianResultList.md" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt id="pynav.utils.GaussianResultList.three_sigma">
+<code class="sig-name descname"><span class="pre">three_sigma</span></code><a class="headerlink" href="#pynav.utils.GaussianResultList.three_sigma" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt id="pynav.utils.GaussianResultList.value">
+<code class="sig-name descname"><span class="pre">value</span></code><a class="headerlink" href="#pynav.utils.GaussianResultList.value" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt id="pynav.utils.GaussianResultList.dof">
+<code class="sig-name descname"><span class="pre">dof</span></code><a class="headerlink" href="#pynav.utils.GaussianResultList.dof" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt id="pynav.utils.GaussianResultList.value_true">
+<code class="sig-name descname"><span class="pre">value_true</span></code><a class="headerlink" href="#pynav.utils.GaussianResultList.value_true" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt id="pynav.utils.MonteCarloResult">
+<em class="property"><span class="pre">class</span> </em><code class="sig-prename descclassname"><span class="pre">pynav.utils.</span></code><code class="sig-name descname"><span class="pre">MonteCarloResult</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">trial_results</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#pynav.utils.GaussianResultList" title="pynav.utils.GaussianResultList"><span class="pre">pynav.utils.GaussianResultList</span></a><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#pynav.utils.MonteCarloResult" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>A data container which computes various interesting metrics associated with
+Monte Carlo experiments, such as the average estimation error squared (EES)
+and the average normalized EES.</p>
+<dl class="py method">
+<dt id="pynav.utils.MonteCarloResult.nees_lower_bound">
+<code class="sig-name descname"><span class="pre">nees_lower_bound</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">confidence_interval</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">float</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#pynav.utils.MonteCarloResult.nees_lower_bound" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="pynav.utils.MonteCarloResult.nees_upper_bound">
+<code class="sig-name descname"><span class="pre">nees_upper_bound</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">confidence_interval</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">float</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">double_sided</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#pynav.utils.MonteCarloResult.nees_upper_bound" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py function">
+<dt id="pynav.utils.monte_carlo">
+<code class="sig-prename descclassname"><span class="pre">pynav.utils.</span></code><code class="sig-name descname"><span class="pre">monte_carlo</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">trial</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Callable</span><span class="p"><span class="pre">[</span></span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span> </span><span class="pre">List</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#pynav.utils.GaussianResult" title="pynav.utils.GaussianResult"><span class="pre">pynav.utils.GaussianResult</span></a><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">num_trials</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">int</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#pynav.utils.monte_carlo" title="Permalink to this definition">¶</a></dt>
+<dd><p>Monte-Carlo experiment executor. Give a callable <cite>trial</cite> function that
+executes a trial and returns a list of <cite>GaussianResult</cite>.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt id="pynav.utils.randvec">
+<code class="sig-prename descclassname"><span class="pre">pynav.utils.</span></code><code class="sig-name descname"><span class="pre">randvec</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cov</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">numpy.ndarray</span></span></em><span class="sig-paren">)</span> &#x2192; <span class="pre">numpy.ndarray</span><a class="headerlink" href="#pynav.utils.randvec" title="Permalink to this definition">¶</a></dt>
+<dd><p>Produces a random zero-mean column vector with covariance given by <cite>cov</cite></p>
+</dd></dl>
+
+<dl class="py function">
+<dt id="pynav.utils.plot_error">
+<code class="sig-prename descclassname"><span class="pre">pynav.utils.</span></code><code class="sig-name descname"><span class="pre">plot_error</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">results</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="#pynav.utils.GaussianResultList" title="pynav.utils.GaussianResultList"><span class="pre">pynav.utils.GaussianResultList</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">axs</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">matplotlib.axes._axes.Axes</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">label</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sharey</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">color</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> &#x2192; <span class="pre">Tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">matplotlib.figure.Figure</span><span class="p"><span class="pre">,</span> </span><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">matplotlib.axes._axes.Axes</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span><a class="headerlink" href="#pynav.utils.plot_error" title="Permalink to this definition">¶</a></dt>
+<dd><p>A generic three-sigma bound plotter.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt id="pynav.utils.plot_meas">
+<code class="sig-prename descclassname"><span class="pre">pynav.utils.</span></code><code class="sig-name descname"><span class="pre">plot_meas</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">meas_list</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="types.html#pynav.types.Measurement" title="pynav.types.Measurement"><span class="pre">pynav.types.Measurement</span></a><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">state_true_list</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="types.html#pynav.types.State" title="pynav.types.State"><span class="pre">pynav.types.State</span></a><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">axs</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">matplotlib.axes._axes.Axes</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sharey</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#pynav.utils.plot_meas" title="Permalink to this definition">¶</a></dt>
+<dd><p>Given measurement data, make time-domain plots of the measurement values
+and their ground-truth model-based values.</p>
+</dd></dl>
+
+</div>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="types.html" class="btn btn-neutral float-left" title="pynav.types" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="datagen.html" class="btn btn-neutral float-right" title="pynav.datagen" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2022, Charles C. Cossette.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

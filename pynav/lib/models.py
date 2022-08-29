@@ -81,6 +81,7 @@ class BodyFrameVelocity(ProcessModel):
 
         return L @ self._Q @ L.T
 
+
 class RelativeBodyFrameVelocity(ProcessModel):
     def __init__(self, Q1: np.ndarray, Q2: np.ndarray):
         self._Q1 = Q1
@@ -375,7 +376,7 @@ class GlobalPosition(MeasurementModel):
 
 
 class Altitude(MeasurementModel):
-    def __init__(self, R: np.ndarray, minimum = 0.0):
+    def __init__(self, R: np.ndarray, minimum=0.0):
         self.R = R
         self.minimum = minimum
 
@@ -399,10 +400,29 @@ class Altitude(MeasurementModel):
         return self.R
 
 
-class Gravity(MeasurementModel):
-    def __init__(self, R: np.ndarray, gravity_vec=[0, 0, -9.80665]):
+class Gravitometer(MeasurementModel):
+    """
+    Gravity model of the form
+
+    .. math::
+
+        \mathbf{y} = \mathbf{C}_{ab} \mathbf{g}_a + \mathbf{v}
+
+    where :math:`\mathbf{g}_a` is the magnetic field vector in a world frame `a`.
+    """
+    def __init__(
+        self, R: np.ndarray, gravity_vector: List[float] = [0, 0, -9.80665]
+    ):
+        """
+        Parameters
+        ----------
+        R : np.ndarray
+            Covariance associated with :math:`\mathbf{v}`
+        gravity_vector : list[float] or numpy.ndarray, optional
+            local magnetic field vector, by default [0, 0, -9.80665]
+        """
         self.R = R
-        self._g_a = np.array(gravity_vec).reshape((-1, 1))
+        self._g_a = np.array(gravity_vector).reshape((-1, 1))
 
     def evaluate(self, x: MatrixLieGroupState):
         return x.attitude.T @ self._g_a
@@ -421,8 +441,28 @@ class Gravity(MeasurementModel):
     def covariance(self, x: MatrixLieGroupState) -> np.ndarray:
         return self.R
 
+
 class Magnetometer(MeasurementModel):
-    def __init__(self, R: np.ndarray, magnetic_vector=[1, 0, 0]):
+    """
+    Magnetometer model of the form
+
+    .. math::
+
+        \mathbf{y} = \mathbf{C}_{ab} \mathbf{m}_a + \mathbf{v}
+
+    where :math:`\mathbf{m}_a` is the magnetic field vector in a world frame `a`.
+    """
+
+    def __init__(self, R: np.ndarray, magnetic_vector: List[float] = [1, 0, 0]):
+        """
+
+        Parameters
+        ----------
+        R : np.ndarray
+            Covariance associated with :math:`\mathbf{v}`
+        magnetic_vector : list[float] or numpy.ndarray, optional
+            local magnetic field vector, by default [1, 0, 0]
+        """
         self.R = R
         self._m_a = np.array(magnetic_vector).reshape((-1, 1))
 
@@ -444,8 +484,6 @@ class Magnetometer(MeasurementModel):
         return self.R
 
 
-
-
 class _InvariantInnovation(MeasurementModel):
     def __init__(
         self, y: np.ndarray, model: MeasurementModel, direction="right"
@@ -461,7 +499,7 @@ class _InvariantInnovation(MeasurementModel):
             z = x.group.inverse(x.value) @ e
         elif self.direction == "right":
             z = x.value @ e
-        
+
         return z
 
     def jacobian(self, x: MatrixLieGroupState) -> np.ndarray:
@@ -472,9 +510,9 @@ class _InvariantInnovation(MeasurementModel):
         elif self.direction == "right":
             jac = x.value @ G
         return jac
-    
+
     def covariance(self, x: MatrixLieGroupState) -> np.ndarray:
-        
+
         R = np.atleast_2d(self.measurement_model.covariance(x))
         if self.direction == "left":
             X_inv = x.group.inverse(x.value)
@@ -482,47 +520,45 @@ class _InvariantInnovation(MeasurementModel):
         elif self.direction == "right":
             cov = x.value @ R @ x.value.T
         return cov
-    
+
+
 class InvariantMeasurement(Measurement):
     """
-    Given a measurement value and a model, the class will construct a 
-    left- or right-invariant innovation to be ready fused into a state estimator. 
-    
+    Given a measurement value and a model, the class will construct a
+    left- or right-invariant innovation to be ready fused into a state estimator.
+
     If a right-invariant innovation is chosen then the following will be formed.
 
     .. math::
-        \mathbf{z} &= \\bar{\mathbf{X}}(\mathbf{y} - \\bar{\mathbf{y}}) 
-        
-        &= \\bar{\mathbf{X}}(\mathbf{g}(\mathbf{X}) + 
-        \mathbf{v} - \mathbf{g}(\\bar{\mathbf{X}})) 
+        \mathbf{z} &= \\bar{\mathbf{X}}(\mathbf{y} - \\bar{\mathbf{y}})
+
+        &= \\bar{\mathbf{X}}(\mathbf{g}(\mathbf{X}) +
+        \mathbf{v} - \mathbf{g}(\\bar{\mathbf{X}}))
 
         &\\approx \\bar{\mathbf{X}}( \mathbf{g}(\\bar{\mathbf{X}})
         + \mathbf{G}\delta \mathbf{\\xi} + \mathbf{v}
-        - \mathbf{g}(\\bar{\mathbf{X}})) 
-        
+        - \mathbf{g}(\\bar{\mathbf{X}}))
+
         &= \\bar{\mathbf{X}}\mathbf{G}\delta \mathbf{\\xi}
         + \\bar{\mathbf{X}}\mathbf{v}
 
-    and hence :math:`\\bar{\mathbf{X}}\mathbf{G}` is the Jacobian of 
-    :math:`\mathbf{z}`, where :math:`\mathbf{G}` is the Jacobian of 
+    and hence :math:`\\bar{\mathbf{X}}\mathbf{G}` is the Jacobian of
+    :math:`\mathbf{z}`, where :math:`\mathbf{G}` is the Jacobian of
     :math:`\mathbf{g}(\mathbf{X})`.  Similarly, if a left-invariant innovation is chosen,
 
      .. math::
-        \mathbf{z} &= \\bar{\mathbf{X}}^{-1}(\mathbf{y} - \\bar{\mathbf{y}}) 
-        
+        \mathbf{z} &= \\bar{\mathbf{X}}^{-1}(\mathbf{y} - \\bar{\mathbf{y}})
+
         &\\approx \\bar{\mathbf{X}}^{-1}\mathbf{G}\delta \mathbf{\\xi}
         + \\bar{\mathbf{X}}^{-1}\mathbf{v}
 
-    and hence :math:`\\bar{\mathbf{X}}^{-1}\mathbf{G}` is the Jacobian of 
+    and hence :math:`\\bar{\mathbf{X}}^{-1}\mathbf{G}` is the Jacobian of
     :math:`\mathbf{z}`.
     """
 
-
     def __init__(
         self,
-        value: np.ndarray,
-        model: MeasurementModel,
-        stamp: float = None,
+        meas: Measurement,
         direction="right",
     ):
         """
@@ -539,7 +575,7 @@ class InvariantMeasurement(Measurement):
             whether to form a left- or right-invariant innovation, by default "right"
         """
         super(InvariantMeasurement, self).__init__(
-            np.zeros((value.size,)),
-            stamp,
-            _InvariantInnovation(value, model, direction),
+            np.zeros((meas.value.size,)),
+            meas.stamp,
+            _InvariantInnovation(meas.value, meas.model, direction),
         )
