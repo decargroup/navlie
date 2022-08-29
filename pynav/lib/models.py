@@ -496,45 +496,32 @@ class _InvariantInnovation(MeasurementModel):
         y_hat = self.measurement_model.evaluate(x)
         e :np.ndarray = y_hat.ravel() - self.y.ravel()
 
-        # Make the "padding" matrix
-        P = np.zeros((x.value.shape[0], e.size))
-        P[0:e.size, 0:e.size] = np.identity(e.size)
 
         if self.direction == "left":
-            z = x.group.inverse(x.value) @ P @ e
+            z = x.attitude.T @ e
         elif self.direction == "right":
-            z = x.value @ P @ e
+            z = x.attitude @ e
 
         return z
 
     def jacobian(self, x: MatrixLieGroupState) -> np.ndarray:
         G = self.measurement_model.jacobian(x)
 
-        # Make the "padding" matrix
-        P = np.zeros((x.value.shape[0], G.shape[0]))
-        P[0:G.shape[0], 0:G.shape[0]] = np.identity(G.shape[0])
-
         if self.direction == "left":
-            jac = P.T @ x.group.inverse(x.value) @ P @ G
+            jac = x.attitude.T @ G
         elif self.direction == "right":
-            jac = P.T @ x.value @ P @ G
+            jac = x.attitude @ G
         return jac
 
     def covariance(self, x: MatrixLieGroupState) -> np.ndarray:
 
         R = np.atleast_2d(self.measurement_model.covariance(x))
 
-        # Make the "padding" matrix
-        P = np.zeros((x.value.shape[0], R.shape[0]))
-        P[0:R.shape[0], 0:R.shape[0]] = np.identity(R.shape[0])
-
-
         if self.direction == "left":
-            X_inv = x.group.inverse(x.value)
-            M = P.T @ X_inv @ P
+            M = x.attitude.T
             cov = M @ R @ M.T
         elif self.direction == "right":
-            M = P.T @  x.value @ P
+            M = x.attitude
             cov = M @ R @ M.T
         return cov
 
@@ -588,7 +575,7 @@ class InvariantMeasurement(Measurement):
             whether to form a left- or right-invariant innovation, by default "right"
         """
         super(InvariantMeasurement, self).__init__(
-            np.zeros((meas.value.size,)),
-            meas.stamp,
-            _InvariantInnovation(meas.value, meas.model, direction),
+            value = np.zeros((meas.value.size,)),
+            stamp = meas.stamp,
+            model =_InvariantInnovation(meas.value, meas.model, direction),
         )
