@@ -40,8 +40,8 @@ class GaussianResult:
             e = state.minus(state_true).reshape((-1, 1))
             cov_inv = np.linalg.inv(covariance)
             self.error = e.flatten()
-            self.ees = np.asscalar(e.T @ e)
-            self.nees = np.asscalar(e.T @ cov_inv @ e)
+            self.ees = np.ndarray.item(e.T @ e)
+            self.nees = np.ndarray.item(e.T @ cov_inv @ e)
             self.md = np.sqrt(self.nees)
             self.three_sigma = 3 * np.sqrt(np.diag(covariance))
 
