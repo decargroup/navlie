@@ -49,26 +49,25 @@ results = GaussianResultList(
 
 plot_error(results)
 
-# # **************** Conversion to Invariant Measurements ! *********************
-# invariant_meas_list = [
-#     InvariantMeasurement(meas.value, meas.model, meas.stamp, direction="right")
-#     for meas in meas_list
-# ]
-# invariant_meas_list = meas_list
+# **************** Conversion to Invariant Measurements ! *********************
+invariant_meas_list = [
+    InvariantMeasurement(meas, direction="right") for meas in meas_list
+]
+invariant_meas_list = meas_list
 
-# # Run the invariant filter
-# x0.direction="left"
-# ekf = ExtendedKalmanFilter(process_model=process_model)
-# estimate_list = run_filter(ekf, x0, P0, input_list, invariant_meas_list)
+# Run the invariant filter
+x0.direction = "left"
+ekf = ExtendedKalmanFilter(process_model=process_model)
+estimate_list = run_filter(ekf, x0, P0, input_list, invariant_meas_list)
 
-# results_invariant = GaussianResultList(
-#     [
-#         GaussianResult(
-#             estimate_list[i].state, estimate_list[i].covariance, state_true[i]
-#         )
-#         for i in range(len(estimate_list))
-#     ]
-# )
+results_invariant = GaussianResultList(
+    [
+        GaussianResult(
+            estimate_list[i].state, estimate_list[i].covariance, state_true[i]
+        )
+        for i in range(len(estimate_list))
+    ]
+)
 
-# plot_error(results_invariant)
+plot_error(results_invariant)
 plt.show()
