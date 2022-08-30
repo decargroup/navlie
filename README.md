@@ -81,10 +81,10 @@ class SE3State(State):
     def plus(self, dx: np.ndarray):
         self.value = self.value @ SE3.Exp(dx)
 
-    def minus(self, x: "VectorState") -> np.ndarray:
+    def minus(self, x: "SE3State") -> np.ndarray:
         return SE3.Log(SE3.inverse(x.value) @ self.value)
 
-    def copy(self) -> "VectorState":
+    def copy(self) -> "SE3State":
         return SE3State(self.value.copy(), self.stamp, self.state_id)
 
 ```
