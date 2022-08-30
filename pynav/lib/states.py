@@ -245,6 +245,7 @@ class SE23State(MatrixLieGroupState):
 
     @position.setter
     def position(self, r):
+        r = r.flatten()
         self.value[0:3, 4] = r
 
     @property
@@ -252,8 +253,9 @@ class SE23State(MatrixLieGroupState):
         return self.value[0:3, 3]
 
     @velocity.setter
-    def velocity(self, r):
-        self.value[0:3, 3] = r
+    def velocity(self, v):
+        v = v.flatten()
+        self.value[0:3, 3] = v
 
     @staticmethod
     def jacobian_from_blocks(
@@ -273,6 +275,132 @@ class SE23State(MatrixLieGroupState):
             velocity = np.zeros((dim, 3))
 
         return np.block([attitude, velocity, position])
+
+
+class IMUState(State):
+    def __init__(
+        self,
+        nav_state: np.ndarray,
+        bg: np.ndarray,
+        ba: np.ndarray,
+        stamp: float = None,
+        state_id=None,
+        direction="right",
+    ):
+        """Instantiate and IMUState object.
+
+        Parameters
+        ----------
+        nav_state : np.ndarray
+            The navigation state stored as an element of SE_2(3).
+            Contains orientation, velocity, and position.
+        bg : np.ndarray
+            Gyroscope bias, [3 x 1] matrix
+        ba : np.ndarray
+            Accelerometer bias, [3 x 1] matrix
+        stamp : float, optional
+            Timestamp, by default None
+        state_id : _type_, optional
+            Unique identifier, by default None
+        direction : str, optional
+            Direction of the perturbation for the nav state, by default "right"
+        """
+        nav_state = SE23State(nav_state, stamp, state_id, direction)
+        bg = VectorState(bg, stamp, state_id)
+        ba = VectorState(ba, stamp, state_id)
+
+        # Gravity resolved in the inertial frame
+        self.gravity: np.ndarray = np.array([0, 0, -9.81]).reshape((-1, 1))
+
+        self.value: List[State] = [nav_state, bg, ba]
+        self.state_id = state_id
+        self.stamp = stamp
+        self.dof = 15
+        self.direction = direction
+
+        self._slices = []
+        counter = 0
+        for state in self.value:
+            self._slices.append(slice(counter, counter + state.dof))
+            counter += state.dof
+
+    @property
+    def attitude(self):
+        return self.value[0].attitude
+
+    @attitude.setter
+    def attitude(self, C):
+        self.value[0].attitude = C
+
+    @property
+    def velocity(self):
+        return self.value[0].velocity
+
+    @velocity.setter
+    def velocity(self, v):
+        self.value[0].velocity = v
+
+    @property
+    def position(self):
+        return self.value[0].position
+
+    @position.setter
+    def position(self, r):
+        self.value[0].position = r
+
+    @property
+    def bg(self) -> np.ndarray:
+        return self.value[1].value
+
+    @bg.setter
+    def bg(self, gyro_bias):
+        self.value[1].value = gyro_bias
+
+    @property
+    def ba(self) -> np.ndarray:
+        return self.value[2].value
+
+    @ba.setter
+    def ba(self, accel_bias):
+        self.value[2].value = accel_bias
+
+    @property
+    def nav_state(self) -> np.ndarray:
+        return self.value[0].value
+
+    def plus(self, dx: np.ndarray, new_stamp: float = None):
+        """
+        Updates the value of each of the IMU state, given a perturbation dx.
+        """
+        if dx.shape[0] != 15:
+            raise ValueError("Perturbation must be dimension 15!")
+
+        for i, s in enumerate(self._slices):
+            sub_dx = dx[s]
+            self.value[i].plus(sub_dx)
+
+        if new_stamp is not None:
+            self.set_stamp_for_all(new_stamp)
+
+    def minus(self, x: "IMUState") -> np.ndarray:
+        dx = []
+        for i, v in enumerate(x.value):
+            dx.append(self.value[i].minus(x.value[i]))
+
+        return np.vstack(dx)
+
+    def copy(self):
+        """
+        Returns a new composite state object where the state values have also
+        been copied.
+        """
+        return IMUState(
+            self.nav_state.copy(),
+            self.bg.copy(),
+            self.ba.copy(),
+            self.stamp,
+            self.state_id,
+        )
 
 
 class CompositeState(State):
@@ -416,7 +544,7 @@ class CompositeState(State):
 
     def jacobian_from_blocks(self, block_dict: dict):
         """
-        Returns the jacobian of the entire composite state given jacobians 
+        Returns the jacobian of the entire composite state given jacobians
         associated with some of the substates. These are provided as a dictionary
         with the the keys being the substate IDs.
         """
