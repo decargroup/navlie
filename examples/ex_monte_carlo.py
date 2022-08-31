@@ -63,7 +63,7 @@ def ekf_trial(trial_number:int) -> List[GaussianResult]:
         # Fuse any measurements that have occurred.
         while y.stamp < input_data[k + 1].stamp and meas_idx < len(meas_data):
 
-            x = ekf.correct(x, y)
+            x = ekf.correct(x, y, u)
             meas_idx += 1
             if meas_idx < len(meas_data):
                 y = meas_data[meas_idx]
