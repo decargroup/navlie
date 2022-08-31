@@ -63,7 +63,7 @@ for k in range(len(input_data) - 1):
     # Fuse any measurements that have occurred.
     while y.stamp < input_data[k + 1].stamp and meas_idx < len(meas_data):
 
-        x = ekf.correct(x, y)
+        x = ekf.correct(x, y, u)
 
         # Load the next measurement
         meas_idx += 1
