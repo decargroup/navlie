@@ -61,7 +61,7 @@ for k in range(len(input_data) - 1):
             y = meas_data[meas_idx]
 
     x = ekf.predict(x, u)
-    results_list.append(GaussianResult(x.state, x.covariance, state_true[k]))
+    results_list.append(GaussianResult(x, state_true[k]))
 
 
 print("Average filter computation frequency (Hz):")

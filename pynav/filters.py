@@ -1,3 +1,4 @@
+from typing import List
 from .types import (
     StampedValue,
     State,
@@ -28,25 +29,60 @@ class ExtendedKalmanFilter:
     """
     On-manifold nonlinear Kalman filter.
     """
-    __slots__ = ["process_model", "_u"]
 
-    def __init__(self, process_model: ProcessModel):
+    __slots__ = ["process_model", "_u", "reject_outliers"]
+
+    def __init__(self, process_model: ProcessModel, reject_outliers=False):
+        """
+        Parameters
+        ----------
+        process_model : ProcessModel
+            process model to be used in the prediction step
+        reject_outliers : bool, optional
+            whether to apply the NIS test to measurements, by default False
+        """
         self.process_model = process_model
         self._u = None
+        self.reject_outliers = reject_outliers
 
     def predict(
         self,
         x: StateWithCovariance,
         u: StampedValue,
-        dt=None,
+        dt: float =None,
         x_jac: State = None,
         use_last_input=True,
-    ):
+    ) -> StateWithCovariance:
         """
         Propagates the state forward in time using a process model.
 
-        Optionally, provide `x_jac` as the evaluation point for Jacobian and
-        covariance functions.
+
+        Parameters
+        ----------
+        x : StateWithCovariance
+            The current state estimate.
+        u : StampedValue
+            Input measurement to be given to process model
+        dt : float, optional
+            Duration to next time step. If not provided, the `.stamp` value in 
+            `u` will be used.
+        x_jac : State, optional
+            Evaluation point for the process model Jacobian. If not provided, the
+            current state estimate will be used.
+        use_last_input : bool, optional
+            Whether to use the previously-fed input in the process model or the
+            current one, by default True. This is essentially the difference
+            between 
+
+            .. math:
+                x_k = f(x_{k-1}, u_{k-1}) \\text{ and } x_k = f(x_{k-1}, u_{k})
+            
+
+
+        Returns
+        -------
+        StateWithCovariance
+            New predicted state
         """
 
         # Make a copy so we dont modify the input
@@ -87,19 +123,37 @@ class ExtendedKalmanFilter:
         x: StateWithCovariance,
         y: Measurement,
         x_jac: State = None,
-        reject_outlier=False,
-    ):
+        reject_outlier: bool =None,
+    ) -> StateWithCovariance:
         """
         Fuses an arbitrary measurement to produce a corrected state estimate.
 
-        Optionally, provide `x_jac` as the evaluation point for Jacobian and
-        covariance functions.
+        Parameters
+        ----------
+        x : StateWithCovariance
+            The current state estimate.
+        y : Measurement
+            Measurement to be fused into the current state estimate.
+        x_jac : State, optional
+            valuation point for the process model Jacobian. If not provided, the
+            current state estimate will be used.
+        reject_outlier : bool, optional
+            Whether to apply the NIS test to this measurement, by default None
+
+        Returns
+        -------
+        StateWithCovariance
+            The corrected state estimate
         """
         # Make copy to avoid modifying the input
         x = x.copy()
 
         if x.state.stamp is None:
             x.state.stamp = y.stamp
+
+        # Load default outlier rejection option 
+        if reject_outlier is None:
+            reject_outlier = self.reject_outliers
 
         # If measurement stamp is later than state stamp, do prediction step
         # until current time.
@@ -114,23 +168,25 @@ class ExtendedKalmanFilter:
         R = np.atleast_2d(y.model.covariance(x_jac))
         G = np.atleast_2d(y.model.jacobian(x_jac))
         y_check = y.model.evaluate(x.state)
-        z = y.value.reshape((-1, 1)) - y_check.reshape((-1, 1))
-        S = G @ P @ G.T + R
 
-        outlier = False
+        if y_check is not None:
+            z = y.value.reshape((-1, 1)) - y_check.reshape((-1, 1))
+            S = G @ P @ G.T + R
 
-        # Test for outlier if requested.
-        if reject_outlier:
-            outlier = check_outlier(z, S)
+            outlier = False
 
-        if not outlier:
+            # Test for outlier if requested.
+            if reject_outlier:
+                outlier = check_outlier(z, S)
 
-            # Do the correction
-            K = np.linalg.solve(S.T, (P @ G.T).T).T
-            dx = K @ z
-            x.state.plus(dx)
-            x.covariance = (np.identity(x.state.dof) - K @ G) @ P
-            x.symmetrize()
+            if not outlier:
+
+                # Do the correction
+                K = np.linalg.solve(S.T, (P @ G.T).T).T
+                dx = K @ z
+                x.state.plus(dx)
+                x.covariance = (np.identity(x.state.dof) - K @ G) @ P
+                x.symmetrize()
 
         return x
 
@@ -139,32 +195,54 @@ class IteratedKalmanFilter(ExtendedKalmanFilter):
     """
     On-manifold iterated extended Kalman filter.
     """
+    __slots__ = ["process_model", "_u", "reject_outliers", "step_tol", "max_iters"]
+
     def __init__(
         self,
         process_model: ProcessModel,
         step_tol=1e-4,
         max_iters=100,  # TODO. implement max iters
         line_search=True,  # TODO implement line search
+        reject_outliers=False,
     ):
         super(IteratedKalmanFilter, self).__init__(process_model)
         self.step_tol = step_tol
         self.max_iters = max_iters
+        self.reject_outliers = reject_outliers
 
     def correct(
         self,
         x: StateWithCovariance,
         y: Measurement,
         x_jac: State = None,
-        reject_outlier=False,
+        reject_outlier=None,
     ):
         """
         Fuses an arbitrary measurement to produce a corrected state estimate.
 
-        Optionally, provide `x_jac` as the evaluation point for Jacobian and
-        covariance functions.
+        Parameters
+        ----------
+        x : StateWithCovariance
+            The current state estimate.
+        y : Measurement
+            Measurement to be fused into the current state estimate.
+        x_jac : State, optional
+            valuation point for the process model Jacobian. If not provided, the
+            current state estimate will be used.
+        reject_outlier : bool, optional
+            Whether to apply the NIS test to this measurement, by default None
+
+        Returns
+        -------
+        StateWithCovariance
+            The corrected state estimate
         """
         # Make copy to avoid modifying the input
         x = x.copy()
+
+        # Load default outlier rejection option 
+        if reject_outlier is None:
+            reject_outlier = self.reject_outliers
 
         # If state has no time stamp, load form measurement.
         # usually only happens on estimator start-up
@@ -196,7 +274,6 @@ class IteratedKalmanFilter(ExtendedKalmanFilter):
             S = G @ x.covariance @ G.T + R
             S = 0.5 * (S + S.T)
             e = x.state.minus(x_op).reshape((-1, 1))
-            
 
             # Test for outlier if requested.
             outlier = False
@@ -229,3 +306,67 @@ class IteratedKalmanFilter(ExtendedKalmanFilter):
         cost_prior = np.ndarray.item(0.5 * e.T @ np.linalg.solve(P, e))
         cost_meas = np.ndarray.item(0.5 * z.T @ np.linalg.solve(R, z))
         return cost_prior + cost_meas, cost_prior, cost_meas
+
+
+def run_filter(
+    filter: ExtendedKalmanFilter,
+    x0: State,
+    P0: np.ndarray,
+    input_data: List[StampedValue],
+    meas_data: List[Measurement],
+) -> List[StateWithCovariance]:
+    """
+    Executes a predict-correct-style filter given lists of input and measurement
+    data.
+
+    Parameters
+    ----------
+    filter : ExtendedKalmanFilter
+        _description_
+    x0 : State
+        _description_
+    P0 : np.ndarray
+        _description_
+    input_data : List[StampedValue]
+        _description_
+    meas_data : List[Measurement]
+        _description_
+    """
+    x = StateWithCovariance(x0, P0)
+
+    # Sort the data by time
+    input_data.sort(key = lambda x: x.stamp)
+    meas_data.sort(key = lambda x: x.stamp)
+
+    # Remove all that are before the current time
+    for idx, u in enumerate(input_data):
+        if u.stamp >= x.state.stamp:
+            input_data = input_data[idx:]
+            break
+
+    for idx, y in enumerate(meas_data):
+        if y.stamp >= x.state.stamp:
+            meas_data = meas_data[idx:]
+            break
+
+
+    meas_idx = 0 
+    if len(meas_data) > 0:
+        y = meas_data[meas_idx]
+
+    results_list = []
+    for k in range(len(input_data) - 1):
+        u = input_data[k]
+
+        # Fuse any measurements that have occurred.
+        if len(meas_data) > 0:
+            while y.stamp < input_data[k + 1].stamp and meas_idx < len(meas_data):
+
+                x = filter.correct(x, y)
+                meas_idx += 1
+                if meas_idx < len(meas_data):
+                    y = meas_data[meas_idx]
+
+        x = filter.predict(x, u)
+        results_list.append(x)
+    return results_list

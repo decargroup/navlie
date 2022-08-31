@@ -1,9 +1,10 @@
 from typing import Callable, List, Tuple
-from pynav.types import State
+from pynav.types import State, Measurement, StateWithCovariance
 import numpy as np
 import matplotlib.pyplot as plt
 import time
 from scipy.stats.distributions import chi2
+from scipy.interpolate import interp1d
 
 
 class GaussianResult:
@@ -13,7 +14,6 @@ class GaussianResult:
     the state.
     """
 
-    
     __slots__ = [
         "stamp",
         "state",
@@ -28,10 +28,11 @@ class GaussianResult:
 
     def __init__(
         self,
-        state: State,
-        covariance: np.ndarray = None,
+        estimate: StateWithCovariance,
         state_true: State = None,
     ):
+        state = estimate.state
+        covariance = estimate.covariance
         self.stamp = state.stamp
         self.state = state
         self.state_true = state_true
@@ -64,7 +65,7 @@ class GaussianResultList:
         "three_sigma",
         "value",
         "value_true",
-        "dof"
+        "dof",
     ]
 
     def __init__(self, result_list: List[GaussianResult]):
@@ -89,43 +90,49 @@ class MonteCarloResult:
     and the average normalized EES.
     """
 
-    # TODO: add chi-squared bounds
-
     def __init__(self, trial_results: List[GaussianResultList]):
         self.num_trials = len(trial_results)
         self.stamp = trial_results[0].stamp
         self.average_nees = np.average(
             np.array([t.nees for t in trial_results]), axis=0
         )
-        self.average_ees = np.average(np.array([t.ees for t in trial_results]), axis=0)
+        self.average_ees = np.average(
+            np.array([t.ees for t in trial_results]), axis=0
+        )
 
         self.rmse: np.ndarray = np.sqrt(
-            np.average(np.power(np.array([t.error for t in trial_results]), 2), axis=0)
+            np.average(
+                np.power(np.array([t.error for t in trial_results]), 2), axis=0
+            )
         )
 
         self.total_rmse: np.ndarray = np.sqrt(self.average_ees)
 
         self.expected_nees = np.array(trial_results[0].dof)
-        self.dof = trial_results[0].dof 
+        self.dof = trial_results[0].dof
 
     def nees_lower_bound(self, confidence_interval: float):
         if confidence_interval >= 1 or confidence_interval <= 0:
             raise ValueError("Confidence interval must lie in (0, 1)")
 
-        lower_bound_threshold = (1-confidence_interval)/2
-        return chi2.ppf(lower_bound_threshold, df=self.num_trials * self.dof)/self.num_trials
+        lower_bound_threshold = (1 - confidence_interval) / 2
+        return (
+            chi2.ppf(lower_bound_threshold, df=self.num_trials * self.dof)
+            / self.num_trials
+        )
 
     def nees_upper_bound(self, confidence_interval: float, double_sided=True):
         if confidence_interval >= 1 or confidence_interval <= 0:
             raise ValueError("Confidence interval must lie in (0, 1)")
 
-        
         upper_bound_threshold = confidence_interval
         if double_sided:
-            upper_bound_threshold += (1-confidence_interval)/2
+            upper_bound_threshold += (1 - confidence_interval) / 2
 
-        return chi2.ppf(upper_bound_threshold, df=self.num_trials * self.dof)/self.num_trials
-        
+        return (
+            chi2.ppf(upper_bound_threshold, df=self.num_trials * self.dof)
+            / self.num_trials
+        )
 
 
 def monte_carlo(trial: Callable[[int], List[GaussianResult]], num_trials: int):
@@ -155,7 +162,7 @@ def monte_carlo(trial: Callable[[int], List[GaussianResult]], num_trials: int):
     return MonteCarloResult(trial_results)
 
 
-def randvec(cov: np.ndarray):
+def randvec(cov: np.ndarray) -> np.ndarray:
     """
     Produces a random zero-mean column vector with covariance given by `cov`
     """
@@ -170,7 +177,27 @@ def plot_error(
     color=None,
 ) -> Tuple[plt.Figure, List[plt.Axes]]:
     """
-    A generic three-sigma bound plotter.
+    _summary_
+
+    Parameters
+    ----------
+    results : GaussianResultList
+        _description_
+    axs : List[plt.Axes], optional
+        _description_, by default None
+    label : _type_, optional
+        _description_, by default None
+    sharey : bool, optional
+        _description_, by default False
+    color : _type_, optional
+        _description_, by default None
+
+    Returns
+    -------
+    plt.Figure 
+        _description_
+    List[plt.Axes]
+        _description
     """
 
     dim = results.error.shape[1]
@@ -200,3 +227,60 @@ def plot_error(
         axs[i].plot(results.stamp, results.error[:, i], label=label, **kwargs)
 
     return fig, axs_og
+
+
+def plot_meas(
+    meas_list: List[Measurement],
+    state_true_list: List[State],
+    axs: List[plt.Axes] = None,
+    sharey=False,
+):
+    """
+    Given measurement data, make time-domain plots of the measurement values
+    and their ground-truth model-based values.
+    """
+
+    # Convert everything to numpy arrays for plotting, and compute the
+    # ground-truth model-based measurement value.
+    y_stamps = np.array([y.stamp for y in meas_list])
+    x_stamps = np.array([x.stamp for x in state_true_list])
+    nearest_state = interp1d(
+        x_stamps,
+        np.array(range(len(state_true_list))),
+        "nearest",
+        bounds_error=False,
+        fill_value="extrapolate",
+    )
+    state_idx = nearest_state(y_stamps)
+    y_meas = []
+    y_true = []
+    for i in range(len(meas_list)):
+        y_meas.append(np.ravel(meas_list[i].value))
+        x = state_true_list[int(state_idx[i])]
+        y_true.append(meas_list[i].model.evaluate(x).ravel())
+
+    y_meas = np.atleast_2d(np.array(y_meas))
+    y_true = np.atleast_2d(np.array(y_true))
+    y_stamps = np.array(y_stamps)
+    x_stamps = np.array(x_stamps)
+
+    # Plot
+
+    size_y = np.size(meas_list[0].value)
+    if axs is None:
+        fig, axs = plt.subplots(size_y, 1, sharex=True, sharey=sharey)
+    else:
+        if isinstance(axs, plt.Axes):
+            axs = np.array([axs])
+
+        fig = axs.ravel("F")[0].get_figure()
+
+    for i in range(size_y):
+        axs[i].scatter(
+            y_stamps, y_meas[:, i], color="b", alpha=0.7, s=2, label="Measured"
+        )
+        axs[i].plot(
+            y_stamps, y_true[:, i], color="r", alpha=1, label="Modelled"
+        )
+
+    return fig, axs

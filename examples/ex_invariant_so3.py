@@ -3,7 +3,7 @@ from pynav.lib.models import (
     BodyFrameVelocity,
     InvariantMeasurement,
     Magnetometer,
-    Gravity,
+    Gravitometer,
 )
 from pynav.datagen import DataGenerator
 from pynav.filters import ExtendedKalmanFilter, run_filter
@@ -20,7 +20,7 @@ Q = 0.1**2 * np.identity(3)
 # Define the process model and measurement models.
 process_model = BodyFrameVelocity(Q)
 mag_model = Magnetometer(0.1**2 * np.identity(3))
-grav_model = Gravity(0.1**2 * np.identity(3))
+grav_model = Gravitometer(0.1**2 * np.identity(3))
 
 # Generate some data
 dg = DataGenerator(
@@ -40,35 +40,28 @@ ekf = ExtendedKalmanFilter(process_model=process_model)
 estimate_list = run_filter(ekf, x0, P0, input_list, meas_list)
 results = GaussianResultList(
     [
-        GaussianResult(
-            estimate_list[i].state, estimate_list[i].covariance, state_true[i]
-        )
+        GaussianResult(estimate_list[i], state_true[i])
         for i in range(len(estimate_list))
     ]
 )
 
 plot_error(results)
 
-# # **************** Conversion to Invariant Measurements ! *********************
-# invariant_meas_list = [
-#     InvariantMeasurement(meas.value, meas.model, meas.stamp, direction="right")
-#     for meas in meas_list
-# ]
-# invariant_meas_list = meas_list
+# **************** Conversion to Invariant Measurements ! *********************
+invariants = [InvariantMeasurement(meas, "right") for meas in meas_list]
+# *****************************************************************************
 
-# # Run the invariant filter
-# x0.direction="left"
-# ekf = ExtendedKalmanFilter(process_model=process_model)
-# estimate_list = run_filter(ekf, x0, P0, input_list, invariant_meas_list)
+# Run the invariant filter
+x0.direction = "left"
+ekf = ExtendedKalmanFilter(process_model=process_model)
+estimate_list = run_filter(ekf, x0, P0, input_list, invariants)
 
-# results_invariant = GaussianResultList(
-#     [
-#         GaussianResult(
-#             estimate_list[i].state, estimate_list[i].covariance, state_true[i]
-#         )
-#         for i in range(len(estimate_list))
-#     ]
-# )
+results_invariant = GaussianResultList(
+    [
+        GaussianResult(estimate_list[i], state_true[i])
+        for i in range(len(estimate_list))
+    ]
+)
 
-# plot_error(results_invariant)
+plot_error(results_invariant)
 plt.show()

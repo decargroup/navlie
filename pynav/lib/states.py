@@ -11,8 +11,9 @@ class VectorState(State):
     """
 
     def __init__(self, value: np.ndarray, stamp: float = None, state_id=None):
+        value = np.array(value).ravel()
         super(VectorState, self).__init__(
-            value=value.flatten(),
+            value=value,
             dof=value.size,
             stamp=stamp,
             state_id=state_id,
@@ -280,12 +281,14 @@ class CompositeState(State):
     single conceptual "state". The intended use is to hold a list of poses
     as a single state at a specific time.
 
-    PARAMETERS:
-    -----------
-    state_list: list of states that forms this composite state
+    Parameters
+    ----------
+    state_list: List[State]
+        List of State that forms this composite state
+
 
     Each state in the provided list has an index (the index in the list), as
-    well as an id, which is found as an attribute in the corresponding state
+    well as a state_id, which is found as an attribute in the corresponding State
     object.
 
     It is possible to access sub-states in the composite states both by index
@@ -296,13 +299,11 @@ class CompositeState(State):
 
     def __init__(self, state_list: List[State], stamp: float = None, state_id=None):
 
+        #:List[State]: The substates are the CompositeState 's value.
         self.value = state_list
-        self.dof = sum([x.dof for x in state_list])
+
         self.stamp = stamp
         self.state_id = state_id
-
-        # Alternate way to access, may be a more appropriate name
-        self.substates = self.value
 
         # Compute the slices for each individual state.
         self._slices = []
@@ -310,6 +311,10 @@ class CompositeState(State):
         for state in state_list:
             self._slices.append(slice(counter, counter + state.dof))
             counter += state.dof
+
+    @property
+    def dof(self):
+        return sum([x.dof for x in self.value])
 
     def get_index_by_id(self, state_id):
         """
@@ -343,14 +348,14 @@ class CompositeState(State):
         Get degrees of freedom of sub-state by id.
         """
         idx = self.get_index_by_id(state_id)
-        return self.dof[idx]
+        return self.value[idx].dof[idx]
 
     def get_stamp_by_id(self, state_id):
         """
         Get timestamp of sub-state by id.
         """
         idx = self.get_index_by_id(state_id)
-        return self.stamp[idx]
+        return self.value[idx].stamp[idx]
 
     def set_stamp_by_id(self, stamp: float, state_id):
         """
@@ -410,6 +415,11 @@ class CompositeState(State):
             self.set_stamp_by_id(new_stamp, state_id)
 
     def jacobian_from_blocks(self, block_dict: dict):
+        """
+        Returns the jacobian of the entire composite state given jacobians 
+        associated with some of the substates. These are provided as a dictionary
+        with the the keys being the substate IDs.
+        """
         block: np.ndarray = block_dict.values()[0]
         m = block.shape[0]  # Dimension of "y" value
         jac = np.zeros((m, self.dof))
