@@ -609,11 +609,13 @@ class _InvariantInnovation(MeasurementModel):
 
     def evaluate(self, x: MatrixLieGroupState) -> np.ndarray:
         y_hat = self.measurement_model.evaluate(x)
-        e = y_hat.ravel() - self.y.ravel()
+        e :np.ndarray = y_hat.ravel() - self.y.ravel()
+
+
         if self.direction == "left":
-            z = x.group.inverse(x.value) @ e
+            z = x.attitude.T @ e
         elif self.direction == "right":
-            z = x.value @ e
+            z = x.attitude @ e
 
         return z
 
@@ -621,19 +623,21 @@ class _InvariantInnovation(MeasurementModel):
         G = self.measurement_model.jacobian(x)
 
         if self.direction == "left":
-            jac = x.group.inverse(x.value) @ G
+            jac = x.attitude.T @ G
         elif self.direction == "right":
-            jac = x.value @ G
+            jac = x.attitude @ G
         return jac
 
     def covariance(self, x: MatrixLieGroupState) -> np.ndarray:
 
         R = np.atleast_2d(self.measurement_model.covariance(x))
+
         if self.direction == "left":
-            X_inv = x.group.inverse(x.value)
-            cov = X_inv @ R @ X_inv.T
+            M = x.attitude.T
+            cov = M @ R @ M.T
         elif self.direction == "right":
-            cov = x.value @ R @ x.value.T
+            M = x.attitude
+            cov = M @ R @ M.T
         return cov
 
 
@@ -686,7 +690,7 @@ class InvariantMeasurement(Measurement):
             whether to form a left- or right-invariant innovation, by default "right"
         """
         super(InvariantMeasurement, self).__init__(
-            np.zeros((meas.value.size,)),
-            meas.stamp,
-            _InvariantInnovation(meas.value, meas.model, direction),
+            value = np.zeros((meas.value.size,)),
+            stamp = meas.stamp,
+            model =_InvariantInnovation(meas.value, meas.model, direction),
         )

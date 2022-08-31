@@ -3,6 +3,7 @@ A very modular, reusable state estimation library for robotics.
 
 The core idea behind this project is to abstract-away the state definition such that a single estimator implementation can operate on a variety of state manifolds, such as the usual vector space, and any Lie group. 
 
+Documentation can be found by opening this file in your browser: [./docs/build/html/index.html](./docs/build/html/index.html).
 ## Setup
 ### Dependencies
 - python3.6+
@@ -73,7 +74,7 @@ class SE3State(State):
     def __init__(self, value: np.ndarray, stamp: float = None, state_id=None):
         super(SE3State, self).__init__(
             value=value,
-            dof=3,
+            dof=6,
             stamp=stamp,
             state_id=state_id,
         )
@@ -81,10 +82,10 @@ class SE3State(State):
     def plus(self, dx: np.ndarray):
         self.value = self.value @ SE3.Exp(dx)
 
-    def minus(self, x: "VectorState") -> np.ndarray:
+    def minus(self, x: "SE3State") -> np.ndarray:
         return SE3.Log(SE3.inverse(x.value) @ self.value)
 
-    def copy(self) -> "VectorState":
+    def copy(self) -> "SE3State":
         return SE3State(self.value.copy(), self.stamp, self.state_id)
 
 ```
@@ -193,3 +194,15 @@ The following measurement models are currently part of the lib:
 Finally, this repo has the following state estimation algorithms implemented:
 - `ExtendedKalmanFilter`
 - `IteratedKalmanFilter`
+
+
+## Contributing to the Documentation
+The documentation is automatically generated from python docstrings using `sphinx`, which can be installed by following [these instructions](https://www.sphinx-doc.org/en/master/usage/installation.html).
+
+After sphinx is installed change to the `./docs/` directory and run 
+
+    make html
+
+and the documentation will be updated. In terms of actually writing documentation, we use the numpy format, which can be seen in some of the existing docstrings in the code, and can be used as a template. 
+
+Alternatively and prefereably, install the [autoDocstring extension for VSCode](https://marketplace.visualstudio.com/items?itemName=njpwerner.autodocstring) and change the docstring format in the settings to `numpy`.
