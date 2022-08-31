@@ -16,7 +16,7 @@ def check_outlier(error: np.ndarray, covariance: np.ndarray):
     an outlier.
     """
     error = error.reshape((-1, 1))
-    md = np.asscalar(error.T @ np.linalg.solve(covariance, error))
+    md = np.ndarray.item(error.T @ np.linalg.solve(covariance, error))
     if md > chi2.ppf(0.99, df=error.size):
         is_outlier = True
     else:
@@ -303,8 +303,8 @@ class IteratedKalmanFilter(ExtendedKalmanFilter):
         P = prior_covariance
         z = meas_error
         R = meas_covariance
-        cost_prior = np.asscalar(0.5 * e.T @ np.linalg.solve(P, e))
-        cost_meas = np.asscalar(0.5 * z.T @ np.linalg.solve(R, z))
+        cost_prior = np.ndarray.item(0.5 * e.T @ np.linalg.solve(P, e))
+        cost_meas = np.ndarray.item(0.5 * z.T @ np.linalg.solve(R, z))
         return cost_prior + cost_meas, cost_prior, cost_meas
 
 
