@@ -94,4 +94,21 @@ ax.set_ylim(0,None)
 ax.set_xlabel("Time (s)")
 ax.set_ylabel("NEES")
 ax.legend()
+
+if N < 15:
+    fig, axs = plt.subplots(2, 1)
+    axs: List[plt.Axes] = axs
+    for lv1, result in enumerate(results.trial_results):
+        for i in range(len(axs)):
+            axs[i].fill_between(
+                result.stamp,
+                result.three_sigma[:, i],
+                -result.three_sigma[:, i],
+                alpha=0.5,
+            )
+            axs[i].plot(result.stamp, result.error[:, i])
+            #axs[i].set_ylim([-1,1])
+    axs[0].set_title("Estimation error")
+    axs[1].set_xlabel("Time (s)")
+
 plt.show()
