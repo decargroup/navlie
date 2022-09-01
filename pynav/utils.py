@@ -96,14 +96,10 @@ class MonteCarloResult:
         self.average_nees = np.average(
             np.array([t.nees for t in trial_results]), axis=0
         )
-        self.average_ees = np.average(
-            np.array([t.ees for t in trial_results]), axis=0
-        )
+        self.average_ees = np.average(np.array([t.ees for t in trial_results]), axis=0)
 
         self.rmse: np.ndarray = np.sqrt(
-            np.average(
-                np.power(np.array([t.error for t in trial_results]), 2), axis=0
-            )
+            np.average(np.power(np.array([t.error for t in trial_results]), 2), axis=0)
         )
 
         self.total_rmse: np.ndarray = np.sqrt(self.average_ees)
@@ -194,7 +190,7 @@ def plot_error(
 
     Returns
     -------
-    plt.Figure 
+    plt.Figure
         _description_
     List[plt.Axes]
         _description
@@ -279,8 +275,6 @@ def plot_meas(
         axs[i].scatter(
             y_stamps, y_meas[:, i], color="b", alpha=0.7, s=2, label="Measured"
         )
-        axs[i].plot(
-            y_stamps, y_true[:, i], color="r", alpha=1, label="Modelled"
-        )
+        axs[i].plot(y_stamps, y_true[:, i], color="r", alpha=1, label="Modelled")
 
     return fig, axs

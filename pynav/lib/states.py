@@ -23,7 +23,7 @@ class VectorState(State):
         self.value: np.ndarray = self.value.flatten() + dx.flatten()
 
     def minus(self, x: "VectorState") -> np.ndarray:
-        return self.value - x.value
+        return self.value.flatten() - x.value.flatten()
 
     def copy(self) -> "VectorState":
         return VectorState(self.value.copy(), self.stamp, self.state_id)
@@ -325,7 +325,7 @@ class IMUState(State):
             counter += state.dof
 
     @property
-    def attitude(self):
+    def attitude(self) -> np.ndarray:
         return self.value[0].attitude
 
     @attitude.setter
@@ -333,7 +333,7 @@ class IMUState(State):
         self.value[0].attitude = C
 
     @property
-    def velocity(self):
+    def velocity(self) -> np.ndarray:
         return self.value[0].velocity
 
     @velocity.setter
@@ -341,7 +341,7 @@ class IMUState(State):
         self.value[0].velocity = v
 
     @property
-    def position(self):
+    def position(self) -> np.ndarray:
         return self.value[0].position
 
     @position.setter
@@ -354,7 +354,7 @@ class IMUState(State):
 
     @bg.setter
     def bg(self, gyro_bias):
-        self.value[1].value = gyro_bias
+        self.value[1].value = gyro_bias.flatten()
 
     @property
     def ba(self) -> np.ndarray:
@@ -362,7 +362,8 @@ class IMUState(State):
 
     @ba.setter
     def ba(self, accel_bias):
-        self.value[2].value = accel_bias
+        accel_bias.flatten()
+        self.value[2].value = accel_bias.flatten()
 
     @property
     def nav_state(self) -> np.ndarray:
@@ -379,13 +380,10 @@ class IMUState(State):
             sub_dx = dx[s]
             self.value[i].plus(sub_dx)
 
-        if new_stamp is not None:
-            self.set_stamp_for_all(new_stamp)
-
     def minus(self, x: "IMUState") -> np.ndarray:
         dx = []
         for i, v in enumerate(x.value):
-            dx.append(self.value[i].minus(x.value[i]))
+            dx.append(self.value[i].minus(x.value[i]).reshape((-1, 1)))
 
         return np.vstack(dx)
 
@@ -400,7 +398,33 @@ class IMUState(State):
             self.ba.copy(),
             self.stamp,
             self.state_id,
+            self.direction,
         )
+
+    @staticmethod
+    def jacobian_from_blocks(
+        attitude: np.ndarray = None,
+        position: np.ndarray = None,
+        velocity: np.ndarray = None,
+        gyro_bias: np.ndarray = None,
+        accel_bias: np.ndarray = None,
+    ):
+        for jac in [attitude, position, velocity, gyro_bias, accel_bias]:
+            if jac is not None:
+                dim = jac.shape[0]
+
+        if attitude is None:
+            attitude = np.zeros((dim, 3))
+        if position is None:
+            position = np.zeros((dim, 3))
+        if velocity is None:
+            velocity = np.zeros((dim, 3))
+        if gyro_bias is None:
+            gyro_bias = np.zeros((dim, 3))
+        if accel_bias is None:
+            accel_bias = np.zeros((dim, 3))
+
+        return np.block([attitude, velocity, position, gyro_bias, accel_bias])
 
 
 class CompositeState(State):

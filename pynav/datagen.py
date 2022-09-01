@@ -33,6 +33,7 @@ class DataGenerator:
         frequencies associated with each measurement. If a single frequency
         is provided as a float, it will be used for all measurements.
     """
+
     def __init__(
         self,
         process_model: ProcessModel,
@@ -42,7 +43,7 @@ class DataGenerator:
         meas_model_list: List[MeasurementModel] = [],
         meas_freq_list: Union[float, List[float]] = None,
     ):
-        
+
         self.process_model = process_model
         self.input_func = input_func
         self.input_covariance = input_covariance
@@ -116,7 +117,6 @@ class DataGenerator:
         x.stamp = times[0]
         state_list = [x.copy()]
         input_list: List[StampedValue] = []
-        Q = np.atleast_2d(self.input_covariance)
         for i in range(0, len(times) - 1):
             u = StampedValue(self.input_func(times[i]), times[i])
 
@@ -142,6 +142,7 @@ class DataGenerator:
 
             # Add noise to input if requested.
             if noise:
+                Q = np.atleast_2d(self.input_covariance)
                 w: np.ndarray = randvec(Q)
                 og_shape = u.value.shape
                 u_noisy = u.value.ravel() + randvec(Q).ravel()
