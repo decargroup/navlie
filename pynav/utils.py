@@ -13,6 +13,7 @@ class GaussianResult:
     about a Gaussian filter's state estimate, given the ground-truth value of
     the state.
     """
+
     __slots__ = [
         "stamp",
         "state",
@@ -38,13 +39,13 @@ class GaussianResult:
         state_true : State
             The true state, which will be used to compute various error metrics.
         """
-        
+
         state = estimate.state
         covariance = estimate.covariance
 
-        #:float: timestamp 
+        #:float: timestamp
         self.stamp = state.stamp
-        #:State: estimated state 
+        #:State: estimated state
         self.state = state
         #:State: true state
         self.state_true = state_true
@@ -71,6 +72,7 @@ class GaussianResultList:
     stacks the attributes in numpy arrays. Convenient for plotting. This object
     does nothing more than array-ifying the attributes of `GaussianResult`
     """
+
     __slots__ = [
         "stamp",
         "state",
@@ -85,18 +87,19 @@ class GaussianResultList:
         "value_true",
         "dof",
     ]
+
     def __init__(self, result_list: List[GaussianResult]):
         """
         Parameters
         ----------
         result_list : List[GaussianResult]
-            An entire sequence/trajectory of GaussianResult, typically of an 
+            An entire sequence/trajectory of GaussianResult, typically of an
             entire estimation trial.
 
 
         Let `N = len(result_list)`
         """
-        #:numpy.ndarray with shape (N,):  timestamp 
+        #:numpy.ndarray with shape (N,):  timestamp
         self.stamp = np.array([r.stamp for r in result_list])
         #:numpy.ndarray with shape (N,): numpy array of State objects
         self.state = np.array([r.state for r in result_list])
@@ -106,11 +109,11 @@ class GaussianResultList:
         self.covariance = np.array([r.covariance for r in result_list])
         #:numpy.ndarray with shape (N, dof): error throughout trajectory
         self.error = np.array([r.error for r in result_list])
-        #:numpy.ndarray with shape (N,): EES throughout trajectory 
+        #:numpy.ndarray with shape (N,): EES throughout trajectory
         self.ees = np.array([r.ees for r in result_list])
-        #:numpy.ndarray with shape (N,): NEES throughout trajectory 
+        #:numpy.ndarray with shape (N,): NEES throughout trajectory
         self.nees = np.array([r.nees for r in result_list])
-        #:numpy.ndarray with shape (N,): Mahalanobis distance throughout trajectory         
+        #:numpy.ndarray with shape (N,): Mahalanobis distance throughout trajectory
         self.md = np.array([r.md for r in result_list])
         #:numpy.ndarray with shape (N, dof): three-sigma bounds
         self.three_sigma = np.array([r.three_sigma for r in result_list])
@@ -199,10 +202,10 @@ class MonteCarloResult:
         Parameters
         ----------
         confidence_interval : float
-            Cumulative probability threshold that defines the bound. Must be 
+            Cumulative probability threshold that defines the bound. Must be
             between 0 and 1.
         double_sided : bool, optional
-            Whether the provided threshold is single-sided or double sided, 
+            Whether the provided threshold is single-sided or double sided,
             by default True
 
         Returns
@@ -224,28 +227,47 @@ class MonteCarloResult:
         )
 
 
-def monte_carlo(trial: Callable[[int], List[GaussianResult]], num_trials: int):
+def monte_carlo(trial: Callable[[int], GaussianResultList], num_trials: int) -> MonteCarloResult:
     """
     Monte-Carlo experiment executor. Give a callable `trial` function that
-    executes a trial and returns a list of `GaussianResult`.
+    executes a trial and returns a `GaussianResultList`, and this function
+    will execute it a number of times and aappgregate the results.
+
+    Parameters
+    ----------
+    trial : Callable[[int], GaussianResultList]
+        Callable trial function. Must accept a single integer trial number, 
+        and return a GaussianResultList. From trial to trial, the timestamps
+        are expected to remain consistent.
+    num_trials : int
+        Number of Trials to execute
+
+    Returns
+    -------
+    MonteCarloResult
+        Data container object
     """
 
     trial_results = [None] * num_trials
     print("Starting Monte Carlo experiment...")
+
+    start_time = time.time()
     for i in range(num_trials):
+        trial_start_time = time.time()
         print("Trial {0} of {1}... ".format(i + 1, num_trials))
-        start_time = time.time()
 
         # Execute the trial
-        trial_results[i] = GaussianResultList(trial(i))
+        trial_results[i] = trial(i)
 
         # Print some info
-        duration = time.time() - start_time
-        remaining = (num_trials - i - 1) * duration
+        duration = time.time() - trial_start_time
+        avg_duration = (time.time() - start_time)/(i+1)
+        remaining = (num_trials - i - 1) * avg_duration
         print(
-            "    Completed in {duration:.1f}s. Estimated time remaining: {remaining:.1f}s".format(
-                duration=duration, remaining=remaining
-            )
+            (
+                "    Completed in {duration:.1f}s. "
+                + "Estimated time remaining: {remaining:.1f}s"
+            ).format(duration=duration, remaining=remaining)
         )
 
     return MonteCarloResult(trial_results)
@@ -261,9 +283,9 @@ def randvec(cov: np.ndarray) -> np.ndarray:
 def plot_error(
     results: GaussianResultList,
     axs: List[plt.Axes] = None,
-    label: str =None,
-    sharey: bool =False,
-    color =None,
+    label: str = None,
+    sharey: bool = False,
+    color=None,
 ) -> Tuple[plt.Figure, List[plt.Axes]]:
     """
     A generic three-sigma bound plotter.
@@ -283,7 +305,7 @@ def plot_error(
 
     Returns
     -------
-    plt.Figure 
+    plt.Figure
         Handle to figure.
     List[plt.Axes]
         Handle to axes that were drawn on.
@@ -323,7 +345,7 @@ def plot_meas(
     state_true_list: List[State],
     axs: List[plt.Axes] = None,
     sharey=False,
-)-> Tuple[plt.Figure, List[plt.Axes]]:
+) -> Tuple[plt.Figure, List[plt.Axes]]:
     """
     Given measurement data, make time-domain plots of the measurement values
     and their ground-truth model-based values.
@@ -333,7 +355,7 @@ def plot_meas(
     meas_list : List[Measurement]
         Measurement data to be plotted.
     state_true_list : List[State]
-        A list of true State objects with similar timestamp domain. Will be 
+        A list of true State objects with similar timestamp domain. Will be
         interpolated if timestamps do not line up perfectly.
     axs : List[plt.Axes], optional
         Axes to draw on, by default None. If None, new axes will be created.
@@ -342,7 +364,7 @@ def plot_meas(
 
     Returns
     -------
-    plt.Figure 
+    plt.Figure
         Handle to figure.
     List[plt.Axes]
         Handle to axes that were drawn on.
