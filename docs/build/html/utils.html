@@ -280,8 +280,8 @@ stacks the attributes in numpy arrays. Convenient for plotting. This object
 does nothing more than array-ifying the attributes of <cite>GaussianResult</cite></p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
-<dd class="field-odd"><p><strong>result_list</strong> (<em>List</em><em>[</em><a class="reference internal" href="#pynav.utils.GaussianResult" title="pynav.utils.GaussianResult"><em>GaussianResult</em></a><em>]</em>) – An entire sequence/trajectory of GaussianResult, typically of an
-entire estimation trial.</p>
+<dd class="field-odd"><p><strong>result_list</strong> (<em>List</em><em>[</em><a class="reference internal" href="#pynav.utils.GaussianResult" title="pynav.utils.GaussianResult"><em>GaussianResult</em></a><em>]</em>) – A list of GaussianResult, intended such that each element corresponds
+to a different time point</p>
 </dd>
 </dl>
 <p>Let <cite>N = len(result_list)</cite></p>
@@ -576,9 +576,26 @@ by default True</p></li>
 
 <dl class="py function">
 <dt id="pynav.utils.monte_carlo">
-<code class="sig-prename descclassname"><span class="pre">pynav.utils.</span></code><code class="sig-name descname"><span class="pre">monte_carlo</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">trial</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Callable</span><span class="p"><span class="pre">[</span></span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span> </span><span class="pre">List</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#pynav.utils.GaussianResult" title="pynav.utils.GaussianResult"><span class="pre">pynav.utils.GaussianResult</span></a><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">num_trials</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">int</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#pynav.utils.monte_carlo" title="Permalink to this definition">¶</a></dt>
+<code class="sig-prename descclassname"><span class="pre">pynav.utils.</span></code><code class="sig-name descname"><span class="pre">monte_carlo</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">trial</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Callable</span><span class="p"><span class="pre">[</span></span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span> </span><a class="reference internal" href="#pynav.utils.GaussianResultList" title="pynav.utils.GaussianResultList"><span class="pre">pynav.utils.GaussianResultList</span></a><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">num_trials</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">int</span></span></em><span class="sig-paren">)</span> &#x2192; <a class="reference internal" href="#pynav.utils.MonteCarloResult" title="pynav.utils.MonteCarloResult"><span class="pre">pynav.utils.MonteCarloResult</span></a><a class="headerlink" href="#pynav.utils.monte_carlo" title="Permalink to this definition">¶</a></dt>
 <dd><p>Monte-Carlo experiment executor. Give a callable <cite>trial</cite> function that
-executes a trial and returns a list of <cite>GaussianResult</cite>.</p>
+executes a trial and returns a <cite>GaussianResultList</cite>, and this function
+will execute it a number of times and aappgregate the results.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>trial</strong> (<em>Callable</em><em>[</em><em>[</em><em>int</em><em>]</em><em>, </em><a class="reference internal" href="#pynav.utils.GaussianResultList" title="pynav.utils.GaussianResultList"><em>GaussianResultList</em></a><em>]</em>) – Callable trial function. Must accept a single integer trial number,
+and return a GaussianResultList. From trial to trial, the timestamps
+are expected to remain consistent.</p></li>
+<li><p><strong>num_trials</strong> (<em>int</em>) – Number of Trials to execute</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>Data container object</p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p><a class="reference internal" href="#pynav.utils.MonteCarloResult" title="pynav.utils.MonteCarloResult">MonteCarloResult</a></p>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="py function">

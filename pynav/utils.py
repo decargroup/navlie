@@ -93,8 +93,8 @@ class GaussianResultList:
         Parameters
         ----------
         result_list : List[GaussianResult]
-            An entire sequence/trajectory of GaussianResult, typically of an
-            entire estimation trial.
+            A list of GaussianResult, intended such that each element corresponds
+            to a different time point
 
 
         Let `N = len(result_list)`
