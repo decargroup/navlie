@@ -141,8 +141,8 @@ class DataGenerator:
             x.stamp = times[i + 1]
 
             # Add noise to input if requested.
-            if noise:
-                w: np.ndarray = randvec(Q)
+            if noise and np.linalg.norm(Q) > 0:
+                
                 og_shape = u.value.shape
                 u_noisy = u.value.ravel() + randvec(Q).ravel()
                 u.value = u_noisy.reshape(og_shape)

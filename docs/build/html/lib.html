@@ -182,6 +182,13 @@
 <li class="toctree-l4"><a class="reference internal" href="#pynav.lib.models.SingleIntegrator.jacobian_fd"><code class="docutils literal notranslate"><span class="pre">jacobian_fd</span></code></a></li>
 </ul>
 </li>
+<li class="toctree-l3"><a class="reference internal" href="#pynav.lib.models.DoubleIntegrator"><code class="docutils literal notranslate"><span class="pre">DoubleIntegrator</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#pynav.lib.models.DoubleIntegrator.evaluate"><code class="docutils literal notranslate"><span class="pre">evaluate</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#pynav.lib.models.DoubleIntegrator.jacobian"><code class="docutils literal notranslate"><span class="pre">jacobian</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#pynav.lib.models.DoubleIntegrator.covariance"><code class="docutils literal notranslate"><span class="pre">covariance</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#pynav.lib.models.DoubleIntegrator.jacobian_fd"><code class="docutils literal notranslate"><span class="pre">jacobian_fd</span></code></a></li>
+</ul>
+</li>
 <li class="toctree-l3"><a class="reference internal" href="#pynav.lib.models.BodyFrameVelocity"><code class="docutils literal notranslate"><span class="pre">BodyFrameVelocity</span></code></a><ul>
 <li class="toctree-l4"><a class="reference internal" href="#pynav.lib.models.BodyFrameVelocity.evaluate"><code class="docutils literal notranslate"><span class="pre">evaluate</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="#pynav.lib.models.BodyFrameVelocity.jacobian"><code class="docutils literal notranslate"><span class="pre">jacobian</span></code></a></li>
@@ -1201,43 +1208,46 @@ with the the keys being the substate IDs.</p>
 <tr class="row-odd"><td><p><a class="reference internal" href="#pynav.lib.models.SingleIntegrator" title="pynav.lib.models.SingleIntegrator"><code class="xref py py-obj docutils literal notranslate"><span class="pre">SingleIntegrator</span></code></a></p></td>
 <td><p>The single-integrator process model is a process model of the form</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#pynav.lib.models.BodyFrameVelocity" title="pynav.lib.models.BodyFrameVelocity"><code class="xref py py-obj docutils literal notranslate"><span class="pre">BodyFrameVelocity</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#pynav.lib.models.DoubleIntegrator" title="pynav.lib.models.DoubleIntegrator"><code class="xref py py-obj docutils literal notranslate"><span class="pre">DoubleIntegrator</span></code></a></p></td>
+<td><p>A second-order kinematic process model with discretization as in <a class="reference external" href="https://ieeexplore.ieee.org/stamp/stamp.jsp?tp=&amp;arnumber=303738">https://ieeexplore.ieee.org/stamp/stamp.jsp?tp=&amp;arnumber=303738</a></p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#pynav.lib.models.BodyFrameVelocity" title="pynav.lib.models.BodyFrameVelocity"><code class="xref py py-obj docutils literal notranslate"><span class="pre">BodyFrameVelocity</span></code></a></p></td>
 <td><p>The body-frame velocity process model assumes that the input contains both translational and angular velocity measurements, both relative to a local reference frame, but resolved in the robot body frame.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#pynav.lib.models.RelativeBodyFrameVelocity" title="pynav.lib.models.RelativeBodyFrameVelocity"><code class="xref py py-obj docutils literal notranslate"><span class="pre">RelativeBodyFrameVelocity</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#pynav.lib.models.RelativeBodyFrameVelocity" title="pynav.lib.models.RelativeBodyFrameVelocity"><code class="xref py py-obj docutils literal notranslate"><span class="pre">RelativeBodyFrameVelocity</span></code></a></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#pynav.lib.models.CompositeProcessModel" title="pynav.lib.models.CompositeProcessModel"><code class="xref py py-obj docutils literal notranslate"><span class="pre">CompositeProcessModel</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#pynav.lib.models.CompositeProcessModel" title="pynav.lib.models.CompositeProcessModel"><code class="xref py py-obj docutils literal notranslate"><span class="pre">CompositeProcessModel</span></code></a></p></td>
 <td><p>Should this be called a StackedProcessModel?</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#pynav.lib.models.CompositeMeasurementModel" title="pynav.lib.models.CompositeMeasurementModel"><code class="xref py py-obj docutils literal notranslate"><span class="pre">CompositeMeasurementModel</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#pynav.lib.models.CompositeMeasurementModel" title="pynav.lib.models.CompositeMeasurementModel"><code class="xref py py-obj docutils literal notranslate"><span class="pre">CompositeMeasurementModel</span></code></a></p></td>
 <td><p>Wrapper for a standard measurement model that assigns the model to a specific substate (referenced by <cite>state_id</cite>) inside a CompositeState.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#pynav.lib.models.RangePointToAnchor" title="pynav.lib.models.RangePointToAnchor"><code class="xref py py-obj docutils literal notranslate"><span class="pre">RangePointToAnchor</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#pynav.lib.models.RangePointToAnchor" title="pynav.lib.models.RangePointToAnchor"><code class="xref py py-obj docutils literal notranslate"><span class="pre">RangePointToAnchor</span></code></a></p></td>
 <td><p>Range measurement from a point state to an anchor (which is also another point).</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#pynav.lib.models.RangePoseToAnchor" title="pynav.lib.models.RangePoseToAnchor"><code class="xref py py-obj docutils literal notranslate"><span class="pre">RangePoseToAnchor</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#pynav.lib.models.RangePoseToAnchor" title="pynav.lib.models.RangePoseToAnchor"><code class="xref py py-obj docutils literal notranslate"><span class="pre">RangePoseToAnchor</span></code></a></p></td>
 <td><p>Range measurement from a pose state to an anchor.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#pynav.lib.models.RangePoseToPose" title="pynav.lib.models.RangePoseToPose"><code class="xref py py-obj docutils literal notranslate"><span class="pre">RangePoseToPose</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#pynav.lib.models.RangePoseToPose" title="pynav.lib.models.RangePoseToPose"><code class="xref py py-obj docutils literal notranslate"><span class="pre">RangePoseToPose</span></code></a></p></td>
 <td><p>Range model given two absolute poses of rigid bodies, each containing a tag.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#pynav.lib.models.RangeRelativePose" title="pynav.lib.models.RangeRelativePose"><code class="xref py py-obj docutils literal notranslate"><span class="pre">RangeRelativePose</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#pynav.lib.models.RangeRelativePose" title="pynav.lib.models.RangeRelativePose"><code class="xref py py-obj docutils literal notranslate"><span class="pre">RangeRelativePose</span></code></a></p></td>
 <td><p>Range model given a pose of another body relative to current pose.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#pynav.lib.models.GlobalPosition" title="pynav.lib.models.GlobalPosition"><code class="xref py py-obj docutils literal notranslate"><span class="pre">GlobalPosition</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#pynav.lib.models.GlobalPosition" title="pynav.lib.models.GlobalPosition"><code class="xref py py-obj docutils literal notranslate"><span class="pre">GlobalPosition</span></code></a></p></td>
 <td><p>Global, world-frame, or “absolute” position measurement.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#pynav.lib.models.Altitude" title="pynav.lib.models.Altitude"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Altitude</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#pynav.lib.models.Altitude" title="pynav.lib.models.Altitude"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Altitude</span></code></a></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#pynav.lib.models.Gravitometer" title="pynav.lib.models.Gravitometer"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Gravitometer</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#pynav.lib.models.Gravitometer" title="pynav.lib.models.Gravitometer"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Gravitometer</span></code></a></p></td>
 <td><p>Gravitometer model of the form</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#pynav.lib.models.Magnetometer" title="pynav.lib.models.Magnetometer"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Magnetometer</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#pynav.lib.models.Magnetometer" title="pynav.lib.models.Magnetometer"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Magnetometer</span></code></a></p></td>
 <td><p>Magnetometer model of the form</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#pynav.lib.models.InvariantMeasurement" title="pynav.lib.models.InvariantMeasurement"><code class="xref py py-obj docutils literal notranslate"><span class="pre">InvariantMeasurement</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#pynav.lib.models.InvariantMeasurement" title="pynav.lib.models.InvariantMeasurement"><code class="xref py py-obj docutils literal notranslate"><span class="pre">InvariantMeasurement</span></code></a></p></td>
 <td><p>Given a Measurement object, the class will construct a left- or right-invariant innovation ready to be fused into a state estimator.</p></td>
 </tr>
 </tbody>
@@ -1268,6 +1278,42 @@ with the the keys being the substate IDs.</p>
 <dl class="py method">
 <dt id="pynav.lib.models.SingleIntegrator.jacobian_fd">
 <code class="sig-name descname"><span class="pre">jacobian_fd</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="types.html#pynav.types.State" title="pynav.types.State"><span class="pre">pynav.types.State</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">u</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="types.html#pynav.types.StampedValue" title="pynav.types.StampedValue"><span class="pre">pynav.types.StampedValue</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">dt</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">float</span></span></em><span class="sig-paren">)</span> &#x2192; <span class="pre">numpy.ndarray</span><a class="headerlink" href="#pynav.lib.models.SingleIntegrator.jacobian_fd" title="Permalink to this definition">¶</a></dt>
+<dd><p>Calculates the model jacobian with finite difference.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt id="pynav.lib.models.DoubleIntegrator">
+<em class="property"><span class="pre">class</span> </em><code class="sig-prename descclassname"><span class="pre">pynav.lib.models.</span></code><code class="sig-name descname"><span class="pre">DoubleIntegrator</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">Q</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">numpy.ndarray</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#pynav.lib.models.DoubleIntegrator" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="types.html#pynav.types.ProcessModel" title="pynav.types.ProcessModel"><code class="xref py py-class docutils literal notranslate"><span class="pre">pynav.types.ProcessModel</span></code></a></p>
+<p>A second-order kinematic process model with discretization as in
+<a class="reference external" href="https://ieeexplore.ieee.org/stamp/stamp.jsp?tp=&amp;arnumber=303738">https://ieeexplore.ieee.org/stamp/stamp.jsp?tp=&amp;arnumber=303738</a></p>
+<dl class="simple">
+<dt>inputs:</dt><dd><p>Q: Continuous time covariance on the input u.</p>
+</dd>
+</dl>
+<dl class="py method">
+<dt id="pynav.lib.models.DoubleIntegrator.evaluate">
+<code class="sig-name descname"><span class="pre">evaluate</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="#pynav.lib.states.VectorState" title="pynav.lib.states.VectorState"><span class="pre">pynav.lib.states.VectorState</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">u</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="types.html#pynav.types.StampedValue" title="pynav.types.StampedValue"><span class="pre">pynav.types.StampedValue</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">dt</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">float</span></span></em><span class="sig-paren">)</span> &#x2192; <span class="pre">numpy.ndarray</span><a class="headerlink" href="#pynav.lib.models.DoubleIntegrator.evaluate" title="Permalink to this definition">¶</a></dt>
+<dd><p>Evaluate discrete-time process model</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="pynav.lib.models.DoubleIntegrator.jacobian">
+<code class="sig-name descname"><span class="pre">jacobian</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">u</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dt</span></span></em><span class="sig-paren">)</span> &#x2192; <span class="pre">numpy.ndarray</span><a class="headerlink" href="#pynav.lib.models.DoubleIntegrator.jacobian" title="Permalink to this definition">¶</a></dt>
+<dd><p>Discrete-time state Jacobian</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="pynav.lib.models.DoubleIntegrator.covariance">
+<code class="sig-name descname"><span class="pre">covariance</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">u</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dt</span></span></em><span class="sig-paren">)</span> &#x2192; <span class="pre">numpy.ndarray</span><a class="headerlink" href="#pynav.lib.models.DoubleIntegrator.covariance" title="Permalink to this definition">¶</a></dt>
+<dd><p>Discrete-time covariance on process model</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="pynav.lib.models.DoubleIntegrator.jacobian_fd">
+<code class="sig-name descname"><span class="pre">jacobian_fd</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="types.html#pynav.types.State" title="pynav.types.State"><span class="pre">pynav.types.State</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">u</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="types.html#pynav.types.StampedValue" title="pynav.types.StampedValue"><span class="pre">pynav.types.StampedValue</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">dt</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">float</span></span></em><span class="sig-paren">)</span> &#x2192; <span class="pre">numpy.ndarray</span><a class="headerlink" href="#pynav.lib.models.DoubleIntegrator.jacobian_fd" title="Permalink to this definition">¶</a></dt>
 <dd><p>Calculates the model jacobian with finite difference.</p>
 </dd></dl>
 
@@ -1555,7 +1601,7 @@ point).</p>
 
 <dl class="py class">
 <dt id="pynav.lib.models.Altitude">
-<em class="property"><span class="pre">class</span> </em><code class="sig-prename descclassname"><span class="pre">pynav.lib.models.</span></code><code class="sig-name descname"><span class="pre">Altitude</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">R</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">numpy.ndarray</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">minimum</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.0</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#pynav.lib.models.Altitude" title="Permalink to this definition">¶</a></dt>
+<em class="property"><span class="pre">class</span> </em><code class="sig-prename descclassname"><span class="pre">pynav.lib.models.</span></code><code class="sig-name descname"><span class="pre">Altitude</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">R</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">numpy.ndarray</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">minimum</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bias</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.1</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#pynav.lib.models.Altitude" title="Permalink to this definition">¶</a></dt>
 <dd><p>Bases: <a class="reference internal" href="types.html#pynav.types.MeasurementModel" title="pynav.types.MeasurementModel"><code class="xref py py-class docutils literal notranslate"><span class="pre">pynav.types.MeasurementModel</span></code></a></p>
 <dl class="py method">
 <dt id="pynav.lib.models.Altitude.evaluate">
