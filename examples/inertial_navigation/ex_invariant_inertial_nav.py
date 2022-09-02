@@ -10,14 +10,13 @@ from pynav.filters import ExtendedKalmanFilter, run_filter
 from pynav.lib.models import (
     IMUKinematics,
     InvariantMeasurement,
-    InvariantRelativeLandmark,
+    InvariantPointRelativePosition,
 )
 from pynav.lib.states import IMUState
 from pynav.types import Measurement
 from pynav.utils import GaussianResult, GaussianResultList, plot_error
 
 import inertial_nav_sim_utils as sim_utils
-from rviz_utils.types import PointCloudViz
 
 # This flag can be set to true to visualize the results in RViz.
 # Note: this requires the rviz_utils package here :
@@ -27,7 +26,9 @@ use_rviz = False
 
 def main():
     # Generate the sim data and groundtruth trajetory
-    sim_config = sim_utils.SimulationConfig(t_start=0, t_end=30, input_freq=100.0)
+    sim_config = sim_utils.SimulationConfig(
+        t_start=0, t_end=30, input_freq=100.0
+    )
     sim_data = sim_utils.generate_inertial_nav_example(sim_config)
 
     states_gt: List[IMUState] = sim_data["states_true"]
@@ -56,8 +57,12 @@ def main():
     meas_list: List[Measurement] = sim_data["meas_list"]
     inv_meas_list = []
     for meas in meas_list:
-        invariant_meas_model = InvariantRelativeLandmark(meas.value, meas.model)
-        invariant_meas = InvariantMeasurement(meas, "right", invariant_meas_model)
+        invariant_meas_model = InvariantPointRelativePosition(
+            meas.value, meas.model
+        )
+        invariant_meas = InvariantMeasurement(
+            meas, "right", invariant_meas_model
+        )
         inv_meas_list.append(invariant_meas)
 
     estimate_list = run_filter(
@@ -99,6 +104,7 @@ def visualize(
     # Imports from rviz_utils package
     from rviz_utils.types import OdometryViz, PathViz
     from rviz_utils.visualization import Visualization
+    from rviz_utils.types import PointCloudViz
 
     # Plot states gt
     viz = Visualization()

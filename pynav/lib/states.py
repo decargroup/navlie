@@ -23,7 +23,8 @@ class VectorState(State):
         self.value: np.ndarray = self.value.flatten() + dx.flatten()
 
     def minus(self, x: "VectorState") -> np.ndarray:
-        return self.value.flatten() - x.value.flatten()
+        og_shape = self.value.shape
+        return (self.value.ravel() - x.value.ravel()).reshape(og_shape)
 
     def copy(self) -> "VectorState":
         return VectorState(self.value.copy(), self.stamp, self.state_id)
@@ -77,19 +78,25 @@ class MatrixLieGroupState(State):
     @property
     def attitude(self) -> np.ndarray:
         raise NotImplementedError(
-            "{0} does not have attitude property".format(self.__class__.__name__)
+            "{0} does not have attitude property".format(
+                self.__class__.__name__
+            )
         )
 
     @property
     def position(self) -> np.ndarray:
         raise NotImplementedError(
-            "{0} does not have position property".format(self.__class__.__name__)
+            "{0} does not have position property".format(
+                self.__class__.__name__
+            )
         )
 
     @property
     def velocity(self) -> np.ndarray:
         raise NotImplementedError(
-            "{0} does not have velocity property".format(self.__class__.__name__)
+            "{0} does not have velocity property".format(
+                self.__class__.__name__
+            )
         )
 
     def jacobian_from_blocks(self, **kwargs) -> np.ndarray:
@@ -166,7 +173,9 @@ class SE2State(MatrixLieGroupState):
         self.value[0:2, 2] = r
 
     @staticmethod
-    def jacobian_from_blocks(attitude: np.ndarray = None, position: np.ndarray = None):
+    def jacobian_from_blocks(
+        attitude: np.ndarray = None, position: np.ndarray = None
+    ):
 
         for jac in [attitude, position]:
             if jac is not None:
@@ -207,7 +216,9 @@ class SE3State(MatrixLieGroupState):
         self.value[0:3, 3] = r
 
     @staticmethod
-    def jacobian_from_blocks(attitude: np.ndarray = None, position: np.ndarray = None):
+    def jacobian_from_blocks(
+        attitude: np.ndarray = None, position: np.ndarray = None
+    ):
 
         for jac in [attitude, position]:
             if jac is not None:
@@ -245,8 +256,7 @@ class SE23State(MatrixLieGroupState):
 
     @position.setter
     def position(self, r):
-        r = r.flatten()
-        self.value[0:3, 4] = r
+        self.value[0:3, 4] = r.ravel()
 
     @property
     def velocity(self):
@@ -254,8 +264,7 @@ class SE23State(MatrixLieGroupState):
 
     @velocity.setter
     def velocity(self, v):
-        v = v.flatten()
-        self.value[0:3, 3] = v
+        self.value[0:3, 3] = v.ravel()
 
     @staticmethod
     def jacobian_from_blocks(
@@ -275,156 +284,6 @@ class SE23State(MatrixLieGroupState):
             velocity = np.zeros((dim, 3))
 
         return np.block([attitude, velocity, position])
-
-
-class IMUState(State):
-    def __init__(
-        self,
-        nav_state: np.ndarray,
-        bg: np.ndarray,
-        ba: np.ndarray,
-        stamp: float = None,
-        state_id=None,
-        direction="right",
-    ):
-        """Instantiate and IMUState object.
-
-        Parameters
-        ----------
-        nav_state : np.ndarray
-            The navigation state stored as an element of SE_2(3).
-            Contains orientation, velocity, and position.
-        bg : np.ndarray
-            Gyroscope bias, [3 x 1] matrix
-        ba : np.ndarray
-            Accelerometer bias, [3 x 1] matrix
-        stamp : float, optional
-            Timestamp, by default None
-        state_id : _type_, optional
-            Unique identifier, by default None
-        direction : str, optional
-            Direction of the perturbation for the nav state, by default "right"
-        """
-        nav_state = SE23State(nav_state, stamp, state_id, direction)
-        bg = VectorState(bg, stamp, state_id)
-        ba = VectorState(ba, stamp, state_id)
-
-        # Gravity resolved in the inertial frame
-        self.gravity: np.ndarray = np.array([0, 0, -9.81]).reshape((-1, 1))
-
-        self.value: List[State] = [nav_state, bg, ba]
-        self.state_id = state_id
-        self.stamp = stamp
-        self.dof = 15
-        self.direction = direction
-
-        self._slices = []
-        counter = 0
-        for state in self.value:
-            self._slices.append(slice(counter, counter + state.dof))
-            counter += state.dof
-
-    @property
-    def attitude(self) -> np.ndarray:
-        return self.value[0].attitude
-
-    @attitude.setter
-    def attitude(self, C):
-        self.value[0].attitude = C
-
-    @property
-    def velocity(self) -> np.ndarray:
-        return self.value[0].velocity
-
-    @velocity.setter
-    def velocity(self, v):
-        self.value[0].velocity = v
-
-    @property
-    def position(self) -> np.ndarray:
-        return self.value[0].position
-
-    @position.setter
-    def position(self, r):
-        self.value[0].position = r
-
-    @property
-    def bg(self) -> np.ndarray:
-        return self.value[1].value
-
-    @bg.setter
-    def bg(self, gyro_bias):
-        self.value[1].value = gyro_bias.flatten()
-
-    @property
-    def ba(self) -> np.ndarray:
-        return self.value[2].value
-
-    @ba.setter
-    def ba(self, accel_bias):
-        accel_bias.flatten()
-        self.value[2].value = accel_bias.flatten()
-
-    @property
-    def nav_state(self) -> np.ndarray:
-        return self.value[0].value
-
-    def plus(self, dx: np.ndarray, new_stamp: float = None):
-        """
-        Updates the value of each of the IMU state, given a perturbation dx.
-        """
-        if dx.shape[0] != 15:
-            raise ValueError("Perturbation must be dimension 15!")
-
-        for i, s in enumerate(self._slices):
-            sub_dx = dx[s]
-            self.value[i].plus(sub_dx)
-
-    def minus(self, x: "IMUState") -> np.ndarray:
-        dx = []
-        for i, v in enumerate(x.value):
-            dx.append(self.value[i].minus(x.value[i]).reshape((-1, 1)))
-
-        return np.vstack(dx)
-
-    def copy(self):
-        """
-        Returns a new composite state object where the state values have also
-        been copied.
-        """
-        return IMUState(
-            self.nav_state.copy(),
-            self.bg.copy(),
-            self.ba.copy(),
-            self.stamp,
-            self.state_id,
-            self.direction,
-        )
-
-    @staticmethod
-    def jacobian_from_blocks(
-        attitude: np.ndarray = None,
-        position: np.ndarray = None,
-        velocity: np.ndarray = None,
-        gyro_bias: np.ndarray = None,
-        accel_bias: np.ndarray = None,
-    ):
-        for jac in [attitude, position, velocity, gyro_bias, accel_bias]:
-            if jac is not None:
-                dim = jac.shape[0]
-
-        if attitude is None:
-            attitude = np.zeros((dim, 3))
-        if position is None:
-            position = np.zeros((dim, 3))
-        if velocity is None:
-            velocity = np.zeros((dim, 3))
-        if gyro_bias is None:
-            gyro_bias = np.zeros((dim, 3))
-        if accel_bias is None:
-            accel_bias = np.zeros((dim, 3))
-
-        return np.block([attitude, velocity, position, gyro_bias, accel_bias])
 
 
 class CompositeState(State):
@@ -449,7 +308,9 @@ class CompositeState(State):
 
     __slots__ = ["substates", "_slices"]
 
-    def __init__(self, state_list: List[State], stamp: float = None, state_id=None):
+    def __init__(
+        self, state_list: List[State], stamp: float = None, state_id=None
+    ):
 
         #:List[State]: The substates are the CompositeState 's value.
         self.value = state_list
@@ -580,3 +441,142 @@ class CompositeState(State):
             jac[:, slc] = block
 
         return jac
+
+
+class IMUState(CompositeState):
+    def __init__(
+        self,
+        nav_state: np.ndarray,
+        bias_gyro: np.ndarray,
+        bias_accel: np.ndarray,
+        stamp: float = None,
+        state_id=None,
+        direction="right",
+    ):
+        """Instantiate and IMUState object.
+
+        Parameters
+        ----------
+        nav_state : np.ndarray
+            The navigation state stored as an element of SE_2(3).
+            Contains orientation, velocity, and position.
+        bias_gyro : np.ndarray
+            Gyroscope bias, [3 x 1] matrix
+        bias_accel : np.ndarray
+            Accelerometer bias, [3 x 1] matrix
+        stamp : float, optional
+            Timestamp, by default None
+        state_id : _type_, optional
+            Unique identifier, by default None
+        direction : str, optional
+            Direction of the perturbation for the nav state, by default "right"
+        """
+        nav_state = SE23State(nav_state, stamp, state_id, direction)
+        bias_gyro = VectorState(bias_gyro, stamp, state_id)
+        bias_accel = VectorState(bias_accel, stamp, state_id)
+
+        state_list = [nav_state, bias_gyro, bias_accel]
+        super().__init__(state_list, stamp, state_id)
+
+        self.direction = direction
+
+    @property
+    def attitude(self) -> np.ndarray:
+        return self.value[0].attitude
+
+    @attitude.setter
+    def attitude(self, C):
+        self.value[0].attitude = C
+
+    @property
+    def velocity(self) -> np.ndarray:
+        return self.value[0].velocity
+
+    @velocity.setter
+    def velocity(self, v):
+        self.value[0].velocity = v
+
+    @property
+    def position(self) -> np.ndarray:
+        return self.value[0].position
+
+    @position.setter
+    def position(self, r):
+        self.value[0].position = r
+
+    @property
+    def bias_gyro(self) -> np.ndarray:
+        return self.value[1].value
+
+    @bias_gyro.setter
+    def bias_gyro(self, gyro_bias):
+        self.value[1].value = gyro_bias.ravel()
+
+    @property
+    def bias_accel(self) -> np.ndarray:
+        return self.value[2].value
+
+    @bias_accel.setter
+    def bias_accel(self, accel_bias):
+        self.value[2].value = accel_bias.ravel()
+
+    @property
+    def nav_state(self) -> np.ndarray:
+        return self.value[0].value
+
+    def plus(self, dx: np.ndarray, new_stamp: float = None):
+        """
+        Updates the value of each of the IMU state, given a perturbation dx.
+        """
+        if dx.shape[0] != 15:
+            raise ValueError("Perturbation must be dimension 15!")
+
+        for i, s in enumerate(self._slices):
+            sub_dx = dx[s]
+            self.value[i].plus(sub_dx)
+
+    def minus(self, x: "IMUState") -> np.ndarray:
+        dx = []
+        for i, v in enumerate(x.value):
+            dx.append(self.value[i].minus(x.value[i]).reshape((-1, 1)))
+
+        return np.vstack(dx)
+
+    def copy(self):
+        """
+        Returns a new composite state object where the state values have also
+        been copied.
+        """
+        return IMUState(
+            self.nav_state.copy(),
+            self.bias_gyro.copy(),
+            self.bias_accel.copy(),
+            self.stamp,
+            self.state_id,
+            self.direction,
+        )
+
+    @staticmethod
+    def jacobian_from_blocks(
+        attitude: np.ndarray = None,
+        position: np.ndarray = None,
+        velocity: np.ndarray = None,
+        bias_gyro: np.ndarray = None,
+        bias_accel: np.ndarray = None,
+    ):
+        for jac in [attitude, position, velocity, bias_gyro, bias_accel]:
+            if jac is not None:
+                dim = jac.shape[0]
+
+        if attitude is None:
+            attitude = np.zeros((dim, 3))
+        if position is None:
+            position = np.zeros((dim, 3))
+        if velocity is None:
+            velocity = np.zeros((dim, 3))
+        if bias_gyro is None:
+            bias_gyro = np.zeros((dim, 3))
+        if bias_accel is None:
+            bias_accel = np.zeros((dim, 3))
+
+        return np.block([attitude, velocity, position, bias_gyro, bias_accel])

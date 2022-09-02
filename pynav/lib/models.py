@@ -32,7 +32,9 @@ class SingleIntegrator(ProcessModel):
         self._Q = Q
         self.dim = Q.shape[0]
 
-    def evaluate(self, x: VectorState, u: StampedValue, dt: float) -> np.ndarray:
+    def evaluate(
+        self, x: VectorState, u: StampedValue, dt: float
+    ) -> np.ndarray:
         x.value = x.value + dt * u.value
         return x
 
@@ -82,7 +84,7 @@ class BodyFrameVelocity(ProcessModel):
 
 
 class IMUKinematics(ProcessModel):
-    def __init__(self, Q_c: np.ndarray):
+    def __init__(self, Q_c: np.ndarray, g_a: np.ndarray = None):
         """Instantiate the IMUKinematic model.
 
         Noise matrix here is defined in continuous-time. The covariance() function
@@ -94,6 +96,11 @@ class IMUKinematics(ProcessModel):
             _description_
         """
         self._Q_c = Q_c
+
+        if g_a is None:
+            self._gravity: np.ndarray = np.array([0, 0, -9.81]).reshape((-1, 1))
+        else:
+            self._gravity = g_a.reshape((-1, 1))
 
     def evaluate(self, x: IMUState, u: StampedValue, dt: float) -> IMUState:
         """Propagates an IMU state forward one timestep from an IMU measurement.
@@ -120,19 +127,24 @@ class IMUKinematics(ProcessModel):
             Propagated IMUState.
         """
         # Get unbiased inputs
-        unbiased_gyro = u.value[0:3].reshape((-1, 1)) - x.bg.reshape((-1, 1))
-        unbiased_accel = u.value[3:6].reshape((-1, 1)) - x.ba.reshape((-1, 1))
+        bias_gyro = x.bias_gyro.reshape((-1, 1))
+        bias_accel = x.bias_accel.reshape((-1, 1))
+
+        unbiased_gyro = u.value[0:3].reshape((-1, 1)) - bias_gyro
+        unbiased_accel = u.value[3:6].reshape((-1, 1)) - bias_accel
 
         # Extract states at time km1
         C_km1 = x.attitude
         v_km1 = x.velocity.reshape((-1, 1))
         r_km1 = x.position.reshape((-1, 1))
 
-        g_a = x.gravity.reshape((-1, 1))
+        g_a = self._gravity
 
         # Propagate the states forward in time
         C_ab_k = C_km1 @ SO3.Exp(dt * (unbiased_gyro))
-        r_zw_a_k = r_km1 + dt * v_km1 + 0.5 * dt * dt * (C_km1 @ unbiased_accel + g_a)
+        r_zw_a_k = (
+            r_km1 + dt * v_km1 + 0.5 * dt * dt * (C_km1 @ unbiased_accel + g_a)
+        )
         v_zw_a_k = v_km1 + dt * (C_km1 @ unbiased_accel + g_a)
 
         x.attitude = C_ab_k
@@ -163,32 +175,32 @@ class IMUKinematics(ProcessModel):
         """
         # Compute unbiased gyro and accel measurements using bias estimates
 
-        gyro_m = u.value[0:3, [0]]
-        acc_m = u.value[3:6, [0]]
+        # Get unbiased inputs
+        bias_gyro = x.bias_gyro.reshape((-1, 1))
+        bias_accel = x.bias_accel.reshape((-1, 1))
 
-        unbiased_gyro = gyro_m - x.bg
-        unbiased_accel = acc_m - x.ba
+        unbiased_gyro = u.value[0:3].reshape((-1, 1)) - bias_gyro
+        unbiased_accel = u.value[3:6].reshape((-1, 1)) - bias_accel
 
-        # Right-invariant Jacobians
+        # Continuous-time Jacobian
         A_ct = np.zeros((x.dof, x.dof))
 
         # Extract relevant states
         C = x.attitude
         v = x.velocity
         r = x.position
-        g_a = x.gravity
 
         if x.direction == "left":
             # TODO: These are the Jacobians for the right-invariant error,
-            # check that they are correct for a left perturbation
+            # check that they are correct for a left perturbation.
             A_ct[0:3, 9:12] = -C
-            A_ct[3:6, 0:3] = SO3.cross(g_a)
+            A_ct[3:6, 0:3] = SO3.cross(self._gravity)
             A_ct[3:6, 9:12] = -SO3.cross(v) @ C
             A_ct[3:6, 12:15] = -C
             A_ct[6:9, 3:6] = np.identity(3)
             A_ct[6:9, 9:12] = -SO3.cross(r) @ C
         else:
-            raise NotImplementedError("Left jacobian not implemented.")
+            raise NotImplementedError("Right jacobian not implemented.")
 
         # Approximate matrix exponential to third-order
         Adt = A_ct * dt
@@ -259,7 +271,9 @@ class RelativeBodyFrameVelocity(ProcessModel):
         if x.direction == "right":
             return x.group.adjoint(x.group.Exp(-u[1] * dt))
         else:
-            raise NotImplementedError("TODO: left jacobian not yet implemented.")
+            raise NotImplementedError(
+                "TODO: left jacobian not yet implemented."
+            )
 
     def covariance(
         self, x: MatrixLieGroupState, u: StampedValue, dt: float
@@ -276,7 +290,9 @@ class RelativeBodyFrameVelocity(ProcessModel):
             L2 = dt * x.group.left_jacobian(-dt * u2)
             return L1 @ self._Q1 @ L1.T + L2 @ self._Q2 @ L2.T
         else:
-            raise NotImplementedError("TODO: left covariance not yet implemented.")
+            raise NotImplementedError(
+                "TODO: left covariance not yet implemented."
+            )
 
 
 class CompositeProcessModel(ProcessModel):
@@ -287,14 +303,18 @@ class CompositeProcessModel(ProcessModel):
     def __init__(self, model_list: List[ProcessModel]):
         self._model_list = model_list
 
-    def evaluate(self, x: CompositeState, u: StampedValue, dt: float) -> CompositeState:
+    def evaluate(
+        self, x: CompositeState, u: StampedValue, dt: float
+    ) -> CompositeState:
         for i, x_sub in enumerate(x.value):
             u_sub = StampedValue(u.value[i], u.stamp)
             x.value[i] = self._model_list[i].evaluate(x_sub, u_sub, dt)
 
         return x
 
-    def jacobian(self, x: CompositeState, u: StampedValue, dt: float) -> np.ndarray:
+    def jacobian(
+        self, x: CompositeState, u: StampedValue, dt: float
+    ) -> np.ndarray:
         jac = []
         for i, x_sub in enumerate(x.value):
             u_sub = StampedValue(u.value[i], u.stamp)
@@ -302,7 +322,9 @@ class CompositeProcessModel(ProcessModel):
 
         return block_diag(*jac)
 
-    def covariance(self, x: CompositeState, u: StampedValue, dt: float) -> np.ndarray:
+    def covariance(
+        self, x: CompositeState, u: StampedValue, dt: float
+    ) -> np.ndarray:
         cov = []
         for i, x_sub in enumerate(x.value):
             u_sub = StampedValue(u.value[i], u.stamp)
@@ -362,7 +384,7 @@ class RangePointToAnchor(MeasurementModel):
         return self._R
 
 
-class RelativeLandmark(MeasurementModel):
+class PointRelativePosition(MeasurementModel):
     def __init__(
         self,
         landmark_position: np.ndarray,
@@ -385,8 +407,8 @@ class RelativeLandmark(MeasurementModel):
         return self._R
 
 
-class InvariantRelativeLandmark(MeasurementModel):
-    def __init__(self, y: np.ndarray, model: RelativeLandmark):
+class InvariantPointRelativePosition(MeasurementModel):
+    def __init__(self, y: np.ndarray, model: PointRelativePosition):
         self.y = y.ravel()
         self.measurement_model = model
 
@@ -478,7 +500,9 @@ class RangePoseToAnchor(MeasurementModel):
             elif C_ab.shape == (3, 3):
                 att_group = SO3
 
-            r_tw_a = C_ab @ self._r_tz_b.reshape((-1, 1)) + r_zw_a.reshape((-1, 1))
+            r_tw_a = C_ab @ self._r_tz_b.reshape((-1, 1)) + r_zw_a.reshape(
+                (-1, 1)
+            )
             r_tc_a: np.ndarray = r_tw_a - self._r_cw_a.reshape((-1, 1))
             rho = r_tc_a / np.linalg.norm(r_tc_a)
             jac_attitude = rho.T @ C_ab @ att_group.odot(self._r_tz_b)
@@ -500,7 +524,9 @@ class RangePoseToPose(MeasurementModel):
     Range model given two absolute poses of rigid bodies, each containing a tag.
     """
 
-    def __init__(self, tag_body_position1, tag_body_position2, state_id1, state_id2, R):
+    def __init__(
+        self, tag_body_position1, tag_body_position2, state_id1, state_id2, R
+    ):
         self._r_t1_1 = np.array(tag_body_position1).flatten()
         self._r_t2_2 = np.array(tag_body_position2).flatten()
         self._id1 = state_id1
@@ -516,7 +542,9 @@ class RangePoseToPose(MeasurementModel):
         C_a2 = x2.attitude
         r_t1_1 = self._r_t1_1.reshape((-1, 1))
         r_t2_2 = self._r_t2_2.reshape((-1, 1))
-        r_t1t2_a: np.ndarray = (C_a1 @ r_t1_1 + r_1w_a) - (C_a2 @ r_t2_2 + r_2w_a)
+        r_t1t2_a: np.ndarray = (C_a1 @ r_t1_1 + r_1w_a) - (
+            C_a2 @ r_t2_2 + r_2w_a
+        )
         return np.array(np.linalg.norm(r_t1t2_a.flatten()))
 
     def jacobian(self, x: CompositeState) -> np.ndarray:
@@ -528,16 +556,18 @@ class RangePoseToPose(MeasurementModel):
         C_a2 = x2.attitude
         r_t1_1 = self._r_t1_1.reshape((-1, 1))
         r_t2_2 = self._r_t2_2.reshape((-1, 1))
-        r_t1t2_a: np.ndarray = (C_a1 @ r_t1_1 + r_1w_a) - (C_a2 @ r_t2_2 + r_2w_a)
+        r_t1t2_a: np.ndarray = (C_a1 @ r_t1_1 + r_1w_a) - (
+            C_a2 @ r_t2_2 + r_2w_a
+        )
 
         if C_a1.shape == (2, 2):
             att_group = SO2
         elif C_a1.shape == (3, 3):
             att_group = SO3
 
-        rho: np.ndarray = (r_t1t2_a / np.linalg.norm(r_t1t2_a.flatten())).reshape(
-            (-1, 1)
-        )
+        rho: np.ndarray = (
+            r_t1t2_a / np.linalg.norm(r_t1t2_a.flatten())
+        ).reshape((-1, 1))
         jac1 = x1.jacobian_from_blocks(
             attitude=rho.T @ C_a1 @ att_group.odot(r_t1_1),
             position=rho.T @ C_a1,
@@ -611,7 +641,9 @@ class Altitude(MeasurementModel):
     def jacobian(self, x: MatrixLieGroupState):
 
         if x.direction == "right":
-            return x.jacobian_from_blocks(position=x.attitude[2, :].reshape((1, -1)))
+            return x.jacobian_from_blocks(
+                position=x.attitude[2, :].reshape((1, -1))
+            )
         elif x.direction == "left":
             return x.jacobian_from_blocks(
                 attitude=SO3.odot(x.position)[2, :].reshape((1, -1)),
@@ -633,7 +665,9 @@ class Gravitometer(MeasurementModel):
     where :math:`\mathbf{g}_a` is the magnetic field vector in a world frame `a`.
     """
 
-    def __init__(self, R: np.ndarray, gravity_vector: List[float] = [0, 0, -9.80665]):
+    def __init__(
+        self, R: np.ndarray, gravity_vector: List[float] = [0, 0, -9.80665]
+    ):
         """
         Parameters
         ----------
@@ -650,10 +684,14 @@ class Gravitometer(MeasurementModel):
 
     def jacobian(self, x: MatrixLieGroupState):
         if x.direction == "right":
-            return x.jacobian_from_blocks(attitude=-SO3.odot(x.attitude.T @ self._g_a))
+            return x.jacobian_from_blocks(
+                attitude=-SO3.odot(x.attitude.T @ self._g_a)
+            )
         elif x.direction == "left":
 
-            return x.jacobian_from_blocks(attitude=x.attitude.T @ -SO3.odot(self._g_a))
+            return x.jacobian_from_blocks(
+                attitude=x.attitude.T @ -SO3.odot(self._g_a)
+            )
 
     def covariance(self, x: MatrixLieGroupState) -> np.ndarray:
         return self.R
@@ -688,17 +726,23 @@ class Magnetometer(MeasurementModel):
 
     def jacobian(self, x: MatrixLieGroupState):
         if x.direction == "right":
-            return x.jacobian_from_blocks(attitude=-SO3.odot(x.attitude.T @ self._m_a))
+            return x.jacobian_from_blocks(
+                attitude=-SO3.odot(x.attitude.T @ self._m_a)
+            )
         elif x.direction == "left":
 
-            return x.jacobian_from_blocks(attitude=-x.attitude.T @ SO3.odot(self._m_a))
+            return x.jacobian_from_blocks(
+                attitude=-x.attitude.T @ SO3.odot(self._m_a)
+            )
 
     def covariance(self, x: MatrixLieGroupState) -> np.ndarray:
         return self.R
 
 
 class _InvariantInnovation(MeasurementModel):
-    def __init__(self, y: np.ndarray, model: MeasurementModel, direction="right"):
+    def __init__(
+        self, y: np.ndarray, model: MeasurementModel, direction="right"
+    ):
         self.measurement_model = model
         self.y = y.ravel()
         self.direction = direction

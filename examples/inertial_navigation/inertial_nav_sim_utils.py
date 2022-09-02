@@ -3,7 +3,10 @@ from typing import List, Dict
 
 import numpy as np
 from pylie import SE23
-from pynav.lib.models import IMUKinematics, RelativeLandmark
+from pynav.lib.models import (
+    IMUKinematics,
+    PointRelativePosition,
+)
 from pynav.lib.states import IMUState
 from pynav.types import StampedValue, Measurement
 from pynav.utils import randvec
@@ -115,7 +118,9 @@ class InitializationParameters:
             self.sigma_ba_init = 0
 
 
-def generate_bias_trajectories(sim_config: SimulationConfig, n_meas: int, dt: float):
+def generate_bias_trajectories(
+    sim_config: SimulationConfig, n_meas: int, dt: float
+):
     # Generate bias trajectories
     sigma_gyro_bias_dt = sim_config.sigma_gyro_bias_ct / np.sqrt(dt)
     sigma_accel_bias_dt = sim_config.sigma_accel_bias_ct / np.sqrt(dt)
@@ -211,7 +216,9 @@ def generate_inertial_nav_example(sim_config: SimulationConfig):
         sim_config.n_landmarks_per_level,
     )
     meas_cov = np.identity(3) * sim_config.sigma_landmark_sensor**2
-    meas_model_list = [RelativeLandmark(pos, meas_cov) for pos in landmarks]
+    meas_model_list = [
+        PointRelativePosition(pos, meas_cov) for pos in landmarks
+    ]
 
     # Create data generator and generate noiseless navigation states
     data_gen = DataGenerator(
@@ -244,6 +251,8 @@ def generate_inertial_nav_example(sim_config: SimulationConfig):
         noise=False,
     )
 
+    # TODO: Figure out a good way to generate bias trajectories with
+    # datagen.py
     # Generate bias trajectories, modelled as random walk processes
     bg, ba = generate_bias_trajectories(
         sim_config, len(states_true), 1 / sim_config.input_freq
@@ -251,8 +260,8 @@ def generate_inertial_nav_example(sim_config: SimulationConfig):
 
     # Assign biases to state
     for i, state in enumerate(states_true):
-        state.bg = bg[:, [i]]
-        state.ba = ba[:, [i]]
+        state.bias_gyro = bg[:, [i]]
+        state.bias_accel = ba[:, [i]]
 
     # Add bias and noise to inputs
     bias = np.vstack([bg, ba])
