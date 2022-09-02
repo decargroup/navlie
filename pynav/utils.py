@@ -129,6 +129,7 @@ class MonteCarloResult:
     """
 
     def __init__(self, trial_results: List[GaussianResultList]):
+        self.trial_results = trial_results
         """
 
         Parameters
