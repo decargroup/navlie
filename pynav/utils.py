@@ -91,6 +91,7 @@ class MonteCarloResult:
     """
 
     def __init__(self, trial_results: List[GaussianResultList]):
+        self.trial_results = trial_results
         self.num_trials = len(trial_results)
         self.stamp = trial_results[0].stamp
         self.average_nees = np.average(
