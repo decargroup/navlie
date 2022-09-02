@@ -17,6 +17,9 @@ from pynav.types import Measurement
 from pynav.utils import GaussianResult, GaussianResultList, plot_error
 
 import inertial_nav_sim_utils as sim_utils
+import seaborn as sns
+
+sns.set_theme()
 
 # This flag can be set to true to visualize the results in RViz.
 # Note: this requires the rviz_utils package here :
@@ -81,6 +84,7 @@ def main():
             for i in range(len(estimate_list))
         ]
     )
+
     plot_error(results)
     plt.show()
 

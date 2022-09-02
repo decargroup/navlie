@@ -28,7 +28,7 @@ range_models = [
 ]
 range_freqs = [50, 50, 50]
 process_model = SingleIntegrator(Q)
-input_profile = lambda t: np.array([np.sin(t), np.cos(t)])
+input_profile = lambda t, x: np.array([np.sin(t), np.cos(t)])
 input_covariance = Q
 input_freq = 200
 
@@ -87,7 +87,9 @@ import seaborn as sns
 sns.set_theme()
 fig, ax = plt.subplots(1, 1)
 ax.plot(results.value[:, 0], results.value[:, 1], label="Estimate")
-ax.plot(results.value_true[:, 0], results.value_true[:, 1], label="Ground truth")
+ax.plot(
+    results.value_true[:, 0], results.value_true[:, 1], label="Ground truth"
+)
 ax.set_title("Trajectory")
 ax.set_xlabel("x (m)")
 ax.set_ylabel("y (m)")

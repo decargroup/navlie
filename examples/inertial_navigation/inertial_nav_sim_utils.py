@@ -82,17 +82,34 @@ def generate_landmark_positions(
             landmarks.append(cur_landmark)
 
     return landmarks
+    __
 
 
-def input_profile(time: float) -> np.ndarray:
+def input_profile_with_covariance(
+    time: float, x: IMUState, Q_bias: np.ndarray
+) -> np.ndarray:
     """Generates an IMU measurement for a circular trajectory,
     where the robot only rotates about the z-axis and the acceleration
     points towards the center of the circle.
+
+    Bias is added to the measurements at this stage, and a random input to drive
+    the bias random walk is also added. So, the input considered is a [12 x 1]
+    consisting of the IMU measurement and a random [6 x 1] matrix to propagate
+    the biases.
     """
 
-    omega_true = np.array([0, 0, -1.0]).reshape((-1, 1))
-    accel_true = np.array([0, -3.0, 9.81]).reshape((-1, 1))
-    u: np.ndarray = np.vstack([omega_true, accel_true])
+    # Add biases to true angular velocity and acceleration
+    bias_gyro = x.bias_gyro.reshape((-1, 1))
+    bias_accel = x.bias_accel.reshape((-1, 1))
+
+    omega = np.array([0, 0, -1.0]).reshape((-1, 1)) + bias_gyro
+    accel = np.array([0, -3.0, 9.81]).reshape((-1, 1)) + bias_accel
+
+    # Generate a random input to drive the bias random walk
+    bias_noise = randvec(Q_bias)
+
+    # [12 x 1] input to the IMU kinematic model
+    u: np.ndarray = np.vstack([omega, accel, bias_noise])
 
     return u
 
@@ -116,32 +133,6 @@ class InitializationParameters:
             self.sigma_r_init = 0
             self.sigma_bg_init = 0
             self.sigma_ba_init = 0
-
-
-def generate_bias_trajectories(
-    sim_config: SimulationConfig, n_meas: int, dt: float
-):
-    # Generate bias trajectories
-    sigma_gyro_bias_dt = sim_config.sigma_gyro_bias_ct / np.sqrt(dt)
-    sigma_accel_bias_dt = sim_config.sigma_accel_bias_ct / np.sqrt(dt)
-
-    # Accel bias
-    accel_bias = np.zeros((3, n_meas))
-    accel_bias[:, [0]] = sim_config.init_accel_bias
-    for i in range(1, n_meas):
-        accel_bias[:, [i]] = accel_bias[
-            :, [i - 1]
-        ] + dt * sigma_accel_bias_dt * np.random.randn(3, 1)
-
-    # Gyro Bias
-    gyro_bias = np.zeros((3, n_meas))
-    gyro_bias[:, [0]] = sim_config.init_gyro_bias
-    for i in range(1, n_meas):
-        gyro_bias[:, [i]] = gyro_bias[
-            :, [i - 1]
-        ] + dt * sigma_gyro_bias_dt * np.random.randn(3, 1)
-
-    return gyro_bias, accel_bias
 
 
 def generate_initialization(
@@ -220,11 +211,23 @@ def generate_inertial_nav_example(sim_config: SimulationConfig):
         PointRelativePosition(pos, meas_cov) for pos in landmarks
     ]
 
-    # Create data generator and generate noiseless navigation states
+    # Create input profile
+    dt = 1.0 / sim_config.input_freq
+    Q = np.eye(12)
+    Q[0:3, 0:3] *= sim_config.sigma_gyro_ct**2 / dt
+    Q[3:6, 3:6] *= sim_config.sigma_accel_ct**2 / dt
+    Q[6:9, 6:9] *= sim_config.sigma_gyro_bias_ct**2 / dt
+    Q[9:12, 9:12] *= sim_config.sigma_accel_bias_ct**2 / dt
+
+    Q_bias = Q[6:, 6:]
+
+    input_profile = lambda t, x: input_profile_with_covariance(t, x, Q_bias)
+
+    # Create data generator
     data_gen = DataGenerator(
         imu_process_model,
         input_func=input_profile,
-        input_covariance=None,
+        input_covariance=Q,
         input_freq=sim_config.input_freq,
         meas_model_list=meas_model_list,
         meas_freq_list=sim_config.landmark_sensor_freq,
@@ -238,46 +241,23 @@ def generate_inertial_nav_example(sim_config: SimulationConfig):
     )
     x0 = IMUState(
         nav_state_0,
-        np.zeros(3),
-        np.zeros(3),
+        sim_config.init_gyro_bias,
+        sim_config.init_accel_bias,
         stamp=sim_config.t_start,
         state_id=0,
     )
 
+    # Generate all data
     states_true, input_list, meas_list = data_gen.generate(
         x0,
         sim_config.t_start,
         sim_config.t_end,
-        noise=False,
+        noise=True,
     )
 
-    # TODO: Figure out a good way to generate bias trajectories with
-    # datagen.py
-    # Generate bias trajectories, modelled as random walk processes
-    bg, ba = generate_bias_trajectories(
-        sim_config, len(states_true), 1 / sim_config.input_freq
-    )
-
-    # Assign biases to state
-    for i, state in enumerate(states_true):
-        state.bias_gyro = bg[:, [i]]
-        state.bias_accel = ba[:, [i]]
-
-    # Add bias and noise to inputs
-    bias = np.vstack([bg, ba])
-    Q_dt = np.eye(6)
-    dt = 1.0 / sim_config.input_freq
-    Q_dt[0:3, 0:3] *= sim_config.sigma_gyro_ct**2 / dt
-    Q_dt[3:6, 3:6] *= sim_config.sigma_accel_ct**2 / dt
-
-    for i, u in enumerate(input_list):
-        current_bias = bias[:, i].reshape((-1, 1))
-        current_noise = randvec(Q_dt)
-        u.value = u.value + current_bias + current_noise
-
-    # Add noise to the measurements
-    for meas in meas_list:
-        meas.value = meas.value + randvec(meas.model.covariance(None))
+    # Remove final 6 entries from inputs to only keep the IMU measurements
+    for u in input_list:
+        u.value = u.value[:-6]
 
     sim_data = {}
     sim_data["states_true"] = states_true

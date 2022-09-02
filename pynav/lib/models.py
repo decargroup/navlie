@@ -126,6 +126,15 @@ class IMUKinematics(ProcessModel):
         IMUState
             Propagated IMUState.
         """
+
+        # If the user only passed in a [6 x 1], assume that the input driving
+        # the biases is zero.
+        # Else, the user specified a random input to drive the bias random walk
+        if u.value.reshape((-1, 1)).shape[0] == 6:
+            bias_input = np.zeros((6, 1))
+        else:
+            bias_input = u.value[6:]
+
         # Get unbiased inputs
         bias_gyro = x.bias_gyro.reshape((-1, 1))
         bias_accel = x.bias_accel.reshape((-1, 1))
@@ -140,12 +149,16 @@ class IMUKinematics(ProcessModel):
 
         g_a = self._gravity
 
-        # Propagate the states forward in time
+        # Propagate the navigation state forward in time
         C_ab_k = C_km1 @ SO3.Exp(dt * (unbiased_gyro))
         r_zw_a_k = (
             r_km1 + dt * v_km1 + 0.5 * dt * dt * (C_km1 @ unbiased_accel + g_a)
         )
         v_zw_a_k = v_km1 + dt * (C_km1 @ unbiased_accel + g_a)
+
+        # Propagate the biases forward in time using random walk
+        x.bias_gyro = bias_gyro + dt * bias_input[0:3]
+        x.bias_accel = bias_accel + dt * bias_input[3:6]
 
         x.attitude = C_ab_k
         x.velocity = v_zw_a_k

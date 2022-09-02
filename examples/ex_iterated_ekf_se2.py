@@ -17,8 +17,10 @@ Q = np.diag([0.01**2, 0.01**2, 0.01**2, 0.1, 0.1, 0.1])
 process_model = BodyFrameVelocity(Q)
 
 
-def input_profile(t):
-    return np.array([np.sin(0.1 * t), np.cos(0.1 * t), np.sin(0.1 * t), 1, 0, 0])
+def input_profile(t, x):
+    return np.array(
+        [np.sin(0.1 * t), np.cos(0.1 * t), np.sin(0.1 * t), 1, 0, 0]
+    )
 
 
 range_models = [
@@ -42,7 +44,7 @@ state_true, input_data, meas_data = dg.generate(x0, 0, 10, noise=True)
 x = StateWithCovariance(x0, P0)
 
 # Try an EKF or an IterEKF
-#ekf = ExtendedKalmanFilter(process_model)
+# ekf = ExtendedKalmanFilter(process_model)
 ekf = IteratedKalmanFilter(process_model)
 
 meas_idx = 0

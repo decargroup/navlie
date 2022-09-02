@@ -25,7 +25,7 @@ grav_model = Gravitometer(0.1**2 * np.identity(3))
 # Generate some data
 dg = DataGenerator(
     process_model,
-    lambda t: np.array([1, 2, 3]),
+    lambda t, x: np.array([1, 2, 3]),
     Q,
     100,
     [mag_model, grav_model],

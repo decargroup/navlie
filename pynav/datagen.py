@@ -118,7 +118,7 @@ class DataGenerator:
         state_list = [x.copy()]
         input_list: List[StampedValue] = []
         for i in range(0, len(times) - 1):
-            u = StampedValue(self.input_func(times[i]), times[i])
+            u = StampedValue(self.input_func(times[i], x), times[i])
 
             # Generate measurements if it is time to do so
             if not meas_generated:
