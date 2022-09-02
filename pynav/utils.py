@@ -93,6 +93,7 @@ class GaussianResultList:
             An entire sequence/trajectory of GaussianResult, typically of an 
             entire estimation trial.
 
+
         Let `N = len(result_list)`
         """
         #:numpy.ndarray with shape (N,):  timestamp 
@@ -129,36 +130,59 @@ class MonteCarloResult:
     """
 
     def __init__(self, trial_results: List[GaussianResultList]):
-        self.trial_results = trial_results
         """
-
         Parameters
         ----------
         trial_results : List[GaussianResultList]
             Each GaussianResultList corresponds to a trial. This object assumes
             that the timestamps in each trial are identical.
+
+
+        Let `N` denote the number of time steps in a trial.
         """
+
+        #:List[GaussianResultList]: raw trial results
+        self.trial_results = trial_results
+        #:int: number of trials
         self.num_trials = len(trial_results)
+        #:numpy.ndarray with shape (N,): timestamps throughout trajectory
         self.stamp = trial_results[0].stamp
+        #:numpy.ndarray with shape (N,): average NEES throughout trajectory
         self.average_nees = np.average(
             np.array([t.nees for t in trial_results]), axis=0
         )
+        #:numpy.ndarray with shape (N,): average EES throughout trajectory
         self.average_ees = np.average(
             np.array([t.ees for t in trial_results]), axis=0
         )
-
+        #:numpy.ndarray with shape (N,dof): root-mean-squared error of each component
         self.rmse: np.ndarray = np.sqrt(
             np.average(
                 np.power(np.array([t.error for t in trial_results]), 2), axis=0
             )
         )
-
+        #:numpy.ndarray with shape (N,): Total RMSE, this can be meaningless if units differ in a state
         self.total_rmse: np.ndarray = np.sqrt(self.average_ees)
-
+        #:numpy.ndarray with shape (N,1): expected NEES value throughout trajectory
         self.expected_nees = np.array(trial_results[0].dof)
+        #:numpy.ndarray with shape (N): dof throughout trajectory
         self.dof = trial_results[0].dof
 
     def nees_lower_bound(self, confidence_interval: float):
+        """
+        Calculates the NEES lower bound throughout the trajectory.
+
+        Parameters
+        ----------
+        confidence_interval : float
+            Single-sided cumulative probability threshold that defines the bound.
+            Must be between 0 and 1
+
+        Returns
+        -------
+        numpy.ndarray with shape (N,)
+            NEES value corresponding to confidence interval
+        """
         if confidence_interval >= 1 or confidence_interval <= 0:
             raise ValueError("Confidence interval must lie in (0, 1)")
 
@@ -169,6 +193,24 @@ class MonteCarloResult:
         )
 
     def nees_upper_bound(self, confidence_interval: float, double_sided=True):
+        """
+        Calculates the NEES upper bound throughout the trajectory
+
+        Parameters
+        ----------
+        confidence_interval : float
+            Cumulative probability threshold that defines the bound. Must be 
+            between 0 and 1.
+        double_sided : bool, optional
+            Whether the provided threshold is single-sided or double sided, 
+            by default True
+
+        Returns
+        -------
+        numpy.ndarray with shape (N,)
+            NEES value corresponding to confidence interval
+
+        """
         if confidence_interval >= 1 or confidence_interval <= 0:
             raise ValueError("Confidence interval must lie in (0, 1)")
 
@@ -219,32 +261,32 @@ def randvec(cov: np.ndarray) -> np.ndarray:
 def plot_error(
     results: GaussianResultList,
     axs: List[plt.Axes] = None,
-    label=None,
-    sharey=False,
-    color=None,
+    label: str =None,
+    sharey: bool =False,
+    color =None,
 ) -> Tuple[plt.Figure, List[plt.Axes]]:
     """
-    _summary_
+    A generic three-sigma bound plotter.
 
     Parameters
     ----------
     results : GaussianResultList
-        _description_
+        Contains the data to plot
     axs : List[plt.Axes], optional
-        _description_, by default None
-    label : _type_, optional
-        _description_, by default None
+        Axes to draw on, by default None. If None, new axes will be created.
+    label : str, optional
+        Text label to add, by default None
     sharey : bool, optional
-        _description_, by default False
-    color : _type_, optional
-        _description_, by default None
+        Whether to have a common y axis or not, by default False
+    color : color, optional
+        specify the color of the error/bounds.
 
     Returns
     -------
     plt.Figure 
-        _description_
+        Handle to figure.
     List[plt.Axes]
-        _description
+        Handle to axes that were drawn on.
     """
 
     dim = results.error.shape[1]
@@ -281,10 +323,29 @@ def plot_meas(
     state_true_list: List[State],
     axs: List[plt.Axes] = None,
     sharey=False,
-):
+)-> Tuple[plt.Figure, List[plt.Axes]]:
     """
     Given measurement data, make time-domain plots of the measurement values
     and their ground-truth model-based values.
+
+    Parameters
+    ----------
+    meas_list : List[Measurement]
+        Measurement data to be plotted.
+    state_true_list : List[State]
+        A list of true State objects with similar timestamp domain. Will be 
+        interpolated if timestamps do not line up perfectly.
+    axs : List[plt.Axes], optional
+        Axes to draw on, by default None. If None, new axes will be created.
+    sharey : bool, optional
+        Whether to have a common y axis or not, by default False
+
+    Returns
+    -------
+    plt.Figure 
+        Handle to figure.
+    List[plt.Axes]
+        Handle to axes that were drawn on.
     """
 
     # Convert everything to numpy arrays for plotting, and compute the
