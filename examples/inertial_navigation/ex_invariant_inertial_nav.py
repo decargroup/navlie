@@ -39,7 +39,8 @@ def main():
     Q_c[3:6, 3:6] *= sim_config.sigma_accel_ct**2
     Q_c[6:9, 6:9] *= sim_config.sigma_gyro_bias_ct**2
     Q_c[9:12, 9:12] *= sim_config.sigma_accel_bias_ct**2
-    process_model = IMUKinematics(Q_c)
+    dt = 1 / sim_config.input_freq
+    process_model = IMUKinematics(Q_c / dt)
     ekf = ExtendedKalmanFilter(process_model=process_model)
 
     # Define the initial state estimate

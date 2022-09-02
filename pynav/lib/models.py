@@ -84,18 +84,18 @@ class BodyFrameVelocity(ProcessModel):
 
 
 class IMUKinematics(ProcessModel):
-    def __init__(self, Q_c: np.ndarray, g_a: np.ndarray = None):
+    def __init__(self, Q: np.ndarray, g_a: np.ndarray = None):
         """Instantiate the IMUKinematic model.
-
-        Noise matrix here is defined in continuous-time. The covariance() function
-        takes care of properly discritizing the continous-time noise covariance matrix.
 
         Parameters
         ----------
         Q : np.ndarray
-            _description_
+            Discrete-time noise matrix.
+        g_a : np.ndarray
+            Gravity vector resolved in the inertial frame.
+            If None, default value is set to [0; 0; -9.81].
         """
-        self._Q_c = Q_c
+        self._Q = Q
 
         if g_a is None:
             self._gravity: np.ndarray = np.array([0, 0, -9.81]).reshape((-1, 1))
@@ -231,6 +231,7 @@ class IMUKinematics(ProcessModel):
             _description_
         """
 
+        # Continuous-time L matrix
         L_ct = np.zeros((x.dof, 12))
 
         # Extract relevant states
@@ -246,10 +247,10 @@ class IMUKinematics(ProcessModel):
             L_ct[9:12, 6:9] = -np.identity(3)
             L_ct[12:15, 9:12] = -np.identity(3)
         else:
-            raise NotImplementedError("Left jacobian not implemented.")
+            raise NotImplementedError("Right jacobian not implemented.")
 
         # Compute discrete-time noise
-        return L_ct @ self._Q_c @ L_ct.T * dt
+        return L_ct @ self._Q @ L_ct.T * dt**2
 
 
 class RelativeBodyFrameVelocity(ProcessModel):
