@@ -30,7 +30,7 @@ range_freqs = [50, 50, 50]
 process_model = SingleIntegrator(Q)
 input_profile = lambda t: np.array([np.sin(t), np.cos(t)])
 input_covariance = Q
-input_freq = 200
+input_freq = 180
 
 # ##############################################################################
 # Data Generation
@@ -65,12 +65,18 @@ for k in range(len(input_data) - 1):
 
         x = ekf.correct(x, y, u)
 
+        dt = u.stamp-x.state.stamp
+
         # Load the next measurement
         meas_idx += 1
         if meas_idx < len(meas_data):
             y = meas_data[meas_idx]
 
+
+    #print(u.stamp-x.state.stamp)
     x = ekf.predict(x, u)
+
+    
     results_list.append(GaussianResult(x, gt_data[k]))
 
 print("Average filter computation frequency (Hz):")

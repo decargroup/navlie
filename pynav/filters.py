@@ -8,6 +8,12 @@ from .types import (
 )
 import numpy as np
 from scipy.stats.distributions import chi2
+import warnings
+
+def format_warning(message, category, filename, lineno, line=''):
+    # Required to format warning string. 
+    return str(filename) + ':' + str(lineno) + ': ' + category.__name__ + ': ' +str(message) + '\n'
+warnings.formatwarning = format_warning
 
 
 def check_outlier(error: np.ndarray, covariance: np.ndarray):
@@ -93,7 +99,10 @@ class ExtendedKalmanFilter:
 
         if dt is None:
             dt = u.stamp - x.state.stamp
-
+            if np.isclose(u.stamp, x.state.stamp, atol=1e-10):
+                warnings.warn("Timestep dt is zero at time "+ str(u.stamp))
+            if dt < 0:
+                warnings.warn("Timestep dt is negative at time u: "+ str(u.stamp) + "time x: " + str(x.state.stamp))
         # Load dedicated jacobian evaluation point if user specified.
         if x_jac is None:
             x_jac = x.state
