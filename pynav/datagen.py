@@ -22,8 +22,9 @@ class DataGenerator:
     input_func : Callable[[float], np.ndarray]
         A function that returns the input value to be used. The function
         must accept a timestamp as a float from the data generator.
-    input_covariance : np.ndarray
+    input_covariance : np.ndarray or Callable[[float], np.ndarray].
         Covariance used for noise generation to be applied to input values.
+        Either provided as a static value or as a function returning the time-varying Q
     input_freq : float
         Frequency if the input.
     meas_model_list : List[MeasurementModel], optional
@@ -116,7 +117,12 @@ class DataGenerator:
         x.stamp = times[0]
         state_list = [x.copy()]
         input_list: List[StampedValue] = []
-        Q = np.atleast_2d(self.input_covariance)
+
+        if isinstance(self.input_covariance, np.ndarray):
+            Q_func = lambda t: np.atleast_2d(self.input_covariance)
+        if isinstance(self.input_covariance, Callable):
+            Q_func = self.input_covariance
+
         for i in range(0, len(times) - 1):
             u = StampedValue(self.input_func(times[i]), times[i])
 
@@ -141,8 +147,9 @@ class DataGenerator:
             x.stamp = times[i + 1]
 
             # Add noise to input if requested.
-            if noise and np.linalg.norm(Q) > 0:
-                
+            if noise:
+                Q = Q_func(times[i])
+                w: np.ndarray = randvec(Q)
                 og_shape = u.value.shape
                 u_noisy = u.value.ravel() + randvec(Q).ravel()
                 u.value = u_noisy.reshape(og_shape)
