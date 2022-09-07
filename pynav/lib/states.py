@@ -194,11 +194,7 @@ class SO3State(MatrixLieGroupState):
         msg = QuaternionStamped()
         msg.header.stamp = rospy.Time.from_sec(self.stamp)
         msg.header.frame_id = self.state_id
-        q = SO3.to_quat(self.attitude, order="wxyz")
-        msg.quaternion.w = q[0]
-        msg.quaternion.x = q[1]
-        msg.quaternion.y = q[2]
-        msg.quaternion.z = q[3]
+        msg.quaternion = SO3.to_ros(self.attitude)
         return msg
 
 class SE2State(MatrixLieGroupState):
@@ -344,15 +340,8 @@ class SE3State(MatrixLieGroupState):
         msg.header.stamp = rospy.Time.from_sec(self.stamp)
         if frame_id is not None:
             msg.header.frame_id = frame_id
-
-        q = SO3.to_quat(self.attitude, order="wxyz")
-        msg.pose.position.x = self.position[0]
-        msg.pose.position.y = self.position[1]
-        msg.pose.position.z = self.position[2]
-        msg.pose.orientation.w = q[0]
-        msg.pose.orientation.x = q[1]
-        msg.pose.orientation.y = q[2]
-        msg.pose.orientation.z = q[3] 
+            
+        msg.pose = SE3.to_ros(self.value)
 
         return msg
 
