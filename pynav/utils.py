@@ -144,10 +144,9 @@ def monte_carlo(trial: Callable[[int], List[GaussianResult]], num_trials: int):
     trial_results = [None] * num_trials
     
     print("Starting Monte Carlo experiment...")
-    for i in tqdm(range(num_trials)):
+    for i in tqdm(range(num_trials), unit="trial", ncols=80):
         # Execute the trial
         trial_results[i] = GaussianResultList(trial(i))
-
     return MonteCarloResult(trial_results)
 
 
