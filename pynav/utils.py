@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 import time
 from scipy.stats.distributions import chi2
 from scipy.interpolate import interp1d
-
+from tqdm import tqdm
 
 class GaussianResult:
     """
@@ -247,29 +247,13 @@ def monte_carlo(trial: Callable[[int], GaussianResultList], num_trials: int) -> 
     MonteCarloResult
         Data container object
     """
-
     trial_results = [None] * num_trials
+    
     print("Starting Monte Carlo experiment...")
-
-    start_time = time.time()
-    for i in range(num_trials):
-        trial_start_time = time.time()
-        print("Trial {0} of {1}... ".format(i + 1, num_trials))
-
+    for i in tqdm(range(num_trials), unit="trial", ncols=80):
         # Execute the trial
         trial_results[i] = trial(i)
-
-        # Print some info
-        duration = time.time() - trial_start_time
-        avg_duration = (time.time() - start_time)/(i+1)
-        remaining = (num_trials - i - 1) * avg_duration
-        print(
-            (
-                "    Completed in {duration:.1f}s. "
-                + "Estimated time remaining: {remaining:.1f}s"
-            ).format(duration=duration, remaining=remaining)
-        )
-
+        
     return MonteCarloResult(trial_results)
 
 

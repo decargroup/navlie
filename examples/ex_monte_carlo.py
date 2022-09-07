@@ -59,7 +59,8 @@ def ekf_trial(trial_number:int) -> List[GaussianResult]:
     results_list = []
     for k in range(len(input_data) - 1):
         u = input_data[k]
-
+        x = ekf.predict(x, u)
+        
         # Fuse any measurements that have occurred.
         while y.stamp < input_data[k + 1].stamp and meas_idx < len(meas_data):
 
@@ -68,14 +69,14 @@ def ekf_trial(trial_number:int) -> List[GaussianResult]:
             if meas_idx < len(meas_data):
                 y = meas_data[meas_idx]
 
-        x = ekf.predict(x, u)
+        
         results_list.append(GaussianResult(x, state_true[k]))
 
     return GaussianResultList(results_list)
 
 # %% Run the monte carlo experiment
 
-N = 10
+N = 5
 
 results = monte_carlo(ekf_trial, N)
 

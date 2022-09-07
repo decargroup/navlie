@@ -130,22 +130,80 @@ class ProcessModel(ABC):
     Abstract process model base class for process models of the form 
 
     .. math::
-        \mathbf{x}_k = \mathbf{f}(\mathbf{x}_{k-1}, \mathbf{u}_{k-1}, \Delta t) + \mathbf{w}_{k-1}
+        \mathbf{x}_k = \mathbf{f}(\mathbf{x}_{k-1}, \mathbf{u}, \Delta t) + \mathbf{w}_{k}
 
-    where :math:`\mathbf{u}_{k-1}` is the input and :math:`\Delta t` is the time 
-    period between the two states.
-
+    where :math:`\mathbf{u}` is the input, :math:`\Delta t` is the time 
+    period between the two states, and :math:`\mathbf{w}_{k} \sim \mathcal{N}(\mathbf{0}, \mathbf{Q}_k)`
+    is additive Gaussian noise.
     """
     @abstractmethod
     def evaluate(self, x: State, u: StampedValue, dt: float) -> State:
+        """
+        Implementation of :math:`\mathbf{f}(\mathbf{x}_{k-1}, \mathbf{u}, \Delta t)`.
+
+        Parameters
+        ----------
+        x : State
+            State at time :math:`k-1`.
+        u : StampedValue
+            The input value :math:`\mathbf{u}` provided as a StampedValue object.
+            The actual numerical value is accessed via `u.value`.
+        dt : float
+            The time interval :math:`\Delta t` between the two states.
+
+        Returns
+        -------
+        State
+            State at time :math:`k`.
+        """
         pass
 
     @abstractmethod
     def jacobian(self, x: State, u: StampedValue, dt: float) -> np.ndarray:
+        """
+        Implementation of the process model Jacobian with respect to the state.
+
+        .. math::
+            \mathbf{F} = \partial \mathbf{f}(\mathbf{x}_{k-1}, \mathbf{u}, \Delta t)
+            / \partial \mathbf{x}_{k-1}
+
+
+        Parameters
+        ----------
+        x : State
+            State at time :math:`k-1`.
+        u : StampedValue
+            The input value :math:`\mathbf{u}` provided as a StampedValue object.
+        dt : float
+            The time interval :math:`\Delta t` between the two states.
+
+        Returns
+        -------
+        np.ndarray
+            Process model Jacobian with respect to the state :math:`\mathbf{F}`.
+        """
         pass
 
     @abstractmethod
     def covariance(self, x: State, u: StampedValue, dt: float) -> np.ndarray:
+        """
+        Covariance matrix math:`\mathbf{Q}_k` of the additive Gaussian 
+        noise :math:`\mathbf{w}_{k} \sim \mathcal{N}(\mathbf{0}, \mathbf{Q}_k)`.
+
+        Parameters
+        ----------
+        x : State
+            State at time :math:`k-1`.
+        u : StampedValue
+            The input value :math:`\mathbf{u}` provided as a StampedValue object.
+        dt : float
+            The time interval :math:`\Delta t` between the two states.
+
+        Returns
+        -------
+        np.ndarray
+            Covariance matrix :math:`\mathbf{Q}_k`.
+        """
         pass
 
     def jacobian_fd(self, x: State, u: StampedValue, dt: float) -> np.ndarray:
