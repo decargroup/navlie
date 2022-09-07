@@ -8,13 +8,6 @@ from .types import (
 )
 import numpy as np
 from scipy.stats.distributions import chi2
-import warnings
-
-def format_warning(message, category, filename, lineno, line=''):
-    # Required to format warning string. 
-    return str(filename) + ':' + str(lineno) + ': ' + category.__name__ + ': ' +str(message) + '\n'
-warnings.formatwarning = format_warning
-
 
 def check_outlier(error: np.ndarray, covariance: np.ndarray):
     """
@@ -58,8 +51,12 @@ class ExtendedKalmanFilter:
         x_jac: State = None,
     ) -> StateWithCovariance:
         """
-        Propagates the state forward in time using a process model.
+        Propagates the state forward in time using a process model. The user 
+        must provide the current state, input, and time interval  
 
+        .. note::
+            If the time interval `dt` is not provided in the arguments, it will
+            be taken as the difference between the input stamp and the state stamp.
 
         Parameters
         ----------
@@ -68,20 +65,11 @@ class ExtendedKalmanFilter:
         u : StampedValue
             Input measurement to be given to process model
         dt : float, optional
-            Duration to next time step. If not provided, the `.stamp` value in 
-            `u` will be used.
+            Duration to next time step. If not provided, dt will be calculated
+            with `dt = u.stamp - x.state.stamp`.
         x_jac : State, optional
             Evaluation point for the process model Jacobian. If not provided, the
             current state estimate will be used.
-        use_last_input : bool, optional
-            Whether to use the previously-fed input in the process model or the
-            current one, by default True. This is essentially the difference
-            between 
-
-            .. math:
-                x_k = f(x_{k-1}, u_{k-1}) \\text{ and } x_k = f(x_{k-1}, u_{k})
-            
-
 
         Returns
         -------
@@ -99,10 +87,10 @@ class ExtendedKalmanFilter:
 
         if dt is None:
             dt = u.stamp - x.state.stamp
-            if np.isclose(u.stamp, x.state.stamp, atol=1e-10):
-                warnings.warn("Timestep dt is zero at time "+ str(u.stamp))
-            if dt < 0:
-                warnings.warn("Timestep dt is negative at time u: "+ str(u.stamp) + "time x: " + str(x.state.stamp))
+
+        if dt < 0:
+            raise RuntimeError("dt is negative!")
+                
         # Load dedicated jacobian evaluation point if user specified.
         if x_jac is None:
             x_jac = x.state
@@ -133,15 +121,16 @@ class ExtendedKalmanFilter:
         x : StateWithCovariance
             The current state estimate.
         u: StampedValue
-            Most recent input, to be used if the measurement stamp is larger 
-            than the state stamp.
+            Most recent input, to be used to predict the state forward 
+            if the measurement stamp is larger than the state stamp.
         y : Measurement
             Measurement to be fused into the current state estimate.
         x_jac : State, optional
             valuation point for the process model Jacobian. If not provided, the
             current state estimate will be used.
         reject_outlier : bool, optional
-            Whether to apply the NIS test to this measurement, by default None
+            Whether to apply the NIS test to this measurement, by default None,
+            in which case the value of `self.reject_outliers` will be used.
 
         Returns
         -------
@@ -162,7 +151,9 @@ class ExtendedKalmanFilter:
         # until current time.
         if y.stamp is not None:
             dt = y.stamp - x.state.stamp
-            if dt > 0 and u is not None:
+            if dt < 0:
+                raise RuntimeError("Measurement stamp is earlier than state stamp")
+            elif u is not None:
                 x = self.predict(x, u, dt)
 
         if x_jac is None:
@@ -229,15 +220,16 @@ class IteratedKalmanFilter(ExtendedKalmanFilter):
         x : StateWithCovariance
             The current state estimate.
         u: StampedValue
-            Most recent input, to be used if the measurement stamp is larger 
-            than the state stamp.
+            Most recent input, to be used to predict the state forward 
+            if the measurement stamp is larger than the state stamp.
         y : Measurement
             Measurement to be fused into the current state estimate.
         x_jac : State, optional
             valuation point for the process model Jacobian. If not provided, the
             current state estimate will be used.
         reject_outlier : bool, optional
-            Whether to apply the NIS test to this measurement, by default None
+            Whether to apply the NIS test to this measurement, by default None,
+            in which case the value of `self.reject_outliers` will be used.
 
         Returns
         -------
@@ -260,7 +252,9 @@ class IteratedKalmanFilter(ExtendedKalmanFilter):
         # until current time.
         if y.stamp is not None:
             dt = y.stamp - x.state.stamp
-            if dt > 0 and u is not None:
+            if dt < 0:
+                raise RuntimeError("Measurement stamp is earlier than state stamp")
+            elif dt > 0 and u is not None:
                 x = self.predict(x, u, dt)
 
         dx = 10
@@ -364,6 +358,7 @@ def run_filter(
     results_list = []
     for k in range(len(input_data) - 1):
         u = input_data[k]
+        x = filter.predict(x, u)
 
         # Fuse any measurements that have occurred.
         if len(meas_data) > 0:
@@ -374,6 +369,5 @@ def run_filter(
                 if meas_idx < len(meas_data):
                     y = meas_data[meas_idx]
 
-        x = filter.predict(x, u)
         results_list.append(x)
     return results_list
