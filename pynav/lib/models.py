@@ -44,6 +44,59 @@ class SingleIntegrator(ProcessModel):
         return dt**2 * self._Q
 
 
+class DoubleIntegrator(ProcessModel):
+    """
+    A second-order kinematic process model with discretization as in
+    https://ieeexplore.ieee.org/stamp/stamp.jsp?tp=&arnumber=303738
+    """
+
+    def __init__(self, Q: np.ndarray):
+        """
+        inputs:
+            Q: Continuous time covariance on the input u.
+        """
+        if Q.shape[0] != Q.shape[1]:
+            raise ValueError("Q must be an n x n matrix.")
+
+        self._Q = Q
+        self.dim = Q.shape[0]
+
+    def evaluate(
+        self, x: VectorState, u: StampedValue, dt: float
+    ) -> np.ndarray:
+        """
+        Evaluate discrete-time process model
+        """
+        Ad = np.identity(2 * self.dim)
+        Ad[0 : self.dim, self.dim :] = dt * np.identity(self.dim)
+
+        Ld = np.zeros((2*self.dim, self.dim))
+        Ld[0:self.dim,:] = 0.5*dt**2*np.identity(self.dim)
+        Ld[self.dim:,:] = dt*np.identity(self.dim)
+
+        x.value = (Ad @ x.value.reshape((-1,1)) + Ld @ u.value.reshape((-1,1))).ravel()
+        return x
+
+    def jacobian(self, x, u, dt) -> np.ndarray:
+        """
+        Discrete-time state Jacobian
+        """
+        Ad = np.identity(2 * self.dim)
+        Ad[0 : self.dim, self.dim :] = dt * np.identity(self.dim)
+        return Ad
+
+    def covariance(self, x, u, dt) -> np.ndarray:
+        """
+        Discrete-time covariance on process model
+        """
+
+        Ld = np.zeros((2*self.dim, self.dim))
+        Ld[0:self.dim,:] = 0.5*dt**2*np.identity(self.dim)
+        Ld[self.dim:,:] = dt*np.identity(self.dim)
+
+        return Ld @ self._Q @ Ld.T
+
+
 class BodyFrameVelocity(ProcessModel):
     """
     The body-frame velocity process model assumes that the input contains
@@ -198,17 +251,21 @@ class RangePointToAnchor(MeasurementModel):
     def __init__(self, anchor_position: List[float], R: float):
         self._r_cw_a = np.array(anchor_position).flatten()
         self._R = np.array(R)
+        self.dim = self._r_cw_a.size
 
     def evaluate(self, x: VectorState) -> np.ndarray:
-        r_zw_a = x.value.flatten()
+        r_zw_a = x.value.ravel()[0:self.dim]
         y = np.linalg.norm(self._r_cw_a - r_zw_a)
         return y
 
     def jacobian(self, x: VectorState) -> np.ndarray:
-        r_zw_a = x.value.flatten()
+        r_zw_a = x.value.ravel()[0:self.dim]
         r_zc_a: np.ndarray = r_zw_a - self._r_cw_a
         y = np.linalg.norm(r_zc_a)
-        return r_zc_a.reshape((1, -1)) / y
+
+        jac = np.zeros((1, x.dof))
+        jac[0,:self.dim] = r_zc_a.reshape((1, -1)) / y
+        return jac
 
     def covariance(self, x: VectorState) -> np.ndarray:
         return self._R
@@ -376,12 +433,13 @@ class GlobalPosition(MeasurementModel):
 
 
 class Altitude(MeasurementModel):
-    def __init__(self, R: np.ndarray, minimum=0.0):
+    def __init__(self, R: np.ndarray, minimum=0.0, bias=0.1):
         self.R = R
         self.minimum = minimum
+        self.bias = bias
 
     def evaluate(self, x: MatrixLieGroupState):
-        h = x.position[2]
+        h = x.position[2] + self.bias
         return h if h > self.minimum else None
 
     def jacobian(self, x: MatrixLieGroupState):
@@ -410,6 +468,7 @@ class Gravitometer(MeasurementModel):
 
     where :math:`\mathbf{g}_a` is the magnetic field vector in a world frame `a`.
     """
+
     def __init__(
         self, R: np.ndarray, gravity_vector: List[float] = [0, 0, -9.80665]
     ):
@@ -494,8 +553,7 @@ class _InvariantInnovation(MeasurementModel):
 
     def evaluate(self, x: MatrixLieGroupState) -> np.ndarray:
         y_hat = self.measurement_model.evaluate(x)
-        e :np.ndarray = y_hat.ravel() - self.y.ravel()
-
+        e: np.ndarray = y_hat.ravel() - self.y.ravel()
 
         if self.direction == "left":
             z = x.attitude.T @ e
@@ -575,7 +633,7 @@ class InvariantMeasurement(Measurement):
             whether to form a left- or right-invariant innovation, by default "right"
         """
         super(InvariantMeasurement, self).__init__(
-            value = np.zeros((meas.value.size,)),
-            stamp = meas.stamp,
-            model =_InvariantInnovation(meas.value, meas.model, direction),
+            value=np.zeros((meas.value.size,)),
+            stamp=meas.stamp,
+            model=_InvariantInnovation(meas.value, meas.model, direction),
         )
