@@ -420,14 +420,14 @@ class CompositeState(State):
     and by ID.
     """
 
-    __slots__ = ["substates", "_slices"]
+    __slots__ = ["_slices"]
 
     def __init__(
         self, state_list: List[State], stamp: float = None, state_id=None
     ):
 
-        #:List[State]: The substates are the CompositeState 's value.
-        self.value = state_list
+        #:List[State]: The substates are the CompositeState's value.
+        self.value = state_list 
 
         self.stamp = stamp
         self.state_id = state_id
@@ -438,6 +438,32 @@ class CompositeState(State):
         for state in state_list:
             self._slices.append(slice(counter, counter + state.dof))
             counter += state.dof
+
+    def __getstate__(self):
+        """
+        Get the state of the object for pickling.
+        """
+        # When using __slots__ the pickle module expects a tuple from __getstate__.
+        # See https://stackoverflow.com/questions/1939058/simple-example-of-use-of-setstate-and-getstate/41754104#41754104
+        return (None, {
+            "value": self.value,
+            "stamp": self.stamp,
+            "state_id": self.state_id,
+            "_slices": self._slices,
+        })
+
+    def __setstate__(self, attributes):
+        """ 
+        Set the state of the object for unpickling.
+        """
+        # When using __slots__ the pickle module sends a tuple for __setstate__.
+        # See https://stackoverflow.com/questions/1939058/simple-example-of-use-of-setstate-and-getstate/41754104#41754104
+        
+        attributes = attributes[1]
+        self.value = attributes["value"]
+        self.stamp = attributes["stamp"]
+        self.state_id = attributes["state_id"]
+        self._slices = attributes["_slices"]
 
     @property
     def dof(self):

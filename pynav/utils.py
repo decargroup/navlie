@@ -102,11 +102,11 @@ class GaussianResultList:
         #:numpy.ndarray with shape (N,):  timestamp
         self.stamp = np.array([r.stamp for r in result_list])
         #:numpy.ndarray with shape (N,): numpy array of State objects
-        self.state = np.array([r.state for r in result_list])
+        self.state: List[State] = np.array([r.state for r in result_list])
         #:numpy.ndarray with shape (N,): numpy array of true State objects
-        self.state_true = np.array([r.state_true for r in result_list])
+        self.state_true: List[State] = np.array([r.state_true for r in result_list])
         #:numpy.ndarray with shape (N,dof,dof): covariance
-        self.covariance = np.array([r.covariance for r in result_list])
+        self.covariance: np.ndarray = np.array([r.covariance for r in result_list])
         #:numpy.ndarray with shape (N, dof): error throughout trajectory
         self.error = np.array([r.error for r in result_list])
         #:numpy.ndarray with shape (N,): EES throughout trajectory

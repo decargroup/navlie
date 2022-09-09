@@ -376,12 +376,13 @@ class GlobalPosition(MeasurementModel):
 
 
 class Altitude(MeasurementModel):
-    def __init__(self, R: np.ndarray, minimum=0.0):
+    def __init__(self, R: np.ndarray, minimum=0.0, bias=0.1):
         self.R = R
         self.minimum = minimum
+        self.bias = bias
 
     def evaluate(self, x: MatrixLieGroupState):
-        h = x.position[2]
+        h = x.position[2] + self.bias
         return h if h > self.minimum else None
 
     def jacobian(self, x: MatrixLieGroupState):
