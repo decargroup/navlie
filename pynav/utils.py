@@ -371,7 +371,7 @@ def plot_meas(
     for i in range(len(meas_list)):
         y_meas.append(np.ravel(meas_list[i].value))
         x = state_true_list[int(state_idx[i])]
-        y_true.append(meas_list[i].model.evaluate(x).ravel())
+        y_true.append(np.ravel(meas_list[i].model.evaluate(x)))
 
     y_meas = np.atleast_2d(np.array(y_meas))
     y_true = np.atleast_2d(np.array(y_true))

@@ -35,7 +35,7 @@ extensions = [
     'sphinx.ext.napoleon',
     'sphinx.ext.mathjax',
     'sphinx.ext.autosummary',
-    'autodocsumm', 
+    'autodocsumm',
     'sphinxcontrib.toctree_plus',
 ]
 autodoc_default_options = {
@@ -45,6 +45,13 @@ autodoc_default_options = {
 autosummary_generate = True
 autoclass_content = 'both'
 toctree_plus_types = {"class", "function", "method", "attribute"}
+
+intersphinx_mapping = {
+    'python': ('https://docs.python.org/3/', None),
+    'numpy': ('https://numpy.org/doc/stable/', None),
+    'scipy': ('https://docs.scipy.org/doc/scipy/', None),
+    'matplotlib': ('https://matplotlib.org/stable/', None),
+}
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
