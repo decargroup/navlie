@@ -2,7 +2,17 @@ from pylie import SO2, SO3, SE2, SE3, SE23
 from pylie.numpy.base import MatrixLieGroup
 import numpy as np
 from ..types import State
-from typing import List
+from typing import Any, List
+
+try:
+    # We do not want to make ROS a hard dependency, so we import it only if
+    # available.
+    from geometry_msgs.msg import PoseStamped, QuaternionStamped
+    import rospy
+except ImportError:
+    pass  # ROS is not installed
+except:
+    raise
 
 
 class VectorState(State):
@@ -77,19 +87,25 @@ class MatrixLieGroupState(State):
     @property
     def attitude(self) -> np.ndarray:
         raise NotImplementedError(
-            "{0} does not have attitude property".format(self.__class__.__name__)
+            "{0} does not have attitude property".format(
+                self.__class__.__name__
+            )
         )
 
     @property
     def position(self) -> np.ndarray:
         raise NotImplementedError(
-            "{0} does not have position property".format(self.__class__.__name__)
+            "{0} does not have position property".format(
+                self.__class__.__name__
+            )
         )
 
     @property
     def velocity(self) -> np.ndarray:
         raise NotImplementedError(
-            "{0} does not have velocity property".format(self.__class__.__name__)
+            "{0} does not have velocity property".format(
+                self.__class__.__name__
+            )
         )
 
     def jacobian_from_blocks(self, **kwargs) -> np.ndarray:
@@ -135,9 +151,51 @@ class SO3State(MatrixLieGroupState):
 
     @staticmethod
     def jacobian_from_blocks(attitude: np.ndarray):
-
         return attitude
 
+    @staticmethod
+    def from_ros(msg: QuaternionStamped, state_id=None, direction="right") -> "SO3State":
+        """
+        Create a SO3State from a ROS QuaternionStamped message.
+
+        Parameters
+        ----------
+        msg : QuaternionStamped
+            ROS quaternion
+        state_id : Any, optional
+            If not provided, the frame_id of the message will be used
+        direction : str, optional
+            perturbation direction, by default "right"
+
+        Returns
+        -------
+        SO3State
+            a new instance of SO3State
+        """
+        if state_id is None:
+            state_id = msg.header.frame_id
+
+        return SO3State(
+            SO3.from_ros(msg.quaternion),
+            msg.header.stamp.to_sec(),
+            state_id,
+            direction,
+        )
+
+    def to_ros(self) -> QuaternionStamped:
+        """
+        Convert to ROS QuaternionStamped message.
+
+        Returns
+        -------
+        QuaternionStamped
+            ROS quaternion
+        """
+        msg = QuaternionStamped()
+        msg.header.stamp = rospy.Time.from_sec(self.stamp)
+        msg.header.frame_id = self.state_id
+        msg.quaternion = SO3.to_ros(self.attitude)
+        return msg
 
 class SE2State(MatrixLieGroupState):
     def __init__(
@@ -166,7 +224,9 @@ class SE2State(MatrixLieGroupState):
         self.value[0:2, 2] = r
 
     @staticmethod
-    def jacobian_from_blocks(attitude: np.ndarray = None, position: np.ndarray = None):
+    def jacobian_from_blocks(
+        attitude: np.ndarray = None, position: np.ndarray = None
+    ):
 
         for jac in [attitude, position]:
             if jac is not None:
@@ -207,7 +267,9 @@ class SE3State(MatrixLieGroupState):
         self.value[0:3, 3] = r
 
     @staticmethod
-    def jacobian_from_blocks(attitude: np.ndarray = None, position: np.ndarray = None):
+    def jacobian_from_blocks(
+        attitude: np.ndarray = None, position: np.ndarray = None
+    ):
 
         for jac in [attitude, position]:
             if jac is not None:
@@ -219,6 +281,69 @@ class SE3State(MatrixLieGroupState):
             position = np.zeros((dim, 3))
 
         return np.block([attitude, position])
+
+    @staticmethod
+    def from_ros(msg: PoseStamped, state_id: Any=None, direction="right") -> "SE3State":
+        """
+        Convert a ROS PoseStamped message to a SE3State.
+
+        Parameters
+        ----------
+        msg : PoseStamped
+            ROS PoseStamped message
+        state_id : Any, optional
+            If not provided, the frame_id of the message will be used
+        direction : str, optional
+            perturbation direction, by default "right"
+
+        Returns
+        -------
+        SE3State
+            a new instance of SE3State
+        """
+        C = SO3.from_ros(msg.pose.orientation)
+        r = np.array(
+            [
+                msg.pose.position.x,
+                msg.pose.position.y,
+                msg.pose.position.z,
+            ]
+        )
+        if state_id is None:
+            state_id = msg.header.frame_id
+
+        return SE3State(
+            SE3.from_components(C, r),
+            msg.header.stamp.to_sec(),
+            state_id = state_id,
+            direction=direction
+        )
+
+    def to_ros(self, frame_id: str = None) -> PoseStamped:
+        """
+        Convert a SE3State to a ROS PoseStamped message.
+
+        Parameters
+        ----------
+        frame_id : str, optional
+            If not provided, the state_id will be used.
+
+        Returns
+        -------
+        PoseStamped
+            ROS PoseStamped message
+        """
+        if frame_id is None:
+            frame_id = str(self.state_id)
+
+        msg = PoseStamped()
+        msg.header.stamp = rospy.Time.from_sec(self.stamp)
+        if frame_id is not None:
+            msg.header.frame_id = frame_id
+            
+        msg.pose = SE3.to_ros(self.value)
+
+        return msg
 
 
 class SE23State(MatrixLieGroupState):
@@ -295,12 +420,14 @@ class CompositeState(State):
     and by ID.
     """
 
-    __slots__ = ["substates", "_slices"]
+    __slots__ = ["_slices"]
 
-    def __init__(self, state_list: List[State], stamp: float = None, state_id=None):
+    def __init__(
+        self, state_list: List[State], stamp: float = None, state_id=None
+    ):
 
-        #:List[State]: The substates are the CompositeState 's value.
-        self.value = state_list
+        #:List[State]: The substates are the CompositeState's value.
+        self.value = state_list 
 
         self.stamp = stamp
         self.state_id = state_id
@@ -311,6 +438,32 @@ class CompositeState(State):
         for state in state_list:
             self._slices.append(slice(counter, counter + state.dof))
             counter += state.dof
+
+    def __getstate__(self):
+        """
+        Get the state of the object for pickling.
+        """
+        # When using __slots__ the pickle module expects a tuple from __getstate__.
+        # See https://stackoverflow.com/questions/1939058/simple-example-of-use-of-setstate-and-getstate/41754104#41754104
+        return (None, {
+            "value": self.value,
+            "stamp": self.stamp,
+            "state_id": self.state_id,
+            "_slices": self._slices,
+        })
+
+    def __setstate__(self, attributes):
+        """ 
+        Set the state of the object for unpickling.
+        """
+        # When using __slots__ the pickle module sends a tuple for __setstate__.
+        # See https://stackoverflow.com/questions/1939058/simple-example-of-use-of-setstate-and-getstate/41754104#41754104
+        
+        attributes = attributes[1]
+        self.value = attributes["value"]
+        self.stamp = attributes["stamp"]
+        self.state_id = attributes["state_id"]
+        self._slices = attributes["_slices"]
 
     @property
     def dof(self):
@@ -416,7 +569,7 @@ class CompositeState(State):
 
     def jacobian_from_blocks(self, block_dict: dict):
         """
-        Returns the jacobian of the entire composite state given jacobians 
+        Returns the jacobian of the entire composite state given jacobians
         associated with some of the substates. These are provided as a dictionary
         with the the keys being the substate IDs.
         """

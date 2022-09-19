@@ -2,6 +2,16 @@ from pynav.lib.states import VectorState, SO2State, SO3State, SE2State, SE3State
 from pylie import SO2, SO3, SE2, SE3, SE23
 import numpy as np 
 
+try:
+    # We do not want to make ROS a hard dependency, so we import it only if
+    # available.
+    from geometry_msgs.msg import PoseStamped, QuaternionStamped
+    import rospy
+except ImportError:
+    pass  # ROS is not installed
+except:
+    raise
+
 def test_plus_minus_vector():
     x1 = VectorState([1,2,3])
     dx = np.array([4,5,6])
@@ -49,6 +59,27 @@ def test_plus_minus_se23():
     x2.plus(dx) # x2 = x1 + dx 
     dx_test = x2.minus(x1).ravel()
     assert np.allclose(dx, dx_test)
+
+def test_se3_ros():
+    T = SE3.random()
+    x = SE3State(T, stamp=1, state_id="test")
+    x_ros = x.to_ros()
+    x2 = SE3State.from_ros(x_ros)
+    assert np.allclose(x.value, x2.value)
+    assert x.stamp == x2.stamp
+    assert x.state_id == x2.state_id
+    assert x.state_id == x_ros.header.frame_id
+
+def test_so3_ros():
+    C = SO3.random()
+    x = SO3State(C, stamp=1, state_id="test")
+    x_ros = x.to_ros()
+    x2 = SO3State.from_ros(x_ros)
+    assert np.allclose(x.value, x2.value)
+    assert x.stamp == x2.stamp
+    assert x.state_id == x2.state_id
+    assert x.state_id == x_ros.header.frame_id
+
 
 if __name__ == "__main__":
     test_plus_minus_se3()

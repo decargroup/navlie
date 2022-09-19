@@ -102,11 +102,11 @@ class GaussianResultList:
         #:numpy.ndarray with shape (N,):  timestamp
         self.stamp = np.array([r.stamp for r in result_list])
         #:numpy.ndarray with shape (N,): numpy array of State objects
-        self.state = np.array([r.state for r in result_list])
+        self.state: List[State] = np.array([r.state for r in result_list])
         #:numpy.ndarray with shape (N,): numpy array of true State objects
-        self.state_true = np.array([r.state_true for r in result_list])
+        self.state_true: List[State] = np.array([r.state_true for r in result_list])
         #:numpy.ndarray with shape (N,dof,dof): covariance
-        self.covariance = np.array([r.covariance for r in result_list])
+        self.covariance: np.ndarray = np.array([r.covariance for r in result_list])
         #:numpy.ndarray with shape (N, dof): error throughout trajectory
         self.error = np.array([r.error for r in result_list])
         #:numpy.ndarray with shape (N,): EES throughout trajectory
@@ -371,7 +371,7 @@ def plot_meas(
     for i in range(len(meas_list)):
         y_meas.append(np.ravel(meas_list[i].value))
         x = state_true_list[int(state_idx[i])]
-        y_true.append(meas_list[i].model.evaluate(x).ravel())
+        y_true.append(np.ravel(meas_list[i].model.evaluate(x)))
 
     y_meas = np.atleast_2d(np.array(y_meas))
     y_true = np.atleast_2d(np.array(y_true))

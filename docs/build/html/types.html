@@ -37,6 +37,7 @@
         </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
               <p class="caption"><span class="caption-text">Contents</span></p>
 <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="index.html">Introduction</a></li>
 <li class="toctree-l1"><a class="reference internal" href="filters.html">pynav.filters</a></li>
 <li class="toctree-l1 current"><a class="current reference internal" href="#">pynav.types</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="#pynav.types.StampedValue"><code class="docutils literal notranslate"><span class="pre">StampedValue</span></code></a><ul>
@@ -302,23 +303,77 @@ of the form</p>
 <dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">abc.ABC</span></code></p>
 <p>Abstract process model base class for process models of the form</p>
 <div class="math notranslate nohighlight">
-\[\mathbf{x}_k = \mathbf{f}(\mathbf{x}_{k-1}, \mathbf{u}_{k-1}, \Delta t) + \mathbf{w}_{k-1}\]</div>
-<p>where <span class="math notranslate nohighlight">\(\mathbf{u}_{k-1}\)</span> is the input and <span class="math notranslate nohighlight">\(\Delta t\)</span> is the time
-period between the two states.</p>
+\[\mathbf{x}_k = \mathbf{f}(\mathbf{x}_{k-1}, \mathbf{u}, \Delta t) + \mathbf{w}_{k}\]</div>
+<p>where <span class="math notranslate nohighlight">\(\mathbf{u}\)</span> is the input, <span class="math notranslate nohighlight">\(\Delta t\)</span> is the time
+period between the two states, and <span class="math notranslate nohighlight">\(\mathbf{w}_{k} \sim \mathcal{N}(\mathbf{0}, \mathbf{Q}_k)\)</span>
+is additive Gaussian noise.</p>
 <dl class="py method">
 <dt id="pynav.types.ProcessModel.evaluate">
 <em class="property"><span class="pre">abstract</span> </em><code class="sig-name descname"><span class="pre">evaluate</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="#pynav.types.State" title="pynav.types.State"><span class="pre">pynav.types.State</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">u</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="#pynav.types.StampedValue" title="pynav.types.StampedValue"><span class="pre">pynav.types.StampedValue</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">dt</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">float</span></span></em><span class="sig-paren">)</span> &#x2192; <a class="reference internal" href="#pynav.types.State" title="pynav.types.State"><span class="pre">pynav.types.State</span></a><a class="headerlink" href="#pynav.types.ProcessModel.evaluate" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>Implementation of <span class="math notranslate nohighlight">\(\mathbf{f}(\mathbf{x}_{k-1}, \mathbf{u}, \Delta t)\)</span>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>x</strong> (<a class="reference internal" href="#pynav.types.State" title="pynav.types.State"><em>State</em></a>) – State at time <span class="math notranslate nohighlight">\(k-1\)</span>.</p></li>
+<li><p><strong>u</strong> (<a class="reference internal" href="#pynav.types.StampedValue" title="pynav.types.StampedValue"><em>StampedValue</em></a>) – The input value <span class="math notranslate nohighlight">\(\mathbf{u}\)</span> provided as a StampedValue object.
+The actual numerical value is accessed via <cite>u.value</cite>.</p></li>
+<li><p><strong>dt</strong> (<em>float</em>) – The time interval <span class="math notranslate nohighlight">\(\Delta t\)</span> between the two states.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>State at time <span class="math notranslate nohighlight">\(k\)</span>.</p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p><a class="reference internal" href="#pynav.types.State" title="pynav.types.State">State</a></p>
+</dd>
+</dl>
+</dd></dl>
 
 <dl class="py method">
 <dt id="pynav.types.ProcessModel.jacobian">
 <em class="property"><span class="pre">abstract</span> </em><code class="sig-name descname"><span class="pre">jacobian</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="#pynav.types.State" title="pynav.types.State"><span class="pre">pynav.types.State</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">u</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="#pynav.types.StampedValue" title="pynav.types.StampedValue"><span class="pre">pynav.types.StampedValue</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">dt</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">float</span></span></em><span class="sig-paren">)</span> &#x2192; <span class="pre">numpy.ndarray</span><a class="headerlink" href="#pynav.types.ProcessModel.jacobian" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>Implementation of the process model Jacobian with respect to the state.</p>
+<div class="math notranslate nohighlight">
+\[\mathbf{F} = \partial \mathbf{f}(\mathbf{x}_{k-1}, \mathbf{u}, \Delta t)
+/ \partial \mathbf{x}_{k-1}\]</div>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>x</strong> (<a class="reference internal" href="#pynav.types.State" title="pynav.types.State"><em>State</em></a>) – State at time <span class="math notranslate nohighlight">\(k-1\)</span>.</p></li>
+<li><p><strong>u</strong> (<a class="reference internal" href="#pynav.types.StampedValue" title="pynav.types.StampedValue"><em>StampedValue</em></a>) – The input value <span class="math notranslate nohighlight">\(\mathbf{u}\)</span> provided as a StampedValue object.</p></li>
+<li><p><strong>dt</strong> (<em>float</em>) – The time interval <span class="math notranslate nohighlight">\(\Delta t\)</span> between the two states.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>Process model Jacobian with respect to the state <span class="math notranslate nohighlight">\(\mathbf{F}\)</span>.</p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>np.ndarray</p>
+</dd>
+</dl>
+</dd></dl>
 
 <dl class="py method">
 <dt id="pynav.types.ProcessModel.covariance">
 <em class="property"><span class="pre">abstract</span> </em><code class="sig-name descname"><span class="pre">covariance</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="#pynav.types.State" title="pynav.types.State"><span class="pre">pynav.types.State</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">u</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="#pynav.types.StampedValue" title="pynav.types.StampedValue"><span class="pre">pynav.types.StampedValue</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">dt</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">float</span></span></em><span class="sig-paren">)</span> &#x2192; <span class="pre">numpy.ndarray</span><a class="headerlink" href="#pynav.types.ProcessModel.covariance" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>Covariance matrix math:<cite>mathbf{Q}_k</cite> of the additive Gaussian
+noise <span class="math notranslate nohighlight">\(\mathbf{w}_{k} \sim \mathcal{N}(\mathbf{0}, \mathbf{Q}_k)\)</span>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>x</strong> (<a class="reference internal" href="#pynav.types.State" title="pynav.types.State"><em>State</em></a>) – State at time <span class="math notranslate nohighlight">\(k-1\)</span>.</p></li>
+<li><p><strong>u</strong> (<a class="reference internal" href="#pynav.types.StampedValue" title="pynav.types.StampedValue"><em>StampedValue</em></a>) – The input value <span class="math notranslate nohighlight">\(\mathbf{u}\)</span> provided as a StampedValue object.</p></li>
+<li><p><strong>dt</strong> (<em>float</em>) – The time interval <span class="math notranslate nohighlight">\(\Delta t\)</span> between the two states.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>Covariance matrix <span class="math notranslate nohighlight">\(\mathbf{Q}_k\)</span>.</p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>np.ndarray</p>
+</dd>
+</dl>
+</dd></dl>
 
 <dl class="py method">
 <dt id="pynav.types.ProcessModel.jacobian_fd">
