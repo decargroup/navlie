@@ -119,4 +119,4 @@ def test_relative_body_velocity_equivalence():
 
 
 if __name__ == "__main__":
-    test_body_velocity_se3()
+    test_body_velocity_se3_left()

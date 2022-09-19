@@ -7,7 +7,7 @@ from pynav.types import (
 from pynav.lib.states import (
     CompositeState,
     MatrixLieGroupState,
-    SE3State,
+    SE23State,
     VectorState,
 )
 from pylie import SO2, SO3
@@ -68,7 +68,7 @@ class BodyFrameVelocity(ProcessModel):
         if x.direction == "right":
             return x.group.adjoint(x.group.Exp(-u.value * dt))
         elif x.direction == "left":
-            return x.group.identity()
+            return np.identity(x.group.dof)
 
     def covariance(
         self, x: MatrixLieGroupState, u: StampedValue, dt: float
@@ -580,3 +580,150 @@ class InvariantMeasurement(Measurement):
             stamp = meas.stamp,
             model =_InvariantInnovation(meas.value, meas.model, direction),
         )
+
+class Imu(StampedValue):
+    """
+    A data container for IMU measurements.
+    """
+
+    def __init__(self, accel: np.ndarray, gyro: np.ndarray, stamp: float):
+        """
+
+        Parameters
+        ----------
+        accel : np.ndarray with size 3
+            Accelerometer reading in body frame.
+        gyro : np.ndarray with size 3
+            Gyroscope reading in body frame.
+        stamp : float
+            Timestamp of the measurement.
+        """
+        gyro = np.array(gyro).ravel()
+        accel = np.array(accel).ravel()
+        self.value = [gyro, accel]
+        self.stamp = stamp
+
+    def plus(self, w: np.ndarray):
+        w = np.array(w).ravel()
+        self.value[0] += w[:3]
+        self.value[1] += w[3:]
+
+    @property
+    def gyro(self):
+        return self.value[0]
+
+    @property
+    def accel(self):
+        return self.value[1]
+
+
+class ImuKinematics(ProcessModel):
+    def __init__(self) -> None:
+        self._g = np.array([0, 0, -9.80665])
+
+    def evaluate(self, x: SE23State, u: Imu, dt: float) -> SE23State:
+        G = self._G_matrix(dt)
+
+        U = self._U_matrix(u, dt)
+        x.value = G @ x.value @ U
+        x.stamp += dt
+        return x
+
+    def jacobian(self, x: SE23State, u: Imu, dt: float) -> np.ndarray:
+        if x.direction == "left":
+            G = self._G_matrix(dt)
+            return self._adjoint_U(G)
+        elif x.direction =="right":
+            U_inv = self._U_matrix_inv(u, dt)
+            return self._adjoint_U(U_inv)
+        else:
+            raise ValueError("Invalid direction")
+
+
+    def covariance(self, x: SE23State, u: StampedValue, dt: float) -> np.ndarray:
+        raise NotImplementedError
+
+    @staticmethod
+    def _V_matrix(phi_vec: np.ndarray):
+        phi = np.linalg.norm(phi_vec)
+        a = phi_vec / phi
+        a = a.reshape((-1, 1))
+        a_wedge = SO3.wedge(a)
+        V = (
+            0.5 * a @ a.T
+            + ((1 - np.sin(phi)/phi)) / phi * a_wedge
+            + (np.cos(phi) - 1) / phi**2 * a_wedge @ a_wedge
+        )
+        return V
+
+    def _U_matrix(self, u:Imu, dt: float):
+        phi = u.gyro * dt
+        O = SO3.Exp(phi)
+        J = SO3.left_jacobian(phi)
+        a = u.accel.reshape((-1,1))
+        V = self._V_matrix(phi)
+        U = np.identity(5)
+        U[:3,:3] = O
+        U[:3,3] = np.ravel(dt* J @ a)
+        U[:3,4] = np.ravel(dt**2 * V @ a)
+        U[3,4] = dt
+        return U
+
+    def _U_matrix_inv(self, u:Imu, dt: float):
+        phi = u.gyro * dt
+        O = SO3.Exp(phi)
+        V = self._V_matrix(phi)
+        J = SO3.left_jacobian(phi)
+        a = u.accel.reshape((-1,1))
+        U_inv = np.identity(5)
+        U_inv[:3,:3] = O.T
+        U_inv[:3,3] = np.ravel(-dt* O.T @ J @ a)
+        U_inv[:3,4] = np.ravel(dt**2 * O.T @ (J - V) @ a)
+        U_inv[3,4] = -dt
+        return U_inv
+
+    def _G_matrix(self, dt):
+        G = np.identity(5)
+        G[:3, 3] = dt * self._g
+        G[:3, 4] = -0.5 * dt**2 * self._g
+        G[3, 4] = -dt
+        return G
+
+    def _G_matrix_inv(self, dt):
+        G_inv = np.identity(5)
+        G_inv[:3, 3] = -dt * self._g
+        G_inv[:3, 4] = - 0.5 * dt**2 * self._g
+        G_inv[3, 4] = dt
+        return G_inv
+
+    # @staticmethod
+    # def _adjoint_U(U):
+    #     O = U[:3,:3]
+    #     dt = U[3,4]
+    #     Ja = U[:3,3].reshape((-1,1))/dt
+    #     Va = U[:3,4].reshape((-1,1))/dt**2
+    #     Ad = np.zeros((9,9))
+    #     Ad[:3,:3] = O
+    #     Ad[3:6,:3] = dt*SO3.wedge(Ja) @ O
+    #     Ad[3:6,3:6] = O
+
+    #     Ad[6:9,:3] = -dt**2*SO3.wedge(Ja - Va) @ O
+    #     Ad[6:9,3:6] = -dt * O 
+    #     Ad[6:9,6:9] = O
+    #     return Ad
+
+    @staticmethod
+    def _adjoint_U(U):
+        O = U[:3,:3]
+        c = U[3,4]
+        a = U[:3,3].reshape((-1,1))
+        b = U[:3,4].reshape((-1,1))
+        Ad = np.zeros((9,9))
+        Ad[:3,:3] = O
+        Ad[3:6,:3] = SO3.wedge(a) @ O
+        Ad[3:6,3:6] = O
+
+        Ad[6:9,:3] = -SO3.wedge(c*a - b) @ O
+        Ad[6:9,3:6] = -c * O 
+        Ad[6:9,6:9] = O
+        return Ad
