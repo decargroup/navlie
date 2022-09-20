@@ -1,4 +1,4 @@
-from typing import List, Dict
+from typing import List
 import matplotlib.pyplot as plt
 import numpy as np
 from pylie import SE23
@@ -10,7 +10,6 @@ from pynav.lib.models import (
     Imu,
 )
 from pynav.lib.states import IMUState
-from pynav.types import Measurement
 from pynav.utils import GaussianResult, GaussianResultList, plot_error, randvec
 from pynav.datagen import DataGenerator
 
@@ -178,8 +177,8 @@ invariants = [InvariantMeasurement(meas, "right") for meas in meas_list]
 
 # Zero-out the random walk values
 for u in input_list:
-    u.bias_gyro_walk = np.array([0,0,0])
-    u.bias_accel_walk = np.array([0,0,0])
+    u.bias_gyro_walk = np.array([0, 0, 0])
+    u.bias_accel_walk = np.array([0, 0, 0])
 
 
 ekf = ExtendedKalmanFilter(process_model)
@@ -201,9 +200,9 @@ ax = plt.axes(projection="3d")
 landmarks = np.array(landmarks)
 r = np.array([x.position for x in results.state])
 r_gt = np.array([x.position for x in results.state_true])
-ax.scatter(landmarks[:,0],landmarks[:,1],landmarks[:,2])
-ax.plot(r[:,0], r[:,1], r[:,2], label="Estimate")
-ax.plot(r_gt[:,0], r_gt[:,1], r_gt[:,2], label="Ground truth")
+ax.scatter(landmarks[:, 0], landmarks[:, 1], landmarks[:, 2])
+ax.plot(r[:, 0], r[:, 1], r[:, 2], label="Estimate")
+ax.plot(r_gt[:, 0], r_gt[:, 1], r_gt[:, 2], label="Ground truth")
 ax.legend()
 ax.set_xlim(-6, 6)
 ax.set_ylim(-6, 6)
@@ -211,11 +210,11 @@ ax.set_zlim(-6, 6)
 
 sns.set_theme()
 fig, axs = plot_error(results)
-axs[0,0].set_title("Attitude")
-axs[0,1].set_title("Velocity")
-axs[0,2].set_title("Position")
-axs[0,3].set_title("Gyro bias")
-axs[0,4].set_title("Accel bias")
-axs[-1,2]
+axs[0, 0].set_title("Attitude")
+axs[0, 1].set_title("Velocity")
+axs[0, 2].set_title("Position")
+axs[0, 3].set_title("Gyro bias")
+axs[0, 4].set_title("Accel bias")
+axs[-1, 2]
 
 plt.show()
