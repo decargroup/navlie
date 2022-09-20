@@ -154,7 +154,7 @@ class SO3State(MatrixLieGroupState):
         return attitude
 
     @staticmethod
-    def from_ros(msg: QuaternionStamped, state_id=None, direction="right") -> "SO3State":
+    def from_ros(msg: "QuaternionStamped", state_id=None, direction="right") -> "SO3State":
         """
         Create a SO3State from a ROS QuaternionStamped message.
 
@@ -182,7 +182,7 @@ class SO3State(MatrixLieGroupState):
             direction,
         )
 
-    def to_ros(self) -> QuaternionStamped:
+    def to_ros(self) -> "QuaternionStamped":
         """
         Convert to ROS QuaternionStamped message.
 
@@ -283,7 +283,7 @@ class SE3State(MatrixLieGroupState):
         return np.block([attitude, position])
 
     @staticmethod
-    def from_ros(msg: PoseStamped, state_id: Any=None, direction="right") -> "SE3State":
+    def from_ros(msg: "PoseStamped", state_id: Any=None, direction="right") -> "SE3State":
         """
         Convert a ROS PoseStamped message to a SE3State.
 
@@ -319,7 +319,7 @@ class SE3State(MatrixLieGroupState):
             direction=direction
         )
 
-    def to_ros(self, frame_id: str = None) -> PoseStamped:
+    def to_ros(self, frame_id: str = None) -> "PoseStamped":
         """
         Convert a SE3State to a ROS PoseStamped message.
 
