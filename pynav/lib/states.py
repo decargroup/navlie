@@ -33,7 +33,8 @@ class VectorState(State):
         self.value: np.ndarray = self.value.flatten() + dx.flatten()
 
     def minus(self, x: "VectorState") -> np.ndarray:
-        return self.value - x.value
+        og_shape = self.value.shape
+        return (self.value.ravel() - x.value.ravel()).reshape(og_shape)
 
     def copy(self) -> "VectorState":
         return VectorState(self.value.copy(), self.stamp, self.state_id)
@@ -154,7 +155,9 @@ class SO3State(MatrixLieGroupState):
         return attitude
 
     @staticmethod
-    def from_ros(msg: QuaternionStamped, state_id=None, direction="right") -> "SO3State":
+    def from_ros(
+        msg: "QuaternionStamped", state_id=None, direction="right"
+    ) -> "SO3State":
         """
         Create a SO3State from a ROS QuaternionStamped message.
 
@@ -182,7 +185,7 @@ class SO3State(MatrixLieGroupState):
             direction,
         )
 
-    def to_ros(self) -> QuaternionStamped:
+    def to_ros(self) -> "QuaternionStamped":
         """
         Convert to ROS QuaternionStamped message.
 
@@ -196,6 +199,7 @@ class SO3State(MatrixLieGroupState):
         msg.header.frame_id = self.state_id
         msg.quaternion = SO3.to_ros(self.attitude)
         return msg
+
 
 class SE2State(MatrixLieGroupState):
     def __init__(
@@ -283,7 +287,9 @@ class SE3State(MatrixLieGroupState):
         return np.block([attitude, position])
 
     @staticmethod
-    def from_ros(msg: PoseStamped, state_id: Any=None, direction="right") -> "SE3State":
+    def from_ros(
+        msg: "PoseStamped", state_id: Any = None, direction="right"
+    ) -> "SE3State":
         """
         Convert a ROS PoseStamped message to a SE3State.
 
@@ -315,11 +321,11 @@ class SE3State(MatrixLieGroupState):
         return SE3State(
             SE3.from_components(C, r),
             msg.header.stamp.to_sec(),
-            state_id = state_id,
-            direction=direction
+            state_id=state_id,
+            direction=direction,
         )
 
-    def to_ros(self, frame_id: str = None) -> PoseStamped:
+    def to_ros(self, frame_id: str = None) -> "PoseStamped":
         """
         Convert a SE3State to a ROS PoseStamped message.
 
@@ -340,7 +346,7 @@ class SE3State(MatrixLieGroupState):
         msg.header.stamp = rospy.Time.from_sec(self.stamp)
         if frame_id is not None:
             msg.header.frame_id = frame_id
-            
+
         msg.pose = SE3.to_ros(self.value)
 
         return msg
@@ -370,15 +376,15 @@ class SE23State(MatrixLieGroupState):
 
     @position.setter
     def position(self, r):
-        self.value[0:3, 4] = r
+        self.value[0:3, 4] = r.ravel()
 
     @property
     def velocity(self):
         return self.value[0:3, 3]
 
     @velocity.setter
-    def velocity(self, r):
-        self.value[0:3, 3] = r
+    def velocity(self, v):
+        self.value[0:3, 3] = v.ravel()
 
     @staticmethod
     def jacobian_from_blocks(
@@ -427,7 +433,7 @@ class CompositeState(State):
     ):
 
         #:List[State]: The substates are the CompositeState's value.
-        self.value = state_list 
+        self.value = state_list
 
         self.stamp = stamp
         self.state_id = state_id
@@ -445,20 +451,23 @@ class CompositeState(State):
         """
         # When using __slots__ the pickle module expects a tuple from __getstate__.
         # See https://stackoverflow.com/questions/1939058/simple-example-of-use-of-setstate-and-getstate/41754104#41754104
-        return (None, {
-            "value": self.value,
-            "stamp": self.stamp,
-            "state_id": self.state_id,
-            "_slices": self._slices,
-        })
+        return (
+            None,
+            {
+                "value": self.value,
+                "stamp": self.stamp,
+                "state_id": self.state_id,
+                "_slices": self._slices,
+            },
+        )
 
     def __setstate__(self, attributes):
-        """ 
+        """
         Set the state of the object for unpickling.
         """
         # When using __slots__ the pickle module sends a tuple for __setstate__.
         # See https://stackoverflow.com/questions/1939058/simple-example-of-use-of-setstate-and-getstate/41754104#41754104
-        
+
         attributes = attributes[1]
         self.value = attributes["value"]
         self.stamp = attributes["stamp"]
@@ -581,3 +590,142 @@ class CompositeState(State):
             jac[:, slc] = block
 
         return jac
+
+
+class IMUState(CompositeState):
+    def __init__(
+        self,
+        nav_state: np.ndarray,
+        bias_gyro: np.ndarray,
+        bias_accel: np.ndarray,
+        stamp: float = None,
+        state_id=None,
+        direction="right",
+    ):
+        """Instantiate and IMUState object.
+
+        Parameters
+        ----------
+        nav_state : np.ndarray
+            The navigation state stored as an element of SE_2(3).
+            Contains orientation, velocity, and position.
+        bias_gyro : np.ndarray
+            Gyroscope bias, [3 x 1] matrix
+        bias_accel : np.ndarray
+            Accelerometer bias, [3 x 1] matrix
+        stamp : float, optional
+            Timestamp, by default None
+        state_id : _type_, optional
+            Unique identifier, by default None
+        direction : str, optional
+            Direction of the perturbation for the nav state, by default "right"
+        """
+        nav_state = SE23State(nav_state, stamp, state_id, direction)
+        bias_gyro = VectorState(bias_gyro, stamp, state_id)
+        bias_accel = VectorState(bias_accel, stamp, state_id)
+
+        state_list = [nav_state, bias_gyro, bias_accel]
+        super().__init__(state_list, stamp, state_id)
+
+        self.direction = direction
+
+    @property
+    def attitude(self) -> np.ndarray:
+        return self.value[0].attitude
+
+    @attitude.setter
+    def attitude(self, C):
+        self.value[0].attitude = C
+
+    @property
+    def velocity(self) -> np.ndarray:
+        return self.value[0].velocity
+
+    @velocity.setter
+    def velocity(self, v):
+        self.value[0].velocity = v
+
+    @property
+    def position(self) -> np.ndarray:
+        return self.value[0].position
+
+    @position.setter
+    def position(self, r):
+        self.value[0].position = r
+
+    @property
+    def bias_gyro(self) -> np.ndarray:
+        return self.value[1].value
+
+    @bias_gyro.setter
+    def bias_gyro(self, gyro_bias):
+        self.value[1].value = gyro_bias.ravel()
+
+    @property
+    def bias_accel(self) -> np.ndarray:
+        return self.value[2].value
+
+    @bias_accel.setter
+    def bias_accel(self, accel_bias):
+        self.value[2].value = accel_bias.ravel()
+
+    @property
+    def nav_state(self) -> np.ndarray:
+        return self.value[0].value
+
+    def plus(self, dx: np.ndarray, new_stamp: float = None):
+        """
+        Updates the value of each of the IMU state, given a perturbation dx.
+        """
+        if dx.shape[0] != 15:
+            raise ValueError("Perturbation must be dimension 15!")
+
+        for i, s in enumerate(self._slices):
+            sub_dx = dx[s]
+            self.value[i].plus(sub_dx)
+
+    def minus(self, x: "IMUState") -> np.ndarray:
+        dx = []
+        for i, v in enumerate(x.value):
+            dx.append(self.value[i].minus(x.value[i]).reshape((-1, 1)))
+
+        return np.vstack(dx)
+
+    def copy(self):
+        """
+        Returns a new composite state object where the state values have also
+        been copied.
+        """
+        return IMUState(
+            self.nav_state.copy(),
+            self.bias_gyro.copy(),
+            self.bias_accel.copy(),
+            self.stamp,
+            self.state_id,
+            self.direction,
+        )
+
+    @staticmethod
+    def jacobian_from_blocks(
+        attitude: np.ndarray = None,
+        position: np.ndarray = None,
+        velocity: np.ndarray = None,
+        bias_gyro: np.ndarray = None,
+        bias_accel: np.ndarray = None,
+    ):
+        for jac in [attitude, position, velocity, bias_gyro, bias_accel]:
+            if jac is not None:
+                dim = jac.shape[0]
+
+        if attitude is None:
+            attitude = np.zeros((dim, 3))
+        if position is None:
+            position = np.zeros((dim, 3))
+        if velocity is None:
+            velocity = np.zeros((dim, 3))
+        if bias_gyro is None:
+            bias_gyro = np.zeros((dim, 3))
+        if bias_accel is None:
+            bias_accel = np.zeros((dim, 3))
+
+        return np.block([attitude, velocity, position, bias_gyro, bias_accel])
