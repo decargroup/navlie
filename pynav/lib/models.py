@@ -502,10 +502,10 @@ class InvariantPointRelativePosition(MeasurementModel):
         """
 
         if x.direction == "left":
-            jac_attitude = x.attitude.T @ SO3.cross(
+            jac_attitude = SO3.cross(
                 self.measurement_model._landmark_position
             )
-            jac_position = -x.attitude.T @ np.identity(3)
+            jac_position = -np.identity(3)
         else:
             raise NotImplementedError("Right jacobian not implemented.")
 
