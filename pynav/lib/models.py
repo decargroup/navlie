@@ -69,7 +69,7 @@ class BodyFrameVelocity(ProcessModel):
         if x.direction == "right":
             return x.group.adjoint(x.group.Exp(-u.value * dt))
         elif x.direction == "left":
-            return x.group.identity()
+            return np.identity(x.dof)
 
     def covariance(
         self, x: MatrixLieGroupState, u: StampedValue, dt: float
@@ -83,8 +83,44 @@ class BodyFrameVelocity(ProcessModel):
         return L @ self._Q @ L.T
 
 
+class Imu:
+    """
+    Data container for an IMU reading.
+    """
+
+    def __init__(
+        self,
+        gyro: np.ndarray,
+        accel: np.ndarray,
+        stamp: float,
+        bias_gyro_walk=[0, 0, 0],
+        bias_accel_walk=[0, 0, 0],
+    ):
+        self.gyro = np.array(gyro).ravel()
+        self.accel = np.array(accel).ravel()
+        self.bias_gyro_walk = np.array(bias_gyro_walk).ravel()
+        self.bias_accel_walk = np.array(bias_accel_walk).ravel()
+        self.stamp = stamp
+
+    def plus(self, w: np.ndarray):
+        w = w.ravel()
+        self.gyro += w[0:3]
+        self.accel += w[3:6]
+        self.bias_gyro_walk += w[6:9]
+        self.bias_accel_walk += w[9:12]
+
+    def copy(self):
+        return Imu(
+            self.gyro.copy(),
+            self.accel.copy(),
+            self.stamp,
+            self.bias_gyro_walk.copy(),
+            self.bias_accel_walk.copy(),
+        )
+
+
 class IMUKinematics(ProcessModel):
-    def __init__(self, Q: np.ndarray, g_a: np.ndarray = None):
+    def __init__(self, Q: np.ndarray, g_a=[0, 0, -9.80665]):
         """Instantiate the IMUKinematic model.
 
         Parameters
@@ -97,12 +133,9 @@ class IMUKinematics(ProcessModel):
         """
         self._Q = Q
 
-        if g_a is None:
-            self._gravity: np.ndarray = np.array([0, 0, -9.81]).reshape((-1, 1))
-        else:
-            self._gravity = g_a.reshape((-1, 1))
+        self._gravity = np.array(g_a).reshape((-1, 1))
 
-    def evaluate(self, x: IMUState, u: StampedValue, dt: float) -> IMUState:
+    def evaluate(self, x: IMUState, u: Imu, dt: float) -> IMUState:
         """Propagates an IMU state forward one timestep from an IMU measurement.
 
         The continuous-time IMU equations are discretized using the assumption
@@ -116,7 +149,7 @@ class IMUKinematics(ProcessModel):
         ----------
         x : IMUState
             Current IMU state
-        u : StampedValue
+        u : Imu
             IMU measurement,
         dt : float
             timestep.
@@ -127,20 +160,12 @@ class IMUKinematics(ProcessModel):
             Propagated IMUState.
         """
 
-        # If the user only passed in a [6 x 1], assume that the input driving
-        # the biases is zero.
-        # Else, the user specified a random input to drive the bias random walk
-        if u.value.reshape((-1, 1)).shape[0] == 6:
-            bias_input = np.zeros((6, 1))
-        else:
-            bias_input = u.value[6:]
-
         # Get unbiased inputs
         bias_gyro = x.bias_gyro.reshape((-1, 1))
         bias_accel = x.bias_accel.reshape((-1, 1))
 
-        unbiased_gyro = u.value[0:3].reshape((-1, 1)) - bias_gyro
-        unbiased_accel = u.value[3:6].reshape((-1, 1)) - bias_accel
+        unbiased_gyro = u.gyro.reshape((-1, 1)) - bias_gyro
+        unbiased_accel = u.accel.reshape((-1, 1)) - bias_accel
 
         # Extract states at time km1
         C_km1 = x.attitude
@@ -157,8 +182,11 @@ class IMUKinematics(ProcessModel):
         v_zw_a_k = v_km1 + dt * (C_km1 @ unbiased_accel + g_a)
 
         # Propagate the biases forward in time using random walk
-        x.bias_gyro = bias_gyro + dt * bias_input[0:3]
-        x.bias_accel = bias_accel + dt * bias_input[3:6]
+        if hasattr(u, "bias_gyro_walk"):
+            x.bias_gyro = bias_gyro.ravel() + dt * u.bias_gyro_walk.ravel()
+
+        if hasattr(u, "bias_accel_walk"):
+            x.bias_accel = bias_accel.ravel() + dt * u.bias_accel_walk.ravel()
 
         x.attitude = C_ab_k
         x.velocity = v_zw_a_k
@@ -166,7 +194,7 @@ class IMUKinematics(ProcessModel):
 
         return x
 
-    def jacobian(self, x: IMUState, u: StampedValue, dt: float) -> np.ndarray:
+    def jacobian(self, x: IMUState, u: Imu, dt: float) -> np.ndarray:
         """Computes the discrete-time Jacobian.
 
         Here, we start in continuous-time and discritize the linearized
@@ -192,8 +220,8 @@ class IMUKinematics(ProcessModel):
         bias_gyro = x.bias_gyro.reshape((-1, 1))
         bias_accel = x.bias_accel.reshape((-1, 1))
 
-        unbiased_gyro = u.value[0:3].reshape((-1, 1)) - bias_gyro
-        unbiased_accel = u.value[3:6].reshape((-1, 1)) - bias_accel
+        unbiased_gyro = u.gyro.reshape((-1, 1)) - bias_gyro
+        unbiased_accel = u.accel.reshape((-1, 1)) - bias_accel
 
         # Continuous-time Jacobian
         A_ct = np.zeros((x.dof, x.dof))
@@ -404,7 +432,7 @@ class PointRelativePosition(MeasurementModel):
         landmark_position: np.ndarray,
         R: np.ndarray,
     ):
-        self._landmark_position = landmark_position
+        self._landmark_position = np.array(landmark_position).ravel()
         self._R = R
 
     def evaluate(self, x: MatrixLieGroupState) -> np.ndarray:
@@ -414,10 +442,23 @@ class PointRelativePosition(MeasurementModel):
         r_pw_a = self._landmark_position.reshape((-1, 1))
         return C_ab.T @ (r_pw_a - r_zw_a)
 
-    def jacobian():
-        pass
+    def jacobian(self, x: MatrixLieGroupState) -> np.ndarray:
+        r_zw_a = x.position.reshape((-1, 1))
+        C_ab = x.attitude
+        r_pw_a = self._landmark_position.reshape((-1, 1))
+        y = C_ab.T @ (r_pw_a - r_zw_a)
 
-    def covariance(self, x):
+        if x.direction == "right":
+            return x.jacobian_from_blocks(
+                attitude=-SO3.odot(y), position=-np.identity(r_zw_a.shape[0])
+            )
+
+        elif x.direction == "left":
+            return x.jacobian_from_blocks(
+                attitude= -C_ab.T @ SO3.odot(r_pw_a), position= -C_ab.T
+            )
+
+    def covariance(self, x: MatrixLieGroupState) -> np.ndarray:
         return self._R
 
 
@@ -461,10 +502,12 @@ class InvariantPointRelativePosition(MeasurementModel):
         """
 
         if x.direction == "left":
-            jac_attitude = SO3.cross(self.measurement_model._landmark_position)
+            jac_attitude = SO3.cross(
+                self.measurement_model._landmark_position
+            )
             jac_position = -np.identity(3)
         else:
-            raise NotImplementedError("Left jacobian not implemented.")
+            raise NotImplementedError("Right jacobian not implemented.")
 
         jac = x.jacobian_from_blocks(
             attitude=jac_attitude,
@@ -828,7 +871,7 @@ class InvariantMeasurement(Measurement):
     :math:`\mathbf{z}`.
     """
 
-    def __init__(self, meas: Measurement, direction="right", model=None):
+    def __init__(self, meas: Measurement, direction, model=None):
         """
         Parameters
         ----------

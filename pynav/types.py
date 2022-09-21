@@ -16,9 +16,28 @@ class StampedValue:
     __slots__ = ["value", "stamp"]
 
     def __init__(self, value: np.ndarray, stamp: float = 0.0):
-        self.value = value #:numpy.ndarray:  Cariable containing the data values
+        self.value = value #:numpy.ndarray:  Variable containing the data values
         self.stamp = stamp #:float: Timestamp
 
+    def plus(self, w: np.ndarray):
+        """
+        Generic addition operation to modify the internal value.
+        
+        Parameters
+        ----------
+        w : np.ndarray
+            to be added to the instance's .value
+        """
+        og_shape = self.value.shape 
+        self.value = self.value.ravel() + w.ravel()
+        self.value.reshape(og_shape)
+
+    def copy(self) -> "StampedValue":
+        """ 
+        Returns a copy of the instance with fully seperate memory.
+        """
+        return StampedValue(self.value.copy(), self.stamp)
+        
 
 class State(ABC):
     """ 
