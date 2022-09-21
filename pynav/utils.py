@@ -7,6 +7,7 @@ from scipy.stats.distributions import chi2
 from scipy.interpolate import interp1d
 from tqdm import tqdm
 
+
 class GaussianResult:
     """
     A data container that simultaneously computes various interesting metrics
@@ -104,9 +105,13 @@ class GaussianResultList:
         #:numpy.ndarray with shape (N,): numpy array of State objects
         self.state: List[State] = np.array([r.state for r in result_list])
         #:numpy.ndarray with shape (N,): numpy array of true State objects
-        self.state_true: List[State] = np.array([r.state_true for r in result_list])
+        self.state_true: List[State] = np.array(
+            [r.state_true for r in result_list]
+        )
         #:numpy.ndarray with shape (N,dof,dof): covariance
-        self.covariance: np.ndarray = np.array([r.covariance for r in result_list])
+        self.covariance: np.ndarray = np.array(
+            [r.covariance for r in result_list]
+        )
         #:numpy.ndarray with shape (N, dof): error throughout trajectory
         self.error = np.array([r.error for r in result_list])
         #:numpy.ndarray with shape (N,): EES throughout trajectory
@@ -227,7 +232,9 @@ class MonteCarloResult:
         )
 
 
-def monte_carlo(trial: Callable[[int], GaussianResultList], num_trials: int) -> MonteCarloResult:
+def monte_carlo(
+    trial: Callable[[int], GaussianResultList], num_trials: int
+) -> MonteCarloResult:
     """
     Monte-Carlo experiment executor. Give a callable `trial` function that
     executes a trial and returns a `GaussianResultList`, and this function
@@ -236,7 +243,7 @@ def monte_carlo(trial: Callable[[int], GaussianResultList], num_trials: int) -> 
     Parameters
     ----------
     trial : Callable[[int], GaussianResultList]
-        Callable trial function. Must accept a single integer trial number, 
+        Callable trial function. Must accept a single integer trial number,
         and return a GaussianResultList. From trial to trial, the timestamps
         are expected to remain consistent.
     num_trials : int
@@ -248,12 +255,12 @@ def monte_carlo(trial: Callable[[int], GaussianResultList], num_trials: int) -> 
         Data container object
     """
     trial_results = [None] * num_trials
-    
+
     print("Starting Monte Carlo experiment...")
     for i in tqdm(range(num_trials), unit="trial", ncols=80):
         # Execute the trial
         trial_results[i] = trial(i)
-        
+
     return MonteCarloResult(trial_results)
 
 

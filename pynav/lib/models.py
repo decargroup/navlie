@@ -6,11 +6,12 @@ from pynav.types import (
 )
 from pynav.lib.states import (
     CompositeState,
+    IMUState,
     MatrixLieGroupState,
     SE3State,
     VectorState,
 )
-from pylie import SO2, SO3
+from pylie import SO2, SO3, SE23
 import numpy as np
 from typing import List
 from scipy.linalg import block_diag
@@ -129,7 +130,7 @@ class BodyFrameVelocity(ProcessModel):
         if x.direction == "right":
             return x.group.adjoint(x.group.Exp(-u.value * dt))
         elif x.direction == "left":
-            return x.group.identity()
+            return np.identity(x.dof)
 
     def covariance(
         self, x: MatrixLieGroupState, u: StampedValue, dt: float
@@ -141,6 +142,217 @@ class BodyFrameVelocity(ProcessModel):
             L = dt * Ad @ x.group.left_jacobian(-u.value * dt)
 
         return L @ self._Q @ L.T
+
+
+class Imu:
+    """
+    Data container for an IMU reading.
+    """
+
+    def __init__(
+        self,
+        gyro: np.ndarray,
+        accel: np.ndarray,
+        stamp: float,
+        bias_gyro_walk=[0, 0, 0],
+        bias_accel_walk=[0, 0, 0],
+    ):
+        self.gyro = np.array(gyro).ravel()
+        self.accel = np.array(accel).ravel()
+        self.bias_gyro_walk = np.array(bias_gyro_walk).ravel()
+        self.bias_accel_walk = np.array(bias_accel_walk).ravel()
+        self.stamp = stamp
+
+    def plus(self, w: np.ndarray):
+        w = w.ravel()
+        self.gyro += w[0:3]
+        self.accel += w[3:6]
+        self.bias_gyro_walk += w[6:9]
+        self.bias_accel_walk += w[9:12]
+
+    def copy(self):
+        return Imu(
+            self.gyro.copy(),
+            self.accel.copy(),
+            self.stamp,
+            self.bias_gyro_walk.copy(),
+            self.bias_accel_walk.copy(),
+        )
+
+
+class IMUKinematics(ProcessModel):
+    def __init__(self, Q: np.ndarray, g_a=[0, 0, -9.80665]):
+        """Instantiate the IMUKinematic model.
+
+        Parameters
+        ----------
+        Q : np.ndarray
+            Discrete-time noise matrix.
+        g_a : np.ndarray
+            Gravity vector resolved in the inertial frame.
+            If None, default value is set to [0; 0; -9.81].
+        """
+        self._Q = Q
+
+        self._gravity = np.array(g_a).reshape((-1, 1))
+
+    def evaluate(self, x: IMUState, u: Imu, dt: float) -> IMUState:
+        """Propagates an IMU state forward one timestep from an IMU measurement.
+
+        The continuous-time IMU equations are discretized using the assumption
+        that the acceleration in the inertial frame is constant between two timesteps.
+
+        TODO: Implement discritization of IMU equations assuming that the measurements
+        are constant over the discritizaiton interval. This is exact if the measurements
+        are actually constant over the interval.
+
+        Parameters
+        ----------
+        x : IMUState
+            Current IMU state
+        u : Imu
+            IMU measurement,
+        dt : float
+            timestep.
+
+        Returns
+        -------
+        IMUState
+            Propagated IMUState.
+        """
+
+        # Get unbiased inputs
+        bias_gyro = x.bias_gyro.reshape((-1, 1))
+        bias_accel = x.bias_accel.reshape((-1, 1))
+
+        unbiased_gyro = u.gyro.reshape((-1, 1)) - bias_gyro
+        unbiased_accel = u.accel.reshape((-1, 1)) - bias_accel
+
+        # Extract states at time km1
+        C_km1 = x.attitude
+        v_km1 = x.velocity.reshape((-1, 1))
+        r_km1 = x.position.reshape((-1, 1))
+
+        g_a = self._gravity
+
+        # Propagate the navigation state forward in time
+        C_ab_k = C_km1 @ SO3.Exp(dt * (unbiased_gyro))
+        r_zw_a_k = (
+            r_km1 + dt * v_km1 + 0.5 * dt * dt * (C_km1 @ unbiased_accel + g_a)
+        )
+        v_zw_a_k = v_km1 + dt * (C_km1 @ unbiased_accel + g_a)
+
+        # Propagate the biases forward in time using random walk
+        if hasattr(u, "bias_gyro_walk"):
+            x.bias_gyro = bias_gyro.ravel() + dt * u.bias_gyro_walk.ravel()
+
+        if hasattr(u, "bias_accel_walk"):
+            x.bias_accel = bias_accel.ravel() + dt * u.bias_accel_walk.ravel()
+
+        x.attitude = C_ab_k
+        x.velocity = v_zw_a_k
+        x.position = r_zw_a_k
+
+        return x
+
+    def jacobian(self, x: IMUState, u: Imu, dt: float) -> np.ndarray:
+        """Computes the discrete-time Jacobian.
+
+        Here, we start in continuous-time and discritize the linearized
+        continuous-time system.
+
+        Parameters
+        ----------
+        x : IMUState
+            The state at which to evaluate the Jacobian at.
+        u : StampedValue
+            Measurement at which to evaluate the Jacobian at.
+        dt : float
+            Discritization timestep.
+
+        Returns
+        -------
+        np.ndarray
+            Process model Jacobian
+        """
+        # Compute unbiased gyro and accel measurements using bias estimates
+
+        # Get unbiased inputs
+        bias_gyro = x.bias_gyro.reshape((-1, 1))
+        bias_accel = x.bias_accel.reshape((-1, 1))
+
+        unbiased_gyro = u.gyro.reshape((-1, 1)) - bias_gyro
+        unbiased_accel = u.accel.reshape((-1, 1)) - bias_accel
+
+        # Continuous-time Jacobian
+        A_ct = np.zeros((x.dof, x.dof))
+
+        # Extract relevant states
+        C = x.attitude
+        v = x.velocity
+        r = x.position
+
+        if x.direction == "left":
+            # TODO: These are the Jacobians for the right-invariant error,
+            # check that they are correct for a left perturbation.
+            A_ct[0:3, 9:12] = -C
+            A_ct[3:6, 0:3] = SO3.cross(self._gravity)
+            A_ct[3:6, 9:12] = -SO3.cross(v) @ C
+            A_ct[3:6, 12:15] = -C
+            A_ct[6:9, 3:6] = np.identity(3)
+            A_ct[6:9, 9:12] = -SO3.cross(r) @ C
+        else:
+            raise NotImplementedError("Right jacobian not implemented.")
+
+        # Approximate matrix exponential to third-order
+        Adt = A_ct * dt
+        Adt_square = Adt @ Adt
+        Adt_cube = Adt_square @ Adt
+        Phi = np.identity(x.dof) + Adt + Adt_square / 2.0 + Adt_cube / 6.0
+
+        return Phi
+
+    def covariance(self, x: IMUState, u: StampedValue, dt: float) -> np.ndarray:
+        """Computes the discrete-time covariance.
+
+        Here again, we start in continuous-time and then discritize the
+        linear system.
+
+        Parameters
+        ----------
+        x : IMUState
+            _description_
+        u : StampedValue
+            _description_
+        dt : float
+            _description_
+
+        Returns
+        -------
+        np.ndarray
+            _description_
+        """
+
+        # Continuous-time L matrix
+        L_ct = np.zeros((x.dof, 12))
+
+        # Extract relevant states
+        C = x.attitude
+        v = x.velocity.reshape((-1, 1))
+        r = x.position.reshape((-1, 1))
+
+        if x.direction == "left":
+            L_ct[0:3, 0:3] = C
+            L_ct[3:6, 0:3] = SO3.cross(v) @ C
+            L_ct[3:6, 3:6] = C
+            L_ct[6:9, 0:3] = SO3.cross(r) @ C
+            L_ct[9:12, 6:9] = -np.identity(3)
+            L_ct[12:15, 9:12] = -np.identity(3)
+        else:
+            raise NotImplementedError("Right jacobian not implemented.")
+
+        # Compute discrete-time noise
+        return L_ct @ self._Q @ L_ct.T * dt**2
 
 
 class RelativeBodyFrameVelocity(ProcessModel):
@@ -273,6 +485,105 @@ class RangePointToAnchor(MeasurementModel):
 
     def covariance(self, x: VectorState) -> np.ndarray:
         return self._R
+
+
+class PointRelativePosition(MeasurementModel):
+    def __init__(
+        self,
+        landmark_position: np.ndarray,
+        R: np.ndarray,
+    ):
+        self._landmark_position = np.array(landmark_position).ravel()
+        self._R = R
+
+    def evaluate(self, x: MatrixLieGroupState) -> np.ndarray:
+        """Evaluates the measurement model of a landmark from a given pose."""
+        r_zw_a = x.position.reshape((-1, 1))
+        C_ab = x.attitude
+        r_pw_a = self._landmark_position.reshape((-1, 1))
+        return C_ab.T @ (r_pw_a - r_zw_a)
+
+    def jacobian(self, x: MatrixLieGroupState) -> np.ndarray:
+        r_zw_a = x.position.reshape((-1, 1))
+        C_ab = x.attitude
+        r_pw_a = self._landmark_position.reshape((-1, 1))
+        y = C_ab.T @ (r_pw_a - r_zw_a)
+
+        if x.direction == "right":
+            return x.jacobian_from_blocks(
+                attitude=-SO3.odot(y), position=-np.identity(r_zw_a.shape[0])
+            )
+
+        elif x.direction == "left":
+            return x.jacobian_from_blocks(
+                attitude= -C_ab.T @ SO3.odot(r_pw_a), position= -C_ab.T
+            )
+
+    def covariance(self, x: MatrixLieGroupState) -> np.ndarray:
+        return self._R
+
+
+class InvariantPointRelativePosition(MeasurementModel):
+    def __init__(self, y: np.ndarray, model: PointRelativePosition):
+        self.y = y.ravel()
+        self.measurement_model = model
+
+    def evaluate(self, x: MatrixLieGroupState) -> np.ndarray:
+        """Computes the right-invariant innovation.
+
+
+        Parameters
+        ----------
+        x : MatrixLieGroupState
+            Evaluation point of the innovation.
+
+        Returns
+        -------
+        np.ndarray
+            Residual.
+        """
+        y_hat = self.measurement_model.evaluate(x)
+        e: np.ndarray = y_hat.ravel() - self.y.ravel()
+        z = x.attitude @ e
+
+        return z
+
+    def jacobian(self, x: MatrixLieGroupState) -> np.ndarray:
+        """Compute the Jacobian of the innovation directly.
+
+        Parameters
+        ----------
+        x : MatrixLieGroupState
+            Matrix Lie group state containing attitude and position
+
+        Returns
+        -------
+        np.ndarray
+            Jacobian of the innovation w.r.t the state
+        """
+
+        if x.direction == "left":
+            jac_attitude = SO3.cross(
+                self.measurement_model._landmark_position
+            )
+            jac_position = -np.identity(3)
+        else:
+            raise NotImplementedError("Right jacobian not implemented.")
+
+        jac = x.jacobian_from_blocks(
+            attitude=jac_attitude,
+            position=jac_position,
+        )
+
+        return jac
+
+    def covariance(self, x: MatrixLieGroupState) -> np.ndarray:
+
+        R = np.atleast_2d(self.measurement_model.covariance(x))
+        M = x.attitude
+        cov = M @ R @ M.T
+
+        return cov
 
 
 class RangePoseToAnchor(MeasurementModel):
@@ -472,6 +783,7 @@ class Gravitometer(MeasurementModel):
 
     where :math:`\mathbf{g}_a` is the magnetic field vector in a world frame `a`.
     """
+
     def __init__(
         self, R: np.ndarray, gravity_vector: List[float] = [0, 0, -9.80665]
     ):
@@ -556,8 +868,7 @@ class _InvariantInnovation(MeasurementModel):
 
     def evaluate(self, x: MatrixLieGroupState) -> np.ndarray:
         y_hat = self.measurement_model.evaluate(x)
-        e :np.ndarray = y_hat.ravel() - self.y.ravel()
-
+        e: np.ndarray = y_hat.ravel() - self.y.ravel()
 
         if self.direction == "left":
             z = x.attitude.T @ e
@@ -622,22 +933,26 @@ class InvariantMeasurement(Measurement):
     :math:`\mathbf{z}`.
     """
 
-    def __init__(
-        self,
-        meas: Measurement,
-        direction="right",
-    ):
+    def __init__(self, meas: Measurement, direction, model=None):
         """
-
         Parameters
         ----------
         meas : Measurement
             Measurement value
         direction : "left" or "right", optional
             whether to form a left- or right-invariant innovation, by default "right"
+        model : MeasurementModel, optional
+            a measurement model that directly returns the innovation and
+            Jacobian and covariance of the innovation. If none is supplied,
+            the default InvariantInnovation will be used, which computes the
+            Jacobian of the innovation indirectly via chain rule.
         """
+
+        if model is None:
+            model = _InvariantInnovation(meas.value, meas.model, direction)
+
         super(InvariantMeasurement, self).__init__(
-            value = np.zeros((meas.value.size,)),
-            stamp = meas.stamp,
-            model =_InvariantInnovation(meas.value, meas.model, direction),
+            value=np.zeros((meas.value.size,)),
+            stamp=meas.stamp,
+            model=model,
         )
