@@ -19,6 +19,15 @@ Clone this repo, change to its directory, and execute
 ### Examples
 Some starting examples running EKFs can be found in the `examples/` folder. Simply run these as python3 scripts 
 
+### Tests
+To run integration tests, 
+
+    pytest -ra tests/integration/
+
+or, to run tests on a specific integration test file, 
+
+    pytest -ra tests/integration/filename.py
+    
 ## The Core Concept - Defining a `State` Implementation
 
 The algorithms and models in this repo are centered around the abstract `State` class. An instance of `State` is an object containing, at a minimum, the following attributes:
