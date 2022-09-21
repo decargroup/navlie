@@ -69,7 +69,7 @@ class BodyFrameVelocity(ProcessModel):
         if x.direction == "right":
             return x.group.adjoint(x.group.Exp(-u.value * dt))
         elif x.direction == "left":
-            return x.group.identity()
+            return np.identity(x.dof)
 
     def covariance(
         self, x: MatrixLieGroupState, u: StampedValue, dt: float
@@ -164,8 +164,8 @@ class IMUKinematics(ProcessModel):
         bias_gyro = x.bias_gyro.reshape((-1, 1))
         bias_accel = x.bias_accel.reshape((-1, 1))
 
-        unbiased_gyro = u.gyro.reshape((-1,1)) - bias_gyro
-        unbiased_accel = u.accel.reshape((-1,1)) - bias_accel
+        unbiased_gyro = u.gyro.reshape((-1, 1)) - bias_gyro
+        unbiased_accel = u.accel.reshape((-1, 1)) - bias_accel
 
         # Extract states at time km1
         C_km1 = x.attitude
@@ -184,7 +184,7 @@ class IMUKinematics(ProcessModel):
         # Propagate the biases forward in time using random walk
         if hasattr(u, "bias_gyro_walk"):
             x.bias_gyro = bias_gyro.ravel() + dt * u.bias_gyro_walk.ravel()
-        
+
         if hasattr(u, "bias_accel_walk"):
             x.bias_accel = bias_accel.ravel() + dt * u.bias_accel_walk.ravel()
 
@@ -220,8 +220,8 @@ class IMUKinematics(ProcessModel):
         bias_gyro = x.bias_gyro.reshape((-1, 1))
         bias_accel = x.bias_accel.reshape((-1, 1))
 
-        unbiased_gyro = u.gyro.reshape((-1,1)) - bias_gyro
-        unbiased_accel = u.accel.reshape((-1,1)) - bias_accel
+        unbiased_gyro = u.gyro.reshape((-1, 1)) - bias_gyro
+        unbiased_accel = u.accel.reshape((-1, 1)) - bias_accel
 
         # Continuous-time Jacobian
         A_ct = np.zeros((x.dof, x.dof))
@@ -432,7 +432,7 @@ class PointRelativePosition(MeasurementModel):
         landmark_position: np.ndarray,
         R: np.ndarray,
     ):
-        self._landmark_position = landmark_position
+        self._landmark_position = np.array(landmark_position).ravel()
         self._R = R
 
     def evaluate(self, x: MatrixLieGroupState) -> np.ndarray:
@@ -443,9 +443,20 @@ class PointRelativePosition(MeasurementModel):
         return C_ab.T @ (r_pw_a - r_zw_a)
 
     def jacobian(self, x: MatrixLieGroupState) -> np.ndarray:
-        # TODO: to be derived.
+        r_zw_a = x.position.reshape((-1, 1))
+        C_ab = x.attitude
+        r_pw_a = self._landmark_position.reshape((-1, 1))
+        y = C_ab.T @ (r_pw_a - r_zw_a)
 
-        return self.jacobian_fd(x)
+        if x.direction == "right":
+            return x.jacobian_from_blocks(
+                attitude=-SO3.odot(y), position=-np.identity(r_zw_a.shape[0])
+            )
+
+        elif x.direction == "left":
+            return x.jacobian_from_blocks(
+                attitude= -C_ab.T @ SO3.odot(r_pw_a), position= -C_ab.T
+            )
 
     def covariance(self, x: MatrixLieGroupState) -> np.ndarray:
         return self._R
@@ -491,7 +502,9 @@ class InvariantPointRelativePosition(MeasurementModel):
         """
 
         if x.direction == "left":
-            jac_attitude = x.attitude.T @ SO3.cross(self.measurement_model._landmark_position)
+            jac_attitude = x.attitude.T @ SO3.cross(
+                self.measurement_model._landmark_position
+            )
             jac_position = -x.attitude.T @ np.identity(3)
         else:
             raise NotImplementedError("Right jacobian not implemented.")
@@ -858,7 +871,7 @@ class InvariantMeasurement(Measurement):
     :math:`\mathbf{z}`.
     """
 
-    def __init__(self, meas: Measurement, direction="right", model=None):
+    def __init__(self, meas: Measurement, direction, model=None):
         """
         Parameters
         ----------
