@@ -36,6 +36,7 @@
         </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
               <p class="caption"><span class="caption-text">Contents</span></p>
 <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="index.html">Introduction</a></li>
 <li class="toctree-l1 current"><a class="current reference internal" href="#">pynav.filters</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="#pynav.filters.check_outlier"><code class="docutils literal notranslate"><span class="pre">check_outlier</span></code></a></li>
 <li class="toctree-l2"><a class="reference internal" href="#pynav.filters.ExtendedKalmanFilter"><code class="docutils literal notranslate"><span class="pre">ExtendedKalmanFilter</span></code></a><ul>
@@ -46,6 +47,8 @@
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="#pynav.filters.IteratedKalmanFilter"><code class="docutils literal notranslate"><span class="pre">IteratedKalmanFilter</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#pynav.filters.IteratedKalmanFilter.step_tol"><code class="docutils literal notranslate"><span class="pre">step_tol</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#pynav.filters.IteratedKalmanFilter.max_iters"><code class="docutils literal notranslate"><span class="pre">max_iters</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="#pynav.filters.IteratedKalmanFilter.reject_outliers"><code class="docutils literal notranslate"><span class="pre">reject_outliers</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="#pynav.filters.IteratedKalmanFilter.correct"><code class="docutils literal notranslate"><span class="pre">correct</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="#pynav.filters.IteratedKalmanFilter.process_model"><code class="docutils literal notranslate"><span class="pre">process_model</span></code></a></li>
@@ -148,21 +151,23 @@ an outlier.</p>
 
 <dl class="py method">
 <dt id="pynav.filters.ExtendedKalmanFilter.predict">
-<code class="sig-name descname"><span class="pre">predict</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="types.html#pynav.types.StateWithCovariance" title="pynav.types.StateWithCovariance"><span class="pre">pynav.types.StateWithCovariance</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">u</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="types.html#pynav.types.StampedValue" title="pynav.types.StampedValue"><span class="pre">pynav.types.StampedValue</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">dt</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><span class="pre">float</span><span class="p"><span class="pre">]</span></span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">x_jac</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="types.html#pynav.types.State" title="pynav.types.State"><span class="pre">pynav.types.State</span></a><span class="p"><span class="pre">]</span></span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">use_last_input</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span> &#x2192; <a class="reference internal" href="types.html#pynav.types.StateWithCovariance" title="pynav.types.StateWithCovariance"><span class="pre">pynav.types.StateWithCovariance</span></a><a class="headerlink" href="#pynav.filters.ExtendedKalmanFilter.predict" title="Permalink to this definition">¶</a></dt>
-<dd><p>Propagates the state forward in time using a process model.</p>
+<code class="sig-name descname"><span class="pre">predict</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="types.html#pynav.types.StateWithCovariance" title="pynav.types.StateWithCovariance"><span class="pre">pynav.types.StateWithCovariance</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">u</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="types.html#pynav.types.StampedValue" title="pynav.types.StampedValue"><span class="pre">pynav.types.StampedValue</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">dt</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><span class="pre">float</span><span class="p"><span class="pre">]</span></span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">x_jac</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="types.html#pynav.types.State" title="pynav.types.State"><span class="pre">pynav.types.State</span></a><span class="p"><span class="pre">]</span></span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> &#x2192; <a class="reference internal" href="types.html#pynav.types.StateWithCovariance" title="pynav.types.StateWithCovariance"><span class="pre">pynav.types.StateWithCovariance</span></a><a class="headerlink" href="#pynav.filters.ExtendedKalmanFilter.predict" title="Permalink to this definition">¶</a></dt>
+<dd><p>Propagates the state forward in time using a process model. The user
+must provide the current state, input, and time interval</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>If the time interval <cite>dt</cite> is not provided in the arguments, it will
+be taken as the difference between the input stamp and the state stamp.</p>
+</div>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>x</strong> (<a class="reference internal" href="types.html#pynav.types.StateWithCovariance" title="pynav.types.StateWithCovariance"><em>StateWithCovariance</em></a>) – The current state estimate.</p></li>
 <li><p><strong>u</strong> (<a class="reference internal" href="types.html#pynav.types.StampedValue" title="pynav.types.StampedValue"><em>StampedValue</em></a>) – Input measurement to be given to process model</p></li>
-<li><p><strong>dt</strong> (<em>float</em><em>, </em><em>optional</em>) – Duration to next time step. If not provided, the <cite>.stamp</cite> value in
-<cite>u</cite> will be used.</p></li>
+<li><p><strong>dt</strong> (<em>float</em><em>, </em><em>optional</em>) – Duration to next time step. If not provided, dt will be calculated
+with <cite>dt = u.stamp - x.state.stamp</cite>.</p></li>
 <li><p><strong>x_jac</strong> (<a class="reference internal" href="types.html#pynav.types.State" title="pynav.types.State"><em>State</em></a><em>, </em><em>optional</em>) – Evaluation point for the process model Jacobian. If not provided, the
 current state estimate will be used.</p></li>
-<li><p><strong>use_last_input</strong> (<em>bool</em><em>, </em><em>optional</em>) – <p>Whether to use the previously-fed input in the process model or the
-current one, by default True. This is essentially the difference
-between</p>
-</p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns</dt>
@@ -176,16 +181,19 @@ between</p>
 
 <dl class="py method">
 <dt id="pynav.filters.ExtendedKalmanFilter.correct">
-<code class="sig-name descname"><span class="pre">correct</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="types.html#pynav.types.StateWithCovariance" title="pynav.types.StateWithCovariance"><span class="pre">pynav.types.StateWithCovariance</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">y</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="types.html#pynav.types.Measurement" title="pynav.types.Measurement"><span class="pre">pynav.types.Measurement</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">x_jac</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="types.html#pynav.types.State" title="pynav.types.State"><span class="pre">pynav.types.State</span></a><span class="p"><span class="pre">]</span></span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">reject_outlier</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><span class="pre">bool</span><span class="p"><span class="pre">]</span></span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> &#x2192; <a class="reference internal" href="types.html#pynav.types.StateWithCovariance" title="pynav.types.StateWithCovariance"><span class="pre">pynav.types.StateWithCovariance</span></a><a class="headerlink" href="#pynav.filters.ExtendedKalmanFilter.correct" title="Permalink to this definition">¶</a></dt>
+<code class="sig-name descname"><span class="pre">correct</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="types.html#pynav.types.StateWithCovariance" title="pynav.types.StateWithCovariance"><span class="pre">pynav.types.StateWithCovariance</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">y</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="types.html#pynav.types.Measurement" title="pynav.types.Measurement"><span class="pre">pynav.types.Measurement</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">u</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="types.html#pynav.types.StampedValue" title="pynav.types.StampedValue"><span class="pre">pynav.types.StampedValue</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">x_jac</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="types.html#pynav.types.State" title="pynav.types.State"><span class="pre">pynav.types.State</span></a><span class="p"><span class="pre">]</span></span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">reject_outlier</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><span class="pre">bool</span><span class="p"><span class="pre">]</span></span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> &#x2192; <a class="reference internal" href="types.html#pynav.types.StateWithCovariance" title="pynav.types.StateWithCovariance"><span class="pre">pynav.types.StateWithCovariance</span></a><a class="headerlink" href="#pynav.filters.ExtendedKalmanFilter.correct" title="Permalink to this definition">¶</a></dt>
 <dd><p>Fuses an arbitrary measurement to produce a corrected state estimate.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>x</strong> (<a class="reference internal" href="types.html#pynav.types.StateWithCovariance" title="pynav.types.StateWithCovariance"><em>StateWithCovariance</em></a>) – The current state estimate.</p></li>
+<li><p><strong>u</strong> (<a class="reference internal" href="types.html#pynav.types.StampedValue" title="pynav.types.StampedValue"><em>StampedValue</em></a>) – Most recent input, to be used to predict the state forward
+if the measurement stamp is larger than the state stamp.</p></li>
 <li><p><strong>y</strong> (<a class="reference internal" href="types.html#pynav.types.Measurement" title="pynav.types.Measurement"><em>Measurement</em></a>) – Measurement to be fused into the current state estimate.</p></li>
 <li><p><strong>x_jac</strong> (<a class="reference internal" href="types.html#pynav.types.State" title="pynav.types.State"><em>State</em></a><em>, </em><em>optional</em>) – valuation point for the process model Jacobian. If not provided, the
 current state estimate will be used.</p></li>
-<li><p><strong>reject_outlier</strong> (<em>bool</em><em>, </em><em>optional</em>) – Whether to apply the NIS test to this measurement, by default None</p></li>
+<li><p><strong>reject_outlier</strong> (<em>bool</em><em>, </em><em>optional</em>) – Whether to apply the NIS test to this measurement, by default None,
+in which case the value of <cite>self.reject_outliers</cite> will be used.</p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns</dt>
@@ -213,22 +221,35 @@ current state estimate will be used.</p></li>
 </dd>
 </dl>
 <dl class="py attribute">
+<dt id="pynav.filters.IteratedKalmanFilter.step_tol">
+<code class="sig-name descname"><span class="pre">step_tol</span></code><a class="headerlink" href="#pynav.filters.IteratedKalmanFilter.step_tol" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt id="pynav.filters.IteratedKalmanFilter.max_iters">
+<code class="sig-name descname"><span class="pre">max_iters</span></code><a class="headerlink" href="#pynav.filters.IteratedKalmanFilter.max_iters" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
 <dt id="pynav.filters.IteratedKalmanFilter.reject_outliers">
 <code class="sig-name descname"><span class="pre">reject_outliers</span></code><a class="headerlink" href="#pynav.filters.IteratedKalmanFilter.reject_outliers" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="py method">
 <dt id="pynav.filters.IteratedKalmanFilter.correct">
-<code class="sig-name descname"><span class="pre">correct</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="types.html#pynav.types.StateWithCovariance" title="pynav.types.StateWithCovariance"><span class="pre">pynav.types.StateWithCovariance</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">y</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="types.html#pynav.types.Measurement" title="pynav.types.Measurement"><span class="pre">pynav.types.Measurement</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">x_jac</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="types.html#pynav.types.State" title="pynav.types.State"><span class="pre">pynav.types.State</span></a><span class="p"><span class="pre">]</span></span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">reject_outlier</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#pynav.filters.IteratedKalmanFilter.correct" title="Permalink to this definition">¶</a></dt>
+<code class="sig-name descname"><span class="pre">correct</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="types.html#pynav.types.StateWithCovariance" title="pynav.types.StateWithCovariance"><span class="pre">pynav.types.StateWithCovariance</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">y</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="types.html#pynav.types.Measurement" title="pynav.types.Measurement"><span class="pre">pynav.types.Measurement</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">u</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="types.html#pynav.types.StampedValue" title="pynav.types.StampedValue"><span class="pre">pynav.types.StampedValue</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">x_jac</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="types.html#pynav.types.State" title="pynav.types.State"><span class="pre">pynav.types.State</span></a><span class="p"><span class="pre">]</span></span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">reject_outlier</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#pynav.filters.IteratedKalmanFilter.correct" title="Permalink to this definition">¶</a></dt>
 <dd><p>Fuses an arbitrary measurement to produce a corrected state estimate.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>x</strong> (<a class="reference internal" href="types.html#pynav.types.StateWithCovariance" title="pynav.types.StateWithCovariance"><em>StateWithCovariance</em></a>) – The current state estimate.</p></li>
+<li><p><strong>u</strong> (<a class="reference internal" href="types.html#pynav.types.StampedValue" title="pynav.types.StampedValue"><em>StampedValue</em></a>) – Most recent input, to be used to predict the state forward
+if the measurement stamp is larger than the state stamp.</p></li>
 <li><p><strong>y</strong> (<a class="reference internal" href="types.html#pynav.types.Measurement" title="pynav.types.Measurement"><em>Measurement</em></a>) – Measurement to be fused into the current state estimate.</p></li>
 <li><p><strong>x_jac</strong> (<a class="reference internal" href="types.html#pynav.types.State" title="pynav.types.State"><em>State</em></a><em>, </em><em>optional</em>) – valuation point for the process model Jacobian. If not provided, the
 current state estimate will be used.</p></li>
-<li><p><strong>reject_outlier</strong> (<em>bool</em><em>, </em><em>optional</em>) – Whether to apply the NIS test to this measurement, by default None</p></li>
+<li><p><strong>reject_outlier</strong> (<em>bool</em><em>, </em><em>optional</em>) – Whether to apply the NIS test to this measurement, by default None,
+in which case the value of <cite>self.reject_outliers</cite> will be used.</p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns</dt>

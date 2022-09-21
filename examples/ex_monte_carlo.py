@@ -10,7 +10,13 @@ from pynav.lib.states import SE3State
 from pynav.lib.models import BodyFrameVelocity, RangePoseToAnchor
 from pynav.datagen import DataGenerator
 from pynav.filters import ExtendedKalmanFilter
-from pynav.utils import GaussianResult, monte_carlo, randvec
+from pynav.utils import (
+    GaussianResult,
+    GaussianResultList,
+    monte_carlo,
+    plot_error,
+    randvec,
+)
 from pynav.types import StateWithCovariance
 import time
 from pylie import SE3
@@ -64,24 +70,24 @@ def ekf_trial(trial_number: int) -> List[GaussianResult]:
     results_list = []
     for k in range(len(input_data) - 1):
         u = input_data[k]
+        x = ekf.predict(x, u)
 
         # Fuse any measurements that have occurred.
         while y.stamp < input_data[k + 1].stamp and meas_idx < len(meas_data):
 
-            x = ekf.correct(x, y)
+            x = ekf.correct(x, y, u)
             meas_idx += 1
             if meas_idx < len(meas_data):
                 y = meas_data[meas_idx]
 
-        x = ekf.predict(x, u)
         results_list.append(GaussianResult(x, state_true[k]))
 
-    return results_list
+    return GaussianResultList(results_list)
 
 
 # %% Run the monte carlo experiment
 
-N = 10
+N = 5
 
 results = monte_carlo(ekf_trial, N)
 
@@ -112,4 +118,16 @@ ax.set_ylim(0, None)
 ax.set_xlabel("Time (s)")
 ax.set_ylabel("NEES")
 ax.legend()
+
+
+if N < 15:
+
+    fig, axs = plt.subplots(2, 1)
+    axs: List[plt.Axes] = axs
+    for result in results.trial_results:
+        plot_error(result, axs=axs)
+
+    axs[0].set_title("Estimation error")
+    axs[1].set_xlabel("Time (s)")
+
 plt.show()

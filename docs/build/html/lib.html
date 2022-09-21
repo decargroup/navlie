@@ -36,6 +36,7 @@
         </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
               <p class="caption"><span class="caption-text">Contents</span></p>
 <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="index.html">Introduction</a></li>
 <li class="toctree-l1"><a class="reference internal" href="filters.html">pynav.filters</a></li>
 <li class="toctree-l1"><a class="reference internal" href="types.html">pynav.types</a></li>
 <li class="toctree-l1"><a class="reference internal" href="utils.html">pynav.utils</a></li>
@@ -88,6 +89,8 @@
 <li class="toctree-l3"><a class="reference internal" href="#pynav.lib.states.SO3State"><code class="docutils literal notranslate"><span class="pre">SO3State</span></code></a><ul>
 <li class="toctree-l4"><a class="reference internal" href="#pynav.lib.states.SO3State.attitude"><code class="docutils literal notranslate"><span class="pre">attitude</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="#pynav.lib.states.SO3State.jacobian_from_blocks"><code class="docutils literal notranslate"><span class="pre">jacobian_from_blocks</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#pynav.lib.states.SO3State.from_ros"><code class="docutils literal notranslate"><span class="pre">from_ros</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#pynav.lib.states.SO3State.to_ros"><code class="docutils literal notranslate"><span class="pre">to_ros</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="#pynav.lib.states.SO3State.direction"><code class="docutils literal notranslate"><span class="pre">direction</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="#pynav.lib.states.SO3State.copy"><code class="docutils literal notranslate"><span class="pre">copy</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="#pynav.lib.states.SO3State.dof"><code class="docutils literal notranslate"><span class="pre">dof</span></code></a></li>
@@ -121,6 +124,8 @@
 <li class="toctree-l4"><a class="reference internal" href="#pynav.lib.states.SE3State.attitude"><code class="docutils literal notranslate"><span class="pre">attitude</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="#pynav.lib.states.SE3State.position"><code class="docutils literal notranslate"><span class="pre">position</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="#pynav.lib.states.SE3State.jacobian_from_blocks"><code class="docutils literal notranslate"><span class="pre">jacobian_from_blocks</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#pynav.lib.states.SE3State.from_ros"><code class="docutils literal notranslate"><span class="pre">from_ros</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#pynav.lib.states.SE3State.to_ros"><code class="docutils literal notranslate"><span class="pre">to_ros</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="#pynav.lib.states.SE3State.direction"><code class="docutils literal notranslate"><span class="pre">direction</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="#pynav.lib.states.SE3State.copy"><code class="docutils literal notranslate"><span class="pre">copy</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="#pynav.lib.states.SE3State.dof"><code class="docutils literal notranslate"><span class="pre">dof</span></code></a></li>
@@ -159,7 +164,6 @@
 <li class="toctree-l4"><a class="reference internal" href="#pynav.lib.states.CompositeState.get_value_by_id"><code class="docutils literal notranslate"><span class="pre">get_value_by_id</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="#pynav.lib.states.CompositeState.get_state_by_id"><code class="docutils literal notranslate"><span class="pre">get_state_by_id</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="#pynav.lib.states.CompositeState.get_dof_by_id"><code class="docutils literal notranslate"><span class="pre">get_dof_by_id</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="#pynav.lib.states.CompositeState.substates"><code class="docutils literal notranslate"><span class="pre">substates</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="#pynav.lib.states.CompositeState.get_stamp_by_id"><code class="docutils literal notranslate"><span class="pre">get_stamp_by_id</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="#pynav.lib.states.CompositeState.jacobian"><code class="docutils literal notranslate"><span class="pre">jacobian</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="#pynav.lib.states.CompositeState.set_stamp_by_id"><code class="docutils literal notranslate"><span class="pre">set_stamp_by_id</span></code></a></li>
@@ -636,6 +640,41 @@ elements as the <cite>dof</cite> of this state.</p>
 <em class="property"><span class="pre">static</span> </em><code class="sig-name descname"><span class="pre">jacobian_from_blocks</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">attitude</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">numpy.ndarray</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#pynav.lib.states.SO3State.jacobian_from_blocks" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
+<dl class="py method">
+<dt id="pynav.lib.states.SO3State.from_ros">
+<em class="property"><span class="pre">static</span> </em><code class="sig-name descname"><span class="pre">from_ros</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">msg</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">geometry_msgs.msg._QuaternionStamped.QuaternionStamped</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">state_id</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">direction</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'right'</span></span></em><span class="sig-paren">)</span> &#x2192; <a class="reference internal" href="#pynav.lib.states.SO3State" title="pynav.lib.states.SO3State"><span class="pre">pynav.lib.states.SO3State</span></a><a class="headerlink" href="#pynav.lib.states.SO3State.from_ros" title="Permalink to this definition">¶</a></dt>
+<dd><p>Create a SO3State from a ROS QuaternionStamped message.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>msg</strong> (<em>QuaternionStamped</em>) – ROS quaternion</p></li>
+<li><p><strong>state_id</strong> (<em>Any</em><em>, </em><em>optional</em>) – If not provided, the frame_id of the message will be used</p></li>
+<li><p><strong>direction</strong> (<em>str</em><em>, </em><em>optional</em>) – perturbation direction, by default “right”</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>a new instance of SO3State</p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p><a class="reference internal" href="#pynav.lib.states.SO3State" title="pynav.lib.states.SO3State">SO3State</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="pynav.lib.states.SO3State.to_ros">
+<code class="sig-name descname"><span class="pre">to_ros</span></code><span class="sig-paren">(</span><span class="sig-paren">)</span> &#x2192; <span class="pre">geometry_msgs.msg._QuaternionStamped.QuaternionStamped</span><a class="headerlink" href="#pynav.lib.states.SO3State.to_ros" title="Permalink to this definition">¶</a></dt>
+<dd><p>Convert to ROS QuaternionStamped message.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>ROS quaternion</p>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p>QuaternionStamped</p>
+</dd>
+</dl>
+</dd></dl>
+
 <dl class="py attribute">
 <dt id="pynav.lib.states.SO3State.direction">
 <code class="sig-name descname"><span class="pre">direction</span></code><a class="headerlink" href="#pynav.lib.states.SO3State.direction" title="Permalink to this definition">¶</a></dt>
@@ -845,6 +884,44 @@ elements as the <cite>dof</cite> of this state.</p>
 <em class="property"><span class="pre">static</span> </em><code class="sig-name descname"><span class="pre">jacobian_from_blocks</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">attitude</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><span class="pre">numpy.ndarray</span><span class="p"><span class="pre">]</span></span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">position</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><span class="pre">numpy.ndarray</span><span class="p"><span class="pre">]</span></span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#pynav.lib.states.SE3State.jacobian_from_blocks" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
+<dl class="py method">
+<dt id="pynav.lib.states.SE3State.from_ros">
+<em class="property"><span class="pre">static</span> </em><code class="sig-name descname"><span class="pre">from_ros</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">msg</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">geometry_msgs.msg._PoseStamped.PoseStamped</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">state_id</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">direction</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'right'</span></span></em><span class="sig-paren">)</span> &#x2192; <a class="reference internal" href="#pynav.lib.states.SE3State" title="pynav.lib.states.SE3State"><span class="pre">pynav.lib.states.SE3State</span></a><a class="headerlink" href="#pynav.lib.states.SE3State.from_ros" title="Permalink to this definition">¶</a></dt>
+<dd><p>Convert a ROS PoseStamped message to a SE3State.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>msg</strong> (<em>PoseStamped</em>) – ROS PoseStamped message</p></li>
+<li><p><strong>state_id</strong> (<em>Any</em><em>, </em><em>optional</em>) – If not provided, the frame_id of the message will be used</p></li>
+<li><p><strong>direction</strong> (<em>str</em><em>, </em><em>optional</em>) – perturbation direction, by default “right”</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>a new instance of SE3State</p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p><a class="reference internal" href="#pynav.lib.states.SE3State" title="pynav.lib.states.SE3State">SE3State</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="pynav.lib.states.SE3State.to_ros">
+<code class="sig-name descname"><span class="pre">to_ros</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">frame_id</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> &#x2192; <span class="pre">geometry_msgs.msg._PoseStamped.PoseStamped</span><a class="headerlink" href="#pynav.lib.states.SE3State.to_ros" title="Permalink to this definition">¶</a></dt>
+<dd><p>Convert a SE3State to a ROS PoseStamped message.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>frame_id</strong> (<em>str</em><em>, </em><em>optional</em>) – If not provided, the state_id will be used.</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>ROS PoseStamped message</p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>PoseStamped</p>
+</dd>
+</dl>
+</dd></dl>
+
 <dl class="py attribute">
 <dt id="pynav.lib.states.SE3State.direction">
 <code class="sig-name descname"><span class="pre">direction</span></code><a class="headerlink" href="#pynav.lib.states.SE3State.direction" title="Permalink to this definition">¶</a></dt>
@@ -1050,7 +1127,7 @@ and by ID.</p>
 <dl class="py attribute">
 <dt id="pynav.lib.states.CompositeState.value">
 <code class="sig-name descname"><span class="pre">value</span></code><a class="headerlink" href="#pynav.lib.states.CompositeState.value" title="Permalink to this definition">¶</a></dt>
-<dd><p>The substates are the CompositeState ‘s value.</p>
+<dd><p>The substates are the CompositeState’s value.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Type</dt>
 <dd class="field-odd"><p>List[<a class="reference internal" href="types.html#pynav.types.State" title="pynav.types.State">State</a>]</p>
@@ -1114,11 +1191,6 @@ and by ID.</p>
 <code class="sig-name descname"><span class="pre">get_dof_by_id</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">state_id</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#pynav.lib.states.CompositeState.get_dof_by_id" title="Permalink to this definition">¶</a></dt>
 <dd><p>Get degrees of freedom of sub-state by id.</p>
 </dd></dl>
-
-<dl class="py attribute">
-<dt id="pynav.lib.states.CompositeState.substates">
-<code class="sig-name descname"><span class="pre">substates</span></code><a class="headerlink" href="#pynav.lib.states.CompositeState.substates" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
 
 <dl class="py method">
 <dt id="pynav.lib.states.CompositeState.get_stamp_by_id">
@@ -1253,17 +1325,70 @@ with the the keys being the substate IDs.</p>
 <dl class="py method">
 <dt id="pynav.lib.models.SingleIntegrator.evaluate">
 <code class="sig-name descname"><span class="pre">evaluate</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="#pynav.lib.states.VectorState" title="pynav.lib.states.VectorState"><span class="pre">pynav.lib.states.VectorState</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">u</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="types.html#pynav.types.StampedValue" title="pynav.types.StampedValue"><span class="pre">pynav.types.StampedValue</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">dt</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">float</span></span></em><span class="sig-paren">)</span> &#x2192; <span class="pre">numpy.ndarray</span><a class="headerlink" href="#pynav.lib.models.SingleIntegrator.evaluate" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>Implementation of <span class="math notranslate nohighlight">\(\mathbf{f}(\mathbf{x}_{k-1}, \mathbf{u}, \Delta t)\)</span>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>x</strong> (<a class="reference internal" href="types.html#pynav.types.State" title="pynav.types.State"><em>State</em></a>) – State at time <span class="math notranslate nohighlight">\(k-1\)</span>.</p></li>
+<li><p><strong>u</strong> (<a class="reference internal" href="types.html#pynav.types.StampedValue" title="pynav.types.StampedValue"><em>StampedValue</em></a>) – The input value <span class="math notranslate nohighlight">\(\mathbf{u}\)</span> provided as a StampedValue object.
+The actual numerical value is accessed via <cite>u.value</cite>.</p></li>
+<li><p><strong>dt</strong> (<em>float</em>) – The time interval <span class="math notranslate nohighlight">\(\Delta t\)</span> between the two states.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>State at time <span class="math notranslate nohighlight">\(k\)</span>.</p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p><a class="reference internal" href="types.html#pynav.types.State" title="pynav.types.State">State</a></p>
+</dd>
+</dl>
+</dd></dl>
 
 <dl class="py method">
 <dt id="pynav.lib.models.SingleIntegrator.jacobian">
 <code class="sig-name descname"><span class="pre">jacobian</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">u</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dt</span></span></em><span class="sig-paren">)</span> &#x2192; <span class="pre">numpy.ndarray</span><a class="headerlink" href="#pynav.lib.models.SingleIntegrator.jacobian" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>Implementation of the process model Jacobian with respect to the state.</p>
+<div class="math notranslate nohighlight">
+\[\mathbf{F} = \partial \mathbf{f}(\mathbf{x}_{k-1}, \mathbf{u}, \Delta t)
+/ \partial \mathbf{x}_{k-1}\]</div>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>x</strong> (<a class="reference internal" href="types.html#pynav.types.State" title="pynav.types.State"><em>State</em></a>) – State at time <span class="math notranslate nohighlight">\(k-1\)</span>.</p></li>
+<li><p><strong>u</strong> (<a class="reference internal" href="types.html#pynav.types.StampedValue" title="pynav.types.StampedValue"><em>StampedValue</em></a>) – The input value <span class="math notranslate nohighlight">\(\mathbf{u}\)</span> provided as a StampedValue object.</p></li>
+<li><p><strong>dt</strong> (<em>float</em>) – The time interval <span class="math notranslate nohighlight">\(\Delta t\)</span> between the two states.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>Process model Jacobian with respect to the state <span class="math notranslate nohighlight">\(\mathbf{F}\)</span>.</p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>np.ndarray</p>
+</dd>
+</dl>
+</dd></dl>
 
 <dl class="py method">
 <dt id="pynav.lib.models.SingleIntegrator.covariance">
 <code class="sig-name descname"><span class="pre">covariance</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">u</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dt</span></span></em><span class="sig-paren">)</span> &#x2192; <span class="pre">numpy.ndarray</span><a class="headerlink" href="#pynav.lib.models.SingleIntegrator.covariance" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>Covariance matrix math:<cite>mathbf{Q}_k</cite> of the additive Gaussian
+noise <span class="math notranslate nohighlight">\(\mathbf{w}_{k} \sim \mathcal{N}(\mathbf{0}, \mathbf{Q}_k)\)</span>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>x</strong> (<a class="reference internal" href="types.html#pynav.types.State" title="pynav.types.State"><em>State</em></a>) – State at time <span class="math notranslate nohighlight">\(k-1\)</span>.</p></li>
+<li><p><strong>u</strong> (<a class="reference internal" href="types.html#pynav.types.StampedValue" title="pynav.types.StampedValue"><em>StampedValue</em></a>) – The input value <span class="math notranslate nohighlight">\(\mathbf{u}\)</span> provided as a StampedValue object.</p></li>
+<li><p><strong>dt</strong> (<em>float</em>) – The time interval <span class="math notranslate nohighlight">\(\Delta t\)</span> between the two states.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>Covariance matrix <span class="math notranslate nohighlight">\(\mathbf{Q}_k\)</span>.</p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>np.ndarray</p>
+</dd>
+</dl>
+</dd></dl>
 
 <dl class="py method">
 <dt id="pynav.lib.models.SingleIntegrator.jacobian_fd">
@@ -1284,17 +1409,70 @@ a local reference frame, but resolved in the robot body frame.</p>
 <dl class="py method">
 <dt id="pynav.lib.models.BodyFrameVelocity.evaluate">
 <code class="sig-name descname"><span class="pre">evaluate</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="#pynav.lib.states.MatrixLieGroupState" title="pynav.lib.states.MatrixLieGroupState"><span class="pre">pynav.lib.states.MatrixLieGroupState</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">u</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="types.html#pynav.types.StampedValue" title="pynav.types.StampedValue"><span class="pre">pynav.types.StampedValue</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">dt</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">float</span></span></em><span class="sig-paren">)</span> &#x2192; <a class="reference internal" href="#pynav.lib.states.MatrixLieGroupState" title="pynav.lib.states.MatrixLieGroupState"><span class="pre">pynav.lib.states.MatrixLieGroupState</span></a><a class="headerlink" href="#pynav.lib.models.BodyFrameVelocity.evaluate" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>Implementation of <span class="math notranslate nohighlight">\(\mathbf{f}(\mathbf{x}_{k-1}, \mathbf{u}, \Delta t)\)</span>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>x</strong> (<a class="reference internal" href="types.html#pynav.types.State" title="pynav.types.State"><em>State</em></a>) – State at time <span class="math notranslate nohighlight">\(k-1\)</span>.</p></li>
+<li><p><strong>u</strong> (<a class="reference internal" href="types.html#pynav.types.StampedValue" title="pynav.types.StampedValue"><em>StampedValue</em></a>) – The input value <span class="math notranslate nohighlight">\(\mathbf{u}\)</span> provided as a StampedValue object.
+The actual numerical value is accessed via <cite>u.value</cite>.</p></li>
+<li><p><strong>dt</strong> (<em>float</em>) – The time interval <span class="math notranslate nohighlight">\(\Delta t\)</span> between the two states.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>State at time <span class="math notranslate nohighlight">\(k\)</span>.</p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p><a class="reference internal" href="types.html#pynav.types.State" title="pynav.types.State">State</a></p>
+</dd>
+</dl>
+</dd></dl>
 
 <dl class="py method">
 <dt id="pynav.lib.models.BodyFrameVelocity.jacobian">
 <code class="sig-name descname"><span class="pre">jacobian</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="#pynav.lib.states.MatrixLieGroupState" title="pynav.lib.states.MatrixLieGroupState"><span class="pre">pynav.lib.states.MatrixLieGroupState</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">u</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="types.html#pynav.types.StampedValue" title="pynav.types.StampedValue"><span class="pre">pynav.types.StampedValue</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">dt</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">float</span></span></em><span class="sig-paren">)</span> &#x2192; <span class="pre">numpy.ndarray</span><a class="headerlink" href="#pynav.lib.models.BodyFrameVelocity.jacobian" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>Implementation of the process model Jacobian with respect to the state.</p>
+<div class="math notranslate nohighlight">
+\[\mathbf{F} = \partial \mathbf{f}(\mathbf{x}_{k-1}, \mathbf{u}, \Delta t)
+/ \partial \mathbf{x}_{k-1}\]</div>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>x</strong> (<a class="reference internal" href="types.html#pynav.types.State" title="pynav.types.State"><em>State</em></a>) – State at time <span class="math notranslate nohighlight">\(k-1\)</span>.</p></li>
+<li><p><strong>u</strong> (<a class="reference internal" href="types.html#pynav.types.StampedValue" title="pynav.types.StampedValue"><em>StampedValue</em></a>) – The input value <span class="math notranslate nohighlight">\(\mathbf{u}\)</span> provided as a StampedValue object.</p></li>
+<li><p><strong>dt</strong> (<em>float</em>) – The time interval <span class="math notranslate nohighlight">\(\Delta t\)</span> between the two states.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>Process model Jacobian with respect to the state <span class="math notranslate nohighlight">\(\mathbf{F}\)</span>.</p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>np.ndarray</p>
+</dd>
+</dl>
+</dd></dl>
 
 <dl class="py method">
 <dt id="pynav.lib.models.BodyFrameVelocity.covariance">
 <code class="sig-name descname"><span class="pre">covariance</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="#pynav.lib.states.MatrixLieGroupState" title="pynav.lib.states.MatrixLieGroupState"><span class="pre">pynav.lib.states.MatrixLieGroupState</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">u</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="types.html#pynav.types.StampedValue" title="pynav.types.StampedValue"><span class="pre">pynav.types.StampedValue</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">dt</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">float</span></span></em><span class="sig-paren">)</span> &#x2192; <span class="pre">numpy.ndarray</span><a class="headerlink" href="#pynav.lib.models.BodyFrameVelocity.covariance" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>Covariance matrix math:<cite>mathbf{Q}_k</cite> of the additive Gaussian
+noise <span class="math notranslate nohighlight">\(\mathbf{w}_{k} \sim \mathcal{N}(\mathbf{0}, \mathbf{Q}_k)\)</span>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>x</strong> (<a class="reference internal" href="types.html#pynav.types.State" title="pynav.types.State"><em>State</em></a>) – State at time <span class="math notranslate nohighlight">\(k-1\)</span>.</p></li>
+<li><p><strong>u</strong> (<a class="reference internal" href="types.html#pynav.types.StampedValue" title="pynav.types.StampedValue"><em>StampedValue</em></a>) – The input value <span class="math notranslate nohighlight">\(\mathbf{u}\)</span> provided as a StampedValue object.</p></li>
+<li><p><strong>dt</strong> (<em>float</em>) – The time interval <span class="math notranslate nohighlight">\(\Delta t\)</span> between the two states.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>Covariance matrix <span class="math notranslate nohighlight">\(\mathbf{Q}_k\)</span>.</p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>np.ndarray</p>
+</dd>
+</dl>
+</dd></dl>
 
 <dl class="py method">
 <dt id="pynav.lib.models.BodyFrameVelocity.jacobian_fd">
@@ -1311,17 +1489,70 @@ a local reference frame, but resolved in the robot body frame.</p>
 <dl class="py method">
 <dt id="pynav.lib.models.RelativeBodyFrameVelocity.evaluate">
 <code class="sig-name descname"><span class="pre">evaluate</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="#pynav.lib.states.MatrixLieGroupState" title="pynav.lib.states.MatrixLieGroupState"><span class="pre">pynav.lib.states.MatrixLieGroupState</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">u</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="types.html#pynav.types.StampedValue" title="pynav.types.StampedValue"><span class="pre">pynav.types.StampedValue</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">dt</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">float</span></span></em><span class="sig-paren">)</span> &#x2192; <a class="reference internal" href="#pynav.lib.states.MatrixLieGroupState" title="pynav.lib.states.MatrixLieGroupState"><span class="pre">pynav.lib.states.MatrixLieGroupState</span></a><a class="headerlink" href="#pynav.lib.models.RelativeBodyFrameVelocity.evaluate" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>Implementation of <span class="math notranslate nohighlight">\(\mathbf{f}(\mathbf{x}_{k-1}, \mathbf{u}, \Delta t)\)</span>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>x</strong> (<a class="reference internal" href="types.html#pynav.types.State" title="pynav.types.State"><em>State</em></a>) – State at time <span class="math notranslate nohighlight">\(k-1\)</span>.</p></li>
+<li><p><strong>u</strong> (<a class="reference internal" href="types.html#pynav.types.StampedValue" title="pynav.types.StampedValue"><em>StampedValue</em></a>) – The input value <span class="math notranslate nohighlight">\(\mathbf{u}\)</span> provided as a StampedValue object.
+The actual numerical value is accessed via <cite>u.value</cite>.</p></li>
+<li><p><strong>dt</strong> (<em>float</em>) – The time interval <span class="math notranslate nohighlight">\(\Delta t\)</span> between the two states.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>State at time <span class="math notranslate nohighlight">\(k\)</span>.</p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p><a class="reference internal" href="types.html#pynav.types.State" title="pynav.types.State">State</a></p>
+</dd>
+</dl>
+</dd></dl>
 
 <dl class="py method">
 <dt id="pynav.lib.models.RelativeBodyFrameVelocity.jacobian">
 <code class="sig-name descname"><span class="pre">jacobian</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="#pynav.lib.states.MatrixLieGroupState" title="pynav.lib.states.MatrixLieGroupState"><span class="pre">pynav.lib.states.MatrixLieGroupState</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">u</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="types.html#pynav.types.StampedValue" title="pynav.types.StampedValue"><span class="pre">pynav.types.StampedValue</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">dt</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">float</span></span></em><span class="sig-paren">)</span> &#x2192; <span class="pre">numpy.ndarray</span><a class="headerlink" href="#pynav.lib.models.RelativeBodyFrameVelocity.jacobian" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>Implementation of the process model Jacobian with respect to the state.</p>
+<div class="math notranslate nohighlight">
+\[\mathbf{F} = \partial \mathbf{f}(\mathbf{x}_{k-1}, \mathbf{u}, \Delta t)
+/ \partial \mathbf{x}_{k-1}\]</div>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>x</strong> (<a class="reference internal" href="types.html#pynav.types.State" title="pynav.types.State"><em>State</em></a>) – State at time <span class="math notranslate nohighlight">\(k-1\)</span>.</p></li>
+<li><p><strong>u</strong> (<a class="reference internal" href="types.html#pynav.types.StampedValue" title="pynav.types.StampedValue"><em>StampedValue</em></a>) – The input value <span class="math notranslate nohighlight">\(\mathbf{u}\)</span> provided as a StampedValue object.</p></li>
+<li><p><strong>dt</strong> (<em>float</em>) – The time interval <span class="math notranslate nohighlight">\(\Delta t\)</span> between the two states.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>Process model Jacobian with respect to the state <span class="math notranslate nohighlight">\(\mathbf{F}\)</span>.</p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>np.ndarray</p>
+</dd>
+</dl>
+</dd></dl>
 
 <dl class="py method">
 <dt id="pynav.lib.models.RelativeBodyFrameVelocity.covariance">
 <code class="sig-name descname"><span class="pre">covariance</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="#pynav.lib.states.MatrixLieGroupState" title="pynav.lib.states.MatrixLieGroupState"><span class="pre">pynav.lib.states.MatrixLieGroupState</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">u</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="types.html#pynav.types.StampedValue" title="pynav.types.StampedValue"><span class="pre">pynav.types.StampedValue</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">dt</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">float</span></span></em><span class="sig-paren">)</span> &#x2192; <span class="pre">numpy.ndarray</span><a class="headerlink" href="#pynav.lib.models.RelativeBodyFrameVelocity.covariance" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>Covariance matrix math:<cite>mathbf{Q}_k</cite> of the additive Gaussian
+noise <span class="math notranslate nohighlight">\(\mathbf{w}_{k} \sim \mathcal{N}(\mathbf{0}, \mathbf{Q}_k)\)</span>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>x</strong> (<a class="reference internal" href="types.html#pynav.types.State" title="pynav.types.State"><em>State</em></a>) – State at time <span class="math notranslate nohighlight">\(k-1\)</span>.</p></li>
+<li><p><strong>u</strong> (<a class="reference internal" href="types.html#pynav.types.StampedValue" title="pynav.types.StampedValue"><em>StampedValue</em></a>) – The input value <span class="math notranslate nohighlight">\(\mathbf{u}\)</span> provided as a StampedValue object.</p></li>
+<li><p><strong>dt</strong> (<em>float</em>) – The time interval <span class="math notranslate nohighlight">\(\Delta t\)</span> between the two states.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>Covariance matrix <span class="math notranslate nohighlight">\(\mathbf{Q}_k\)</span>.</p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>np.ndarray</p>
+</dd>
+</dl>
+</dd></dl>
 
 <dl class="py method">
 <dt id="pynav.lib.models.RelativeBodyFrameVelocity.jacobian_fd">
@@ -1339,17 +1570,70 @@ a local reference frame, but resolved in the robot body frame.</p>
 <dl class="py method">
 <dt id="pynav.lib.models.CompositeProcessModel.evaluate">
 <code class="sig-name descname"><span class="pre">evaluate</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="#pynav.lib.states.CompositeState" title="pynav.lib.states.CompositeState"><span class="pre">pynav.lib.states.CompositeState</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">u</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="types.html#pynav.types.StampedValue" title="pynav.types.StampedValue"><span class="pre">pynav.types.StampedValue</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">dt</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">float</span></span></em><span class="sig-paren">)</span> &#x2192; <a class="reference internal" href="#pynav.lib.states.CompositeState" title="pynav.lib.states.CompositeState"><span class="pre">pynav.lib.states.CompositeState</span></a><a class="headerlink" href="#pynav.lib.models.CompositeProcessModel.evaluate" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>Implementation of <span class="math notranslate nohighlight">\(\mathbf{f}(\mathbf{x}_{k-1}, \mathbf{u}, \Delta t)\)</span>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>x</strong> (<a class="reference internal" href="types.html#pynav.types.State" title="pynav.types.State"><em>State</em></a>) – State at time <span class="math notranslate nohighlight">\(k-1\)</span>.</p></li>
+<li><p><strong>u</strong> (<a class="reference internal" href="types.html#pynav.types.StampedValue" title="pynav.types.StampedValue"><em>StampedValue</em></a>) – The input value <span class="math notranslate nohighlight">\(\mathbf{u}\)</span> provided as a StampedValue object.
+The actual numerical value is accessed via <cite>u.value</cite>.</p></li>
+<li><p><strong>dt</strong> (<em>float</em>) – The time interval <span class="math notranslate nohighlight">\(\Delta t\)</span> between the two states.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>State at time <span class="math notranslate nohighlight">\(k\)</span>.</p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p><a class="reference internal" href="types.html#pynav.types.State" title="pynav.types.State">State</a></p>
+</dd>
+</dl>
+</dd></dl>
 
 <dl class="py method">
 <dt id="pynav.lib.models.CompositeProcessModel.jacobian">
 <code class="sig-name descname"><span class="pre">jacobian</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="#pynav.lib.states.CompositeState" title="pynav.lib.states.CompositeState"><span class="pre">pynav.lib.states.CompositeState</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">u</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="types.html#pynav.types.StampedValue" title="pynav.types.StampedValue"><span class="pre">pynav.types.StampedValue</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">dt</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">float</span></span></em><span class="sig-paren">)</span> &#x2192; <span class="pre">numpy.ndarray</span><a class="headerlink" href="#pynav.lib.models.CompositeProcessModel.jacobian" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>Implementation of the process model Jacobian with respect to the state.</p>
+<div class="math notranslate nohighlight">
+\[\mathbf{F} = \partial \mathbf{f}(\mathbf{x}_{k-1}, \mathbf{u}, \Delta t)
+/ \partial \mathbf{x}_{k-1}\]</div>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>x</strong> (<a class="reference internal" href="types.html#pynav.types.State" title="pynav.types.State"><em>State</em></a>) – State at time <span class="math notranslate nohighlight">\(k-1\)</span>.</p></li>
+<li><p><strong>u</strong> (<a class="reference internal" href="types.html#pynav.types.StampedValue" title="pynav.types.StampedValue"><em>StampedValue</em></a>) – The input value <span class="math notranslate nohighlight">\(\mathbf{u}\)</span> provided as a StampedValue object.</p></li>
+<li><p><strong>dt</strong> (<em>float</em>) – The time interval <span class="math notranslate nohighlight">\(\Delta t\)</span> between the two states.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>Process model Jacobian with respect to the state <span class="math notranslate nohighlight">\(\mathbf{F}\)</span>.</p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>np.ndarray</p>
+</dd>
+</dl>
+</dd></dl>
 
 <dl class="py method">
 <dt id="pynav.lib.models.CompositeProcessModel.covariance">
 <code class="sig-name descname"><span class="pre">covariance</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="#pynav.lib.states.CompositeState" title="pynav.lib.states.CompositeState"><span class="pre">pynav.lib.states.CompositeState</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">u</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="types.html#pynav.types.StampedValue" title="pynav.types.StampedValue"><span class="pre">pynav.types.StampedValue</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">dt</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">float</span></span></em><span class="sig-paren">)</span> &#x2192; <span class="pre">numpy.ndarray</span><a class="headerlink" href="#pynav.lib.models.CompositeProcessModel.covariance" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>Covariance matrix math:<cite>mathbf{Q}_k</cite> of the additive Gaussian
+noise <span class="math notranslate nohighlight">\(\mathbf{w}_{k} \sim \mathcal{N}(\mathbf{0}, \mathbf{Q}_k)\)</span>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>x</strong> (<a class="reference internal" href="types.html#pynav.types.State" title="pynav.types.State"><em>State</em></a>) – State at time <span class="math notranslate nohighlight">\(k-1\)</span>.</p></li>
+<li><p><strong>u</strong> (<a class="reference internal" href="types.html#pynav.types.StampedValue" title="pynav.types.StampedValue"><em>StampedValue</em></a>) – The input value <span class="math notranslate nohighlight">\(\mathbf{u}\)</span> provided as a StampedValue object.</p></li>
+<li><p><strong>dt</strong> (<em>float</em>) – The time interval <span class="math notranslate nohighlight">\(\Delta t\)</span> between the two states.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>Covariance matrix <span class="math notranslate nohighlight">\(\mathbf{Q}_k\)</span>.</p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>np.ndarray</p>
+</dd>
+</dl>
+</dd></dl>
 
 <dl class="py method">
 <dt id="pynav.lib.models.CompositeProcessModel.jacobian_fd">
@@ -1555,7 +1839,7 @@ point).</p>
 
 <dl class="py class">
 <dt id="pynav.lib.models.Altitude">
-<em class="property"><span class="pre">class</span> </em><code class="sig-prename descclassname"><span class="pre">pynav.lib.models.</span></code><code class="sig-name descname"><span class="pre">Altitude</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">R</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">numpy.ndarray</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">minimum</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.0</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#pynav.lib.models.Altitude" title="Permalink to this definition">¶</a></dt>
+<em class="property"><span class="pre">class</span> </em><code class="sig-prename descclassname"><span class="pre">pynav.lib.models.</span></code><code class="sig-name descname"><span class="pre">Altitude</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">R</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">numpy.ndarray</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">minimum</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bias</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.1</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#pynav.lib.models.Altitude" title="Permalink to this definition">¶</a></dt>
 <dd><p>Bases: <a class="reference internal" href="types.html#pynav.types.MeasurementModel" title="pynav.types.MeasurementModel"><code class="xref py py-class docutils literal notranslate"><span class="pre">pynav.types.MeasurementModel</span></code></a></p>
 <dl class="py method">
 <dt id="pynav.lib.models.Altitude.evaluate">

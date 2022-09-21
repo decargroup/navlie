@@ -45,6 +45,67 @@ class SingleIntegrator(ProcessModel):
         return dt**2 * self._Q
 
 
+class DoubleIntegrator(ProcessModel):
+    """
+    A second-order kinematic process model with discretization as in
+    https://ieeexplore.ieee.org/stamp/stamp.jsp?tp=&arnumber=303738
+    """
+
+    def __init__(self, Q: np.ndarray):
+        '''
+        inputs:
+            Q: Continuous time covariance on the input u. 
+        '''
+        if Q.shape[0] != Q.shape[1]:
+            raise ValueError("Q must be an n x n matrix.")
+
+        self._Q = Q
+        self.dim = 2
+
+    def evaluate(self, x: VectorState, u: StampedValue, dt: float) -> np.ndarray:
+        '''
+        Evaluate discrete-time process model
+        '''
+        Ad = np.array([[1, dt],
+                      [0, 1]])
+        Ld = np.array([0.5*dt**2, dt])
+        x.value = Ad @ x.value + Ld * u.value
+        return x
+
+    def jacobian(self, x, u, dt) -> np.ndarray:
+        '''
+        Discrete-time state Jacobian
+        '''
+        Ad = np.array([[1, dt],
+                [0, 1]])
+        return Ad
+
+    def covariance(self, x, u, dt) -> np.ndarray:
+        '''
+        Discrete-time covariance on process model
+        '''
+        Lc = np.array([0, 1]).reshape(-1,1)
+        f = 1e-15
+        fudge_factor = np.array([[f, 0],
+                                [0, 0]])
+        return  Lc @ self._Q @ Lc.T * dt + fudge_factor
+
+class OneDimensionalPositionVelocityRange(MeasurementModel):
+    '''
+    A 1D range measurement for a state consisting of position and velocity
+    '''
+    def __init__(self, R: float):
+        self._R = np.array(R)
+
+    def evaluate(self, x: VectorState) -> np.ndarray:
+        return x.value[0]
+
+    def jacobian(self, x: VectorState) -> np.ndarray:
+        return np.array([1, 0]).reshape(1,-1)
+
+    def covariance(self, x: VectorState) -> np.ndarray:
+        return self._R
+        
 class BodyFrameVelocity(ProcessModel):
     """
     The body-frame velocity process model assumes that the input contains
@@ -687,12 +748,13 @@ class GlobalPosition(MeasurementModel):
 
 
 class Altitude(MeasurementModel):
-    def __init__(self, R: np.ndarray, minimum=0.0):
+    def __init__(self, R: np.ndarray, minimum=0.0, bias=0.1):
         self.R = R
         self.minimum = minimum
+        self.bias = bias
 
     def evaluate(self, x: MatrixLieGroupState):
-        h = x.position[2]
+        h = x.position[2] + self.bias
         return h if h > self.minimum else None
 
     def jacobian(self, x: MatrixLieGroupState):

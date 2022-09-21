@@ -36,6 +36,7 @@
         </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
               <p class="caption"><span class="caption-text">Contents</span></p>
 <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="index.html">Introduction</a></li>
 <li class="toctree-l1"><a class="reference internal" href="filters.html">pynav.filters</a></li>
 <li class="toctree-l1"><a class="reference internal" href="types.html">pynav.types</a></li>
 <li class="toctree-l1 current"><a class="current reference internal" href="#">pynav.utils</a><ul>
@@ -67,6 +68,15 @@
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="#pynav.utils.MonteCarloResult"><code class="docutils literal notranslate"><span class="pre">MonteCarloResult</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#pynav.utils.MonteCarloResult.trial_results"><code class="docutils literal notranslate"><span class="pre">trial_results</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#pynav.utils.MonteCarloResult.num_trials"><code class="docutils literal notranslate"><span class="pre">num_trials</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#pynav.utils.MonteCarloResult.stamp"><code class="docutils literal notranslate"><span class="pre">stamp</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#pynav.utils.MonteCarloResult.average_nees"><code class="docutils literal notranslate"><span class="pre">average_nees</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#pynav.utils.MonteCarloResult.average_ees"><code class="docutils literal notranslate"><span class="pre">average_ees</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#pynav.utils.MonteCarloResult.rmse"><code class="docutils literal notranslate"><span class="pre">rmse</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#pynav.utils.MonteCarloResult.total_rmse"><code class="docutils literal notranslate"><span class="pre">total_rmse</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#pynav.utils.MonteCarloResult.expected_nees"><code class="docutils literal notranslate"><span class="pre">expected_nees</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#pynav.utils.MonteCarloResult.dof"><code class="docutils literal notranslate"><span class="pre">dof</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="#pynav.utils.MonteCarloResult.nees_lower_bound"><code class="docutils literal notranslate"><span class="pre">nees_lower_bound</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="#pynav.utils.MonteCarloResult.nees_upper_bound"><code class="docutils literal notranslate"><span class="pre">nees_upper_bound</span></code></a></li>
 </ul>
@@ -118,7 +128,7 @@
 <td><p>A data container that simultaneously computes various interesting metrics about a Gaussian filter’s state estimate, given the ground-truth value of the state.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="#pynav.utils.GaussianResultList" title="pynav.utils.GaussianResultList"><code class="xref py py-obj docutils literal notranslate"><span class="pre">GaussianResultList</span></code></a></p></td>
-<td><p>A data container that accepts a list of <cite>GaussianResult</cite> objects and stacks the attributes of each object numpy arrays.</p></td>
+<td><p>A data container that accepts a list of <cite>GaussianResult</cite> objects and stacks the attributes in numpy arrays.</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="#pynav.utils.MonteCarloResult" title="pynav.utils.MonteCarloResult"><code class="xref py py-obj docutils literal notranslate"><span class="pre">MonteCarloResult</span></code></a></p></td>
 <td><p>A data container which computes various interesting metrics associated with Monte Carlo experiments, such as the average estimation error squared (EES) and the average normalized EES.</p></td>
@@ -139,7 +149,7 @@
 <td><p>Produces a random zero-mean column vector with covariance given by <cite>cov</cite></p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="#pynav.utils.plot_error" title="pynav.utils.plot_error"><code class="xref py py-obj docutils literal notranslate"><span class="pre">plot_error</span></code></a></p></td>
-<td><p>_summary_</p></td>
+<td><p>A generic three-sigma bound plotter.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="#pynav.utils.plot_meas" title="pynav.utils.plot_meas"><code class="xref py py-obj docutils literal notranslate"><span class="pre">plot_meas</span></code></a></p></td>
 <td><p>Given measurement data, make time-domain plots of the measurement values and their ground-truth model-based values.</p></td>
@@ -148,55 +158,117 @@
 </table>
 <dl class="py class">
 <dt id="pynav.utils.GaussianResult">
-<em class="property"><span class="pre">class</span> </em><code class="sig-prename descclassname"><span class="pre">pynav.utils.</span></code><code class="sig-name descname"><span class="pre">GaussianResult</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">state</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="types.html#pynav.types.State" title="pynav.types.State"><span class="pre">pynav.types.State</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">covariance</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><span class="pre">numpy.ndarray</span><span class="p"><span class="pre">]</span></span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">state_true</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="types.html#pynav.types.State" title="pynav.types.State"><span class="pre">pynav.types.State</span></a><span class="p"><span class="pre">]</span></span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#pynav.utils.GaussianResult" title="Permalink to this definition">¶</a></dt>
+<em class="property"><span class="pre">class</span> </em><code class="sig-prename descclassname"><span class="pre">pynav.utils.</span></code><code class="sig-name descname"><span class="pre">GaussianResult</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">estimate</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="types.html#pynav.types.StateWithCovariance" title="pynav.types.StateWithCovariance"><span class="pre">pynav.types.StateWithCovariance</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">state_true</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="types.html#pynav.types.State" title="pynav.types.State"><span class="pre">pynav.types.State</span></a></span></em><span class="sig-paren">)</span><a class="headerlink" href="#pynav.utils.GaussianResult" title="Permalink to this definition">¶</a></dt>
 <dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
 <p>A data container that simultaneously computes various interesting metrics
 about a Gaussian filter’s state estimate, given the ground-truth value of
 the state.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>estimate</strong> (<a class="reference internal" href="types.html#pynav.types.StateWithCovariance" title="pynav.types.StateWithCovariance"><em>StateWithCovariance</em></a>) – Estimated state and corresponding covariance.</p></li>
+<li><p><strong>state_true</strong> (<a class="reference internal" href="types.html#pynav.types.State" title="pynav.types.State"><em>State</em></a>) – The true state, which will be used to compute various error metrics.</p></li>
+</ul>
+</dd>
+</dl>
 <dl class="py attribute">
 <dt id="pynav.utils.GaussianResult.stamp">
 <code class="sig-name descname"><span class="pre">stamp</span></code><a class="headerlink" href="#pynav.utils.GaussianResult.stamp" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>timestamp</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type</dt>
+<dd class="field-odd"><p>float</p>
+</dd>
+</dl>
+</dd></dl>
 
 <dl class="py attribute">
 <dt id="pynav.utils.GaussianResult.state">
 <code class="sig-name descname"><span class="pre">state</span></code><a class="headerlink" href="#pynav.utils.GaussianResult.state" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>estimated state</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type</dt>
+<dd class="field-odd"><p><a class="reference internal" href="types.html#pynav.types.State" title="pynav.types.State">State</a></p>
+</dd>
+</dl>
+</dd></dl>
 
 <dl class="py attribute">
 <dt id="pynav.utils.GaussianResult.state_true">
 <code class="sig-name descname"><span class="pre">state_true</span></code><a class="headerlink" href="#pynav.utils.GaussianResult.state_true" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>true state</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type</dt>
+<dd class="field-odd"><p><a class="reference internal" href="types.html#pynav.types.State" title="pynav.types.State">State</a></p>
+</dd>
+</dl>
+</dd></dl>
 
 <dl class="py attribute">
 <dt id="pynav.utils.GaussianResult.covariance">
 <code class="sig-name descname"><span class="pre">covariance</span></code><a class="headerlink" href="#pynav.utils.GaussianResult.covariance" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>covariance associated with estimated state</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type</dt>
+<dd class="field-odd"><p>numpy.ndarray</p>
+</dd>
+</dl>
+</dd></dl>
 
 <dl class="py attribute">
 <dt id="pynav.utils.GaussianResult.error">
 <code class="sig-name descname"><span class="pre">error</span></code><a class="headerlink" href="#pynav.utils.GaussianResult.error" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>error vector between estimated and true state</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type</dt>
+<dd class="field-odd"><p>numpy.ndarray</p>
+</dd>
+</dl>
+</dd></dl>
 
 <dl class="py attribute">
 <dt id="pynav.utils.GaussianResult.ees">
 <code class="sig-name descname"><span class="pre">ees</span></code><a class="headerlink" href="#pynav.utils.GaussianResult.ees" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>sum of estimation error squared (EES)</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type</dt>
+<dd class="field-odd"><p>float</p>
+</dd>
+</dl>
+</dd></dl>
 
 <dl class="py attribute">
 <dt id="pynav.utils.GaussianResult.nees">
 <code class="sig-name descname"><span class="pre">nees</span></code><a class="headerlink" href="#pynav.utils.GaussianResult.nees" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>normalized estimation error squared (NEES)</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type</dt>
+<dd class="field-odd"><p>float</p>
+</dd>
+</dl>
+</dd></dl>
 
 <dl class="py attribute">
 <dt id="pynav.utils.GaussianResult.md">
 <code class="sig-name descname"><span class="pre">md</span></code><a class="headerlink" href="#pynav.utils.GaussianResult.md" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>Mahalanobis distance</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type</dt>
+<dd class="field-odd"><p>float</p>
+</dd>
+</dl>
+</dd></dl>
 
 <dl class="py attribute">
 <dt id="pynav.utils.GaussianResult.three_sigma">
 <code class="sig-name descname"><span class="pre">three_sigma</span></code><a class="headerlink" href="#pynav.utils.GaussianResult.three_sigma" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>three-sigma bounds on each error component</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type</dt>
+<dd class="field-odd"><p>numpy.ndarray</p>
+</dd>
+</dl>
+</dd></dl>
 
 </dd></dl>
 
@@ -205,66 +277,146 @@ the state.</p>
 <em class="property"><span class="pre">class</span> </em><code class="sig-prename descclassname"><span class="pre">pynav.utils.</span></code><code class="sig-name descname"><span class="pre">GaussianResultList</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">result_list</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#pynav.utils.GaussianResult" title="pynav.utils.GaussianResult"><span class="pre">pynav.utils.GaussianResult</span></a><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#pynav.utils.GaussianResultList" title="Permalink to this definition">¶</a></dt>
 <dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
 <p>A data container that accepts a list of <cite>GaussianResult</cite> objects and
-stacks the attributes of each object numpy arrays. Convenient for plotting.</p>
+stacks the attributes in numpy arrays. Convenient for plotting. This object
+does nothing more than array-ifying the attributes of <cite>GaussianResult</cite></p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>result_list</strong> (<em>List</em><em>[</em><a class="reference internal" href="#pynav.utils.GaussianResult" title="pynav.utils.GaussianResult"><em>GaussianResult</em></a><em>]</em>) – A list of GaussianResult, intended such that each element corresponds
+to a different time point</p>
+</dd>
+</dl>
+<p>Let <cite>N = len(result_list)</cite></p>
 <dl class="py attribute">
 <dt id="pynav.utils.GaussianResultList.stamp">
 <code class="sig-name descname"><span class="pre">stamp</span></code><a class="headerlink" href="#pynav.utils.GaussianResultList.stamp" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>timestamp</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type</dt>
+<dd class="field-odd"><p>numpy.ndarray with shape (N,)</p>
+</dd>
+</dl>
+</dd></dl>
 
 <dl class="py attribute">
 <dt id="pynav.utils.GaussianResultList.state">
 <code class="sig-name descname"><span class="pre">state</span></code><a class="headerlink" href="#pynav.utils.GaussianResultList.state" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>numpy array of State objects</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type</dt>
+<dd class="field-odd"><p>numpy.ndarray with shape (N,)</p>
+</dd>
+</dl>
+</dd></dl>
 
 <dl class="py attribute">
 <dt id="pynav.utils.GaussianResultList.state_true">
 <code class="sig-name descname"><span class="pre">state_true</span></code><a class="headerlink" href="#pynav.utils.GaussianResultList.state_true" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>numpy array of true State objects</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type</dt>
+<dd class="field-odd"><p>numpy.ndarray with shape (N,)</p>
+</dd>
+</dl>
+</dd></dl>
 
 <dl class="py attribute">
 <dt id="pynav.utils.GaussianResultList.covariance">
 <code class="sig-name descname"><span class="pre">covariance</span></code><a class="headerlink" href="#pynav.utils.GaussianResultList.covariance" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>covariance</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type</dt>
+<dd class="field-odd"><p>numpy.ndarray with shape (N,dof,dof)</p>
+</dd>
+</dl>
+</dd></dl>
 
 <dl class="py attribute">
 <dt id="pynav.utils.GaussianResultList.error">
 <code class="sig-name descname"><span class="pre">error</span></code><a class="headerlink" href="#pynav.utils.GaussianResultList.error" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>error throughout trajectory</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type</dt>
+<dd class="field-odd"><p>numpy.ndarray with shape (N, dof)</p>
+</dd>
+</dl>
+</dd></dl>
 
 <dl class="py attribute">
 <dt id="pynav.utils.GaussianResultList.ees">
 <code class="sig-name descname"><span class="pre">ees</span></code><a class="headerlink" href="#pynav.utils.GaussianResultList.ees" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>EES throughout trajectory</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type</dt>
+<dd class="field-odd"><p>numpy.ndarray with shape (N,)</p>
+</dd>
+</dl>
+</dd></dl>
 
 <dl class="py attribute">
 <dt id="pynav.utils.GaussianResultList.nees">
 <code class="sig-name descname"><span class="pre">nees</span></code><a class="headerlink" href="#pynav.utils.GaussianResultList.nees" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>NEES throughout trajectory</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type</dt>
+<dd class="field-odd"><p>numpy.ndarray with shape (N,)</p>
+</dd>
+</dl>
+</dd></dl>
 
 <dl class="py attribute">
 <dt id="pynav.utils.GaussianResultList.md">
 <code class="sig-name descname"><span class="pre">md</span></code><a class="headerlink" href="#pynav.utils.GaussianResultList.md" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>Mahalanobis distance throughout trajectory</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type</dt>
+<dd class="field-odd"><p>numpy.ndarray with shape (N,)</p>
+</dd>
+</dl>
+</dd></dl>
 
 <dl class="py attribute">
 <dt id="pynav.utils.GaussianResultList.three_sigma">
 <code class="sig-name descname"><span class="pre">three_sigma</span></code><a class="headerlink" href="#pynav.utils.GaussianResultList.three_sigma" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>three-sigma bounds</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type</dt>
+<dd class="field-odd"><p>numpy.ndarray with shape (N, dof)</p>
+</dd>
+</dl>
+</dd></dl>
 
 <dl class="py attribute">
 <dt id="pynav.utils.GaussianResultList.value">
 <code class="sig-name descname"><span class="pre">value</span></code><a class="headerlink" href="#pynav.utils.GaussianResultList.value" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>state value. type depends on implementation</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type</dt>
+<dd class="field-odd"><p>numpy.ndarray with shape (N,)</p>
+</dd>
+</dl>
+</dd></dl>
 
 <dl class="py attribute">
 <dt id="pynav.utils.GaussianResultList.dof">
 <code class="sig-name descname"><span class="pre">dof</span></code><a class="headerlink" href="#pynav.utils.GaussianResultList.dof" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>dof throughout trajectory</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type</dt>
+<dd class="field-odd"><p>numpy.ndarray with shape (N,)</p>
+</dd>
+</dl>
+</dd></dl>
 
 <dl class="py attribute">
 <dt id="pynav.utils.GaussianResultList.value_true">
 <code class="sig-name descname"><span class="pre">value_true</span></code><a class="headerlink" href="#pynav.utils.GaussianResultList.value_true" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>true state value. type depends on implementation</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type</dt>
+<dd class="field-odd"><p>numpy.ndarray with shape (N,)</p>
+</dd>
+</dl>
+</dd></dl>
 
 </dd></dl>
 
@@ -275,23 +427,176 @@ stacks the attributes of each object numpy arrays. Convenient for plotting.</p>
 <p>A data container which computes various interesting metrics associated with
 Monte Carlo experiments, such as the average estimation error squared (EES)
 and the average normalized EES.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>trial_results</strong> (<em>List</em><em>[</em><a class="reference internal" href="#pynav.utils.GaussianResultList" title="pynav.utils.GaussianResultList"><em>GaussianResultList</em></a><em>]</em>) – Each GaussianResultList corresponds to a trial. This object assumes
+that the timestamps in each trial are identical.</p>
+</dd>
+</dl>
+<p>Let <cite>N</cite> denote the number of time steps in a trial.</p>
+<dl class="py attribute">
+<dt id="pynav.utils.MonteCarloResult.trial_results">
+<code class="sig-name descname"><span class="pre">trial_results</span></code><a class="headerlink" href="#pynav.utils.MonteCarloResult.trial_results" title="Permalink to this definition">¶</a></dt>
+<dd><p>raw trial results</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type</dt>
+<dd class="field-odd"><p>List[<a class="reference internal" href="#pynav.utils.GaussianResultList" title="pynav.utils.GaussianResultList">GaussianResultList</a>]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt id="pynav.utils.MonteCarloResult.num_trials">
+<code class="sig-name descname"><span class="pre">num_trials</span></code><a class="headerlink" href="#pynav.utils.MonteCarloResult.num_trials" title="Permalink to this definition">¶</a></dt>
+<dd><p>number of trials</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type</dt>
+<dd class="field-odd"><p>int</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt id="pynav.utils.MonteCarloResult.stamp">
+<code class="sig-name descname"><span class="pre">stamp</span></code><a class="headerlink" href="#pynav.utils.MonteCarloResult.stamp" title="Permalink to this definition">¶</a></dt>
+<dd><p>timestamps throughout trajectory</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type</dt>
+<dd class="field-odd"><p>numpy.ndarray with shape (N,)</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt id="pynav.utils.MonteCarloResult.average_nees">
+<code class="sig-name descname"><span class="pre">average_nees</span></code><a class="headerlink" href="#pynav.utils.MonteCarloResult.average_nees" title="Permalink to this definition">¶</a></dt>
+<dd><p>average NEES throughout trajectory</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type</dt>
+<dd class="field-odd"><p>numpy.ndarray with shape (N,)</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt id="pynav.utils.MonteCarloResult.average_ees">
+<code class="sig-name descname"><span class="pre">average_ees</span></code><a class="headerlink" href="#pynav.utils.MonteCarloResult.average_ees" title="Permalink to this definition">¶</a></dt>
+<dd><p>average EES throughout trajectory</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type</dt>
+<dd class="field-odd"><p>numpy.ndarray with shape (N,)</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt id="pynav.utils.MonteCarloResult.rmse">
+<code class="sig-name descname"><span class="pre">rmse</span></code><em class="property"><span class="pre">:</span> <span class="pre">numpy.ndarray</span></em><a class="headerlink" href="#pynav.utils.MonteCarloResult.rmse" title="Permalink to this definition">¶</a></dt>
+<dd><p>root-mean-squared error of each component</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type</dt>
+<dd class="field-odd"><p>numpy.ndarray with shape (N,dof)</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt id="pynav.utils.MonteCarloResult.total_rmse">
+<code class="sig-name descname"><span class="pre">total_rmse</span></code><em class="property"><span class="pre">:</span> <span class="pre">numpy.ndarray</span></em><a class="headerlink" href="#pynav.utils.MonteCarloResult.total_rmse" title="Permalink to this definition">¶</a></dt>
+<dd><p>Total RMSE, this can be meaningless if units differ in a state</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type</dt>
+<dd class="field-odd"><p>numpy.ndarray with shape (N,)</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt id="pynav.utils.MonteCarloResult.expected_nees">
+<code class="sig-name descname"><span class="pre">expected_nees</span></code><a class="headerlink" href="#pynav.utils.MonteCarloResult.expected_nees" title="Permalink to this definition">¶</a></dt>
+<dd><p>expected NEES value throughout trajectory</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type</dt>
+<dd class="field-odd"><p>numpy.ndarray with shape (N,1)</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt id="pynav.utils.MonteCarloResult.dof">
+<code class="sig-name descname"><span class="pre">dof</span></code><a class="headerlink" href="#pynav.utils.MonteCarloResult.dof" title="Permalink to this definition">¶</a></dt>
+<dd><p>dof throughout trajectory</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type</dt>
+<dd class="field-odd"><p>numpy.ndarray with shape (N)</p>
+</dd>
+</dl>
+</dd></dl>
+
 <dl class="py method">
 <dt id="pynav.utils.MonteCarloResult.nees_lower_bound">
 <code class="sig-name descname"><span class="pre">nees_lower_bound</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">confidence_interval</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">float</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#pynav.utils.MonteCarloResult.nees_lower_bound" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>Calculates the NEES lower bound throughout the trajectory.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>confidence_interval</strong> (<em>float</em>) – Single-sided cumulative probability threshold that defines the bound.
+Must be between 0 and 1</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>NEES value corresponding to confidence interval</p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>numpy.ndarray with shape (N,)</p>
+</dd>
+</dl>
+</dd></dl>
 
 <dl class="py method">
 <dt id="pynav.utils.MonteCarloResult.nees_upper_bound">
 <code class="sig-name descname"><span class="pre">nees_upper_bound</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">confidence_interval</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">float</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">double_sided</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#pynav.utils.MonteCarloResult.nees_upper_bound" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>Calculates the NEES upper bound throughout the trajectory</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>confidence_interval</strong> (<em>float</em>) – Cumulative probability threshold that defines the bound. Must be
+between 0 and 1.</p></li>
+<li><p><strong>double_sided</strong> (<em>bool</em><em>, </em><em>optional</em>) – Whether the provided threshold is single-sided or double sided,
+by default True</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>NEES value corresponding to confidence interval</p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>numpy.ndarray with shape (N,)</p>
+</dd>
+</dl>
+</dd></dl>
 
 </dd></dl>
 
 <dl class="py function">
 <dt id="pynav.utils.monte_carlo">
-<code class="sig-prename descclassname"><span class="pre">pynav.utils.</span></code><code class="sig-name descname"><span class="pre">monte_carlo</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">trial</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Callable</span><span class="p"><span class="pre">[</span></span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span> </span><span class="pre">List</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#pynav.utils.GaussianResult" title="pynav.utils.GaussianResult"><span class="pre">pynav.utils.GaussianResult</span></a><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">num_trials</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">int</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#pynav.utils.monte_carlo" title="Permalink to this definition">¶</a></dt>
+<code class="sig-prename descclassname"><span class="pre">pynav.utils.</span></code><code class="sig-name descname"><span class="pre">monte_carlo</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">trial</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Callable</span><span class="p"><span class="pre">[</span></span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span> </span><a class="reference internal" href="#pynav.utils.GaussianResultList" title="pynav.utils.GaussianResultList"><span class="pre">pynav.utils.GaussianResultList</span></a><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">num_trials</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">int</span></span></em><span class="sig-paren">)</span> &#x2192; <a class="reference internal" href="#pynav.utils.MonteCarloResult" title="pynav.utils.MonteCarloResult"><span class="pre">pynav.utils.MonteCarloResult</span></a><a class="headerlink" href="#pynav.utils.monte_carlo" title="Permalink to this definition">¶</a></dt>
 <dd><p>Monte-Carlo experiment executor. Give a callable <cite>trial</cite> function that
-executes a trial and returns a list of <cite>GaussianResult</cite>.</p>
+executes a trial and returns a <cite>GaussianResultList</cite>, and this function
+will execute it a number of times and aappgregate the results.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>trial</strong> (<em>Callable</em><em>[</em><em>[</em><em>int</em><em>]</em><em>, </em><a class="reference internal" href="#pynav.utils.GaussianResultList" title="pynav.utils.GaussianResultList"><em>GaussianResultList</em></a><em>]</em>) – Callable trial function. Must accept a single integer trial number,
+and return a GaussianResultList. From trial to trial, the timestamps
+are expected to remain consistent.</p></li>
+<li><p><strong>num_trials</strong> (<em>int</em>) – Number of Trials to execute</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>Data container object</p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p><a class="reference internal" href="#pynav.utils.MonteCarloResult" title="pynav.utils.MonteCarloResult">MonteCarloResult</a></p>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="py function">
@@ -302,22 +607,22 @@ executes a trial and returns a list of <cite>GaussianResult</cite>.</p>
 
 <dl class="py function">
 <dt id="pynav.utils.plot_error">
-<code class="sig-prename descclassname"><span class="pre">pynav.utils.</span></code><code class="sig-name descname"><span class="pre">plot_error</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">results</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="#pynav.utils.GaussianResultList" title="pynav.utils.GaussianResultList"><span class="pre">pynav.utils.GaussianResultList</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">axs</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">matplotlib.axes._axes.Axes</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">label</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sharey</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">color</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> &#x2192; <span class="pre">Tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">matplotlib.figure.Figure</span><span class="p"><span class="pre">,</span> </span><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">matplotlib.axes._axes.Axes</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span><a class="headerlink" href="#pynav.utils.plot_error" title="Permalink to this definition">¶</a></dt>
-<dd><p>_summary_</p>
+<code class="sig-prename descclassname"><span class="pre">pynav.utils.</span></code><code class="sig-name descname"><span class="pre">plot_error</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">results</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="#pynav.utils.GaussianResultList" title="pynav.utils.GaussianResultList"><span class="pre">pynav.utils.GaussianResultList</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">axs</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">matplotlib.axes._axes.Axes</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">label</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sharey</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">bool</span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">color</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> &#x2192; <span class="pre">Tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">matplotlib.figure.Figure</span><span class="p"><span class="pre">,</span> </span><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">matplotlib.axes._axes.Axes</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span><a class="headerlink" href="#pynav.utils.plot_error" title="Permalink to this definition">¶</a></dt>
+<dd><p>A generic three-sigma bound plotter.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>results</strong> (<a class="reference internal" href="#pynav.utils.GaussianResultList" title="pynav.utils.GaussianResultList"><em>GaussianResultList</em></a>) – _description_</p></li>
-<li><p><strong>axs</strong> (<em>List</em><em>[</em><em>plt.Axes</em><em>]</em><em>, </em><em>optional</em>) – _description_, by default None</p></li>
-<li><p><strong>label</strong> (<em>_type_</em><em>, </em><em>optional</em>) – _description_, by default None</p></li>
-<li><p><strong>sharey</strong> (<em>bool</em><em>, </em><em>optional</em>) – _description_, by default False</p></li>
-<li><p><strong>color</strong> (<em>_type_</em><em>, </em><em>optional</em>) – _description_, by default None</p></li>
+<li><p><strong>results</strong> (<a class="reference internal" href="#pynav.utils.GaussianResultList" title="pynav.utils.GaussianResultList"><em>GaussianResultList</em></a>) – Contains the data to plot</p></li>
+<li><p><strong>axs</strong> (<em>List</em><em>[</em><em>plt.Axes</em><em>]</em><em>, </em><em>optional</em>) – Axes to draw on, by default None. If None, new axes will be created.</p></li>
+<li><p><strong>label</strong> (<em>str</em><em>, </em><em>optional</em>) – Text label to add, by default None</p></li>
+<li><p><strong>sharey</strong> (<em>bool</em><em>, </em><em>optional</em>) – Whether to have a common y axis or not, by default False</p></li>
+<li><p><strong>color</strong> (<em>color</em><em>, </em><em>optional</em>) – specify the color of the error/bounds.</p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns</dt>
 <dd class="field-even"><p><ul class="simple">
-<li><p><em>plt.Figure</em> – _description_</p></li>
-<li><p><em>List[plt.Axes]</em> – _description</p></li>
+<li><p><em>plt.Figure</em> – Handle to figure.</p></li>
+<li><p><em>List[plt.Axes]</em> – Handle to axes that were drawn on.</p></li>
 </ul>
 </p>
 </dd>
@@ -326,9 +631,27 @@ executes a trial and returns a list of <cite>GaussianResult</cite>.</p>
 
 <dl class="py function">
 <dt id="pynav.utils.plot_meas">
-<code class="sig-prename descclassname"><span class="pre">pynav.utils.</span></code><code class="sig-name descname"><span class="pre">plot_meas</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">meas_list</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="types.html#pynav.types.Measurement" title="pynav.types.Measurement"><span class="pre">pynav.types.Measurement</span></a><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">state_true_list</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="types.html#pynav.types.State" title="pynav.types.State"><span class="pre">pynav.types.State</span></a><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">axs</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">matplotlib.axes._axes.Axes</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sharey</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#pynav.utils.plot_meas" title="Permalink to this definition">¶</a></dt>
+<code class="sig-prename descclassname"><span class="pre">pynav.utils.</span></code><code class="sig-name descname"><span class="pre">plot_meas</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">meas_list</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="types.html#pynav.types.Measurement" title="pynav.types.Measurement"><span class="pre">pynav.types.Measurement</span></a><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">state_true_list</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="types.html#pynav.types.State" title="pynav.types.State"><span class="pre">pynav.types.State</span></a><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">axs</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">matplotlib.axes._axes.Axes</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sharey</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span> &#x2192; <span class="pre">Tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">matplotlib.figure.Figure</span><span class="p"><span class="pre">,</span> </span><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">matplotlib.axes._axes.Axes</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span><a class="headerlink" href="#pynav.utils.plot_meas" title="Permalink to this definition">¶</a></dt>
 <dd><p>Given measurement data, make time-domain plots of the measurement values
 and their ground-truth model-based values.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>meas_list</strong> (<em>List</em><em>[</em><a class="reference internal" href="types.html#pynav.types.Measurement" title="pynav.types.Measurement"><em>Measurement</em></a><em>]</em>) – Measurement data to be plotted.</p></li>
+<li><p><strong>state_true_list</strong> (<em>List</em><em>[</em><a class="reference internal" href="types.html#pynav.types.State" title="pynav.types.State"><em>State</em></a><em>]</em>) – A list of true State objects with similar timestamp domain. Will be
+interpolated if timestamps do not line up perfectly.</p></li>
+<li><p><strong>axs</strong> (<em>List</em><em>[</em><em>plt.Axes</em><em>]</em><em>, </em><em>optional</em>) – Axes to draw on, by default None. If None, new axes will be created.</p></li>
+<li><p><strong>sharey</strong> (<em>bool</em><em>, </em><em>optional</em>) – Whether to have a common y axis or not, by default False</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p><ul class="simple">
+<li><p><em>plt.Figure</em> – Handle to figure.</p></li>
+<li><p><em>List[plt.Axes]</em> – Handle to axes that were drawn on.</p></li>
+</ul>
+</p>
+</dd>
+</dl>
 </dd></dl>
 
 </div>
