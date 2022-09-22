@@ -45,11 +45,16 @@ class DataGenerator:
         meas_freq_list: Union[float, List[float]] = None,
     ):
 
-        self.process_model = process_model
-        self.input_func = input_func
-        self.input_covariance = input_covariance
-        self.input_freq = input_freq
 
+        # Make input covariance a callable if it isnt
+        if callable(input_covariance):
+            self.input_covariance = input_covariance
+        elif isinstance(input_covariance, np.ndarray):
+            self.input_covariance = lambda t: input_covariance
+        else:
+            raise ValueError("Input covariance must be a function or a matrix.")
+
+        # Check meas frequencies were provided
         if len(meas_model_list) == 0 and meas_freq_list is None:
             raise ValueError("Measurement frequency must be provided.")
 
@@ -60,7 +65,11 @@ class DataGenerator:
         if len(meas_freq_list) == 1:
             meas_freq_list = meas_freq_list * len(meas_model_list)
 
+        self.process_model = process_model
+        self.input_func = input_func
+        self.input_freq = input_freq
         self._meas_model_and_freq = list(zip(meas_model_list, meas_freq_list))
+
 
     def add_measurement_model(self, model: MeasurementModel, freq: float):
         self._meas_model_and_freq.append((model, freq))
@@ -109,7 +118,7 @@ class DataGenerator:
         meas_idx = 0
         meas_generated = False
 
-        if meas_idx <= len(meas_list) - 1:
+        if meas_idx < len(meas_list):
             meas = meas_list[meas_idx]
         else:
             meas_generated = True
@@ -119,44 +128,44 @@ class DataGenerator:
         state_list = [x.copy()]
         input_list: List[StampedValue] = []
 
-        if isinstance(self.input_covariance, np.ndarray):
-            Q_func = lambda t: np.atleast_2d(self.input_covariance)
-        if isinstance(self.input_covariance, Callable):
-            Q_func = self.input_covariance
-
-        for i in range(0, len(times) - 1):
+        for k in range(0, len(times) - 1):
 
             # Check if the provided input profile is an object with a stamp
             # or is just the raw value
-            u = self.input_func(times[i], x)
+            u = self.input_func(times[k], x)
 
             # If just the raw value, converted to a StampedValue object
             if not hasattr(u, "stamp"):
-                u = StampedValue(self.input_func(times[i], x), times[i])
+                u = StampedValue(self.input_func(times[k], x), times[k])
 
             # Generate measurements if it is time to do so
             if not meas_generated:
-                while times[i + 1] > meas.stamp and not meas_generated:
-                    dt = meas.stamp - times[i]
-                    x_meas = self.process_model.evaluate(x.copy(), u, dt)
+                while times[k + 1] > meas.stamp and not meas_generated:
+
+                    # Propagate state to measurement time
+                    dt = meas.stamp - x.stamp
+                    x = self.process_model.evaluate(x.copy(), u, dt)
+                    x.stamp = meas.stamp
+
+                    # Generate measurement
                     meas.value = generate_measurement(
-                        state=x_meas, model=meas.model, noise=noise
+                        state=x, model=meas.model, noise=noise
                     ).value
 
+                    # Load next measurement
                     meas_idx += 1
-                    if meas_idx <= len(meas_list) - 1:
+                    if meas_idx < len(meas_list):
                         meas = meas_list[meas_idx]
                     else:
                         meas_generated = True
 
             # Propagate forward
-            dt = times[i + 1] - times[i]
-            x = self.process_model.evaluate(x, u, dt)
-            x.stamp = times[i + 1]
-
+            dt = times[k + 1] - x.stamp
+            x = self.process_model.evaluate(x.copy(), u, dt)
+            x.stamp = times[k+1]
             # Add noise to input if requested.
             if noise:
-                Q = np.atleast_2d(self.input_covariance)
+                Q = np.atleast_2d(self.input_covariance(times[k]))
                 u.plus(randvec(Q))
 
             state_list.append(x.copy())

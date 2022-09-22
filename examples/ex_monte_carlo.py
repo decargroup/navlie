@@ -69,8 +69,9 @@ def ekf_trial(trial_number: int) -> List[GaussianResult]:
     y = meas_data[meas_idx]
     results_list = []
     for k in range(len(input_data) - 1):
+        results_list.append(GaussianResult(x, state_true[k]))
+
         u = input_data[k]
-        x = ekf.predict(x, u)
 
         # Fuse any measurements that have occurred.
         while y.stamp < input_data[k + 1].stamp and meas_idx < len(meas_data):
@@ -80,7 +81,8 @@ def ekf_trial(trial_number: int) -> List[GaussianResult]:
             if meas_idx < len(meas_data):
                 y = meas_data[meas_idx]
 
-        results_list.append(GaussianResult(x, state_true[k]))
+        dt = input_data[k + 1].stamp - x.stamp
+        x = ekf.predict(x, u, dt)
 
     return GaussianResultList(results_list)
 

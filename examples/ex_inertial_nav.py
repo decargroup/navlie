@@ -13,8 +13,8 @@ from pynav.lib.states import IMUState
 from pynav.utils import GaussianResult, GaussianResultList, plot_error, randvec
 from pynav.datagen import DataGenerator
 
-################################################################################
-# PARAMETERS
+# ##############################################################################
+# Problem Setup
 
 t_start = 0
 t_end = 30
