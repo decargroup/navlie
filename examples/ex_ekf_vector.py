@@ -102,12 +102,12 @@ ax.legend()
 fig, axs = plt.subplots(2, 1)
 axs: List[plt.Axes] = axs
 for i in range(len(axs)):
-    # axs[i].fill_between(
-    #     results.stamp,
-    #     results.three_sigma[:, i],
-    #     -results.three_sigma[:, i],
-    #     alpha=0.5,
-    # )
+    axs[i].fill_between(
+        results.stamp,
+        results.three_sigma[:, i],
+        -results.three_sigma[:, i],
+        alpha=0.5,
+    )
     axs[i].plot(results.stamp, results.error[:, i])
 axs[0].set_title("Estimation error")
 axs[1].set_xlabel("Time (s)")
