@@ -289,6 +289,14 @@ class StateWithCovariance:
         #:numpy.ndarray: covariance associated with state
         self.covariance = covariance
 
+    @property
+    def stamp(self):
+        return self.state.stamp
+
+    @stamp.setter
+    def stamp(self, stamp):
+        self.state.stamp = stamp
+        
     def symmetrize(self):
         """
         Enforces symmetry of the covariance matrix.

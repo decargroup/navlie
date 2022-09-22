@@ -15,7 +15,7 @@ x0 = SE3State(SE3.Exp([0, 0, 0, 0, 0, 0]), stamp=0.0)
 P0 = 1 * np.identity(6)
 Q = np.diag([0.01**2, 0.01**2, 0.01**2, 0.1, 0.1, 0.1])
 process_model = BodyFrameVelocity(Q)
-
+noise_active = True
 
 def input_profile(t, x):
     return np.array(
@@ -37,7 +37,7 @@ range_models = [
 # ##############################################################################
 # Data Generation
 dg = DataGenerator(process_model, input_profile, Q, 200, range_models, 10)
-state_true, input_data, meas_data = dg.generate(x0, 0, 10, noise=True)
+state_true, input_data, meas_data = dg.generate(x0, 0, 10, noise=noise_active)
 
 # %% ###########################################################################
 # Run Filter
@@ -52,8 +52,9 @@ start_time = time.time()
 y = meas_data[meas_idx]
 results_list = []
 for k in range(len(input_data) - 1):
+    results_list.append(GaussianResult(x, state_true[k]))
+
     u = input_data[k]
-    x = ekf.predict(x, u)
     
     # Fuse any measurements that have occurred.
     while y.stamp < input_data[k + 1].stamp and meas_idx < len(meas_data):
@@ -63,7 +64,9 @@ for k in range(len(input_data) - 1):
         if meas_idx < len(meas_data):
             y = meas_data[meas_idx]
 
-    results_list.append(GaussianResult(x, state_true[k]))
+    dt = input_data[k + 1].stamp - x.stamp
+    x = ekf.predict(x, u, dt)
+    
 
 
 print("Average filter computation frequency (Hz):")

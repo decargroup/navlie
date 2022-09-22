@@ -1,5 +1,5 @@
 # %%
-
+# TODO: i think needs to be fixed. the NEES plots are bad
 from pynav.filters import ExtendedKalmanFilter
 from pynav.lib.states import VectorState
 from pynav.datagen import DataGenerator
@@ -18,9 +18,11 @@ sns.set_style("whitegrid")
 This is an example script showing how to define time-varying noise matrices
 and to then run an EKF using these same noise matrices. 
 """
+# ##############################################################################
+# Problem Setup
 
 
-x0_true = VectorState(np.array([1, 0]))
+x0_true = VectorState(np.array([1, 0]), stamp=0.0)
 P0 = np.diag([0.5, 0.5])
 R = 0.01**2
 Qc = 0.1 * np.identity(1)
@@ -51,8 +53,12 @@ def Qc_profile(t):
 process_model_dg = DoubleIntegrator(Qc)
 
 input_covariance_discrete = lambda t: Qc_profile(t)/dt
-input_profile = lambda t: np.sin(t)
+input_profile = lambda t, x: np.sin(t)
 t_max = 10
+
+# ##############################################################################
+# Data generation
+
 
 dg = DataGenerator(
     process_model_dg,
@@ -62,9 +68,6 @@ dg = DataGenerator(
     range_models,
     range_freqs
 )
-
-
-
 
 
 def ekf_trial(trial_number:int) -> List[GaussianResult]:
@@ -86,23 +89,24 @@ def ekf_trial(trial_number:int) -> List[GaussianResult]:
     y = meas_data[meas_idx]
     results_list = []
     for k in range(len(input_data) - 1):
+        results_list.append(GaussianResult(x, state_true[k]))
+
         u = input_data[k]
+
+        # TODO: why is the EKF instantiation in the inner loop??
         ekf = ExtendedKalmanFilter(DoubleIntegrator(Qc_profile(u.stamp)))
-        #u.value = np.zeros(u.value.shape)
 
         # Fuse any measurements that have occurred.
         while y.stamp < input_data[k + 1].stamp and meas_idx < len(meas_data):
             x = ekf.correct(x, y, u)
+
             meas_idx += 1
             if meas_idx < len(meas_data):
                 y = meas_data[meas_idx]
 
-        if x.state.stamp is not None:
             dt = u.stamp-x.state.stamp
-        else: 
-            dt = 0
-        x = ekf.predict(x, u, dt=dt)
-        results_list.append(GaussianResult(x, state_true[k]))
+
+        x = ekf.predict(x, u, dt)
 
     return GaussianResultList(results_list)
 
