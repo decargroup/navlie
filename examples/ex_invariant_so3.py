@@ -7,7 +7,7 @@ from pynav.lib.models import (
 )
 from pynav.datagen import DataGenerator
 from pynav.filters import ExtendedKalmanFilter, run_filter
-from pynav.utils import GaussianResult, GaussianResultList, plot_error
+from pynav.utils import GaussianResult, GaussianResultList, plot_error, randvec
 from pylie import SO3
 import numpy as np
 import matplotlib.pyplot as plt
@@ -40,6 +40,8 @@ dg = DataGenerator(
 )
 state_true, input_list, meas_list = dg.generate(x0, 0, 30, noise_active)
 
+if noise_active:
+    x0.plus(randvec(P0))
 # ##############################################################################
 # Run the regular filter
 x0.direction = "right"

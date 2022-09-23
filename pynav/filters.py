@@ -334,6 +334,8 @@ def run_filter(
         _description_
     """
     x = StateWithCovariance(x0, P0)
+    if x.state.stamp is None: 
+        raise ValueError("x0 must have a valid timestamp.")
 
     # Sort the data by time
     input_data.sort(key = lambda x: x.stamp)

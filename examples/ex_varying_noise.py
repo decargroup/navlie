@@ -1,5 +1,5 @@
 # %%
-# TODO: i think needs to be fixed. the NEES plots are bad
+
 from pynav.filters import ExtendedKalmanFilter
 from pynav.lib.states import VectorState
 from pynav.datagen import DataGenerator
@@ -18,56 +18,57 @@ sns.set_style("whitegrid")
 This is an example script showing how to define time-varying noise matrices
 and to then run an EKF using these same noise matrices. 
 """
-# ##############################################################################
-# Problem Setup
 
 
-x0_true = VectorState(np.array([1, 0]), stamp=0.0)
+x0_true = VectorState(np.array([1, 0]))
 P0 = np.diag([0.5, 0.5])
 R = 0.01**2
-Qc = 0.1 * np.identity(1)
-N = 50 # Number MC trials
+Q = 0.1 * np.identity(1)
+N = 100 # Number MC trials
 
 range_models = [
     OneDimensionalPositionVelocityRange(R),
 ]
 
 
+t_max = 10
 range_freqs = [10]
 input_freq = 10
 dt = 1/input_freq
 
-def Qc_profile(t):
+def Q_profile(t):
     if t <= t_max/4:
         Q = 1
     if t > t_max/4 and t <= t_max*3/4:
-        Q = 9
+        Q = 100
     if t > t_max*3/4:
         Q = 1
-    Q = np.array(Q).reshape(1,1)
+    Q = np.array(Q).reshape((1,1))
     return Q
 
+class VaryingNoiseDoubleIntegrator(DoubleIntegrator):
+    def __init__(self, Q_profile):
+        self.Q_profile = Q_profile
+        super().__init__(Q_profile(0))
+
+    def covariance(self, x, u, dt) -> np.ndarray:
+        self._Q = self.Q_profile(x.stamp)
+        return super().covariance(x, u, dt)
 
 # For data generation, the Q for the process model does not matter as
 # only the evaluate method is used. 
-process_model_dg = DoubleIntegrator(Qc)
-
-input_covariance_discrete = lambda t: Qc_profile(t)/dt
+process_model = VaryingNoiseDoubleIntegrator(Q_profile)
 input_profile = lambda t, x: np.sin(t)
-t_max = 10
-
-# ##############################################################################
-# Data generation
-
 
 dg = DataGenerator(
-    process_model_dg,
+    process_model,
     input_profile,
-    input_covariance_discrete,
+    Q_profile,
     input_freq,
     range_models,
     range_freqs
 )
+
 
 
 def ekf_trial(trial_number:int) -> List[GaussianResult]:
@@ -88,25 +89,21 @@ def ekf_trial(trial_number:int) -> List[GaussianResult]:
     meas_idx = 0
     y = meas_data[meas_idx]
     results_list = []
+    ekf = ExtendedKalmanFilter(process_model)
     for k in range(len(input_data) - 1):
+
         results_list.append(GaussianResult(x, state_true[k]))
-
         u = input_data[k]
-
-        # TODO: why is the EKF instantiation in the inner loop??
-        ekf = ExtendedKalmanFilter(DoubleIntegrator(Qc_profile(u.stamp)))
 
         # Fuse any measurements that have occurred.
         while y.stamp < input_data[k + 1].stamp and meas_idx < len(meas_data):
             x = ekf.correct(x, y, u)
-
             meas_idx += 1
             if meas_idx < len(meas_data):
                 y = meas_data[meas_idx]
 
-            dt = u.stamp-x.state.stamp
-
-        x = ekf.predict(x, u, dt)
+        dt = input_data[k + 1].stamp - x.stamp
+        x = ekf.predict(x, u, dt=dt)
 
     return GaussianResultList(results_list)
 

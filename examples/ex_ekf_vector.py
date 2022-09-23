@@ -2,7 +2,7 @@ from pynav.filters import ExtendedKalmanFilter, IteratedKalmanFilter
 from pynav.lib.states import VectorState
 from pynav.datagen import DataGenerator
 from pynav.types import StateWithCovariance
-from pynav.utils import GaussianResult, GaussianResultList
+from pynav.utils import GaussianResult, GaussianResultList, randvec
 from pynav.lib.models import SingleIntegrator, RangePointToAnchor
 import numpy as np
 from typing import List
@@ -48,6 +48,9 @@ gt_data, input_data, meas_data = dg.generate(x0, 0, 10, noise=noise_active)
 
 # ##############################################################################
 # Run Filter
+if noise_active:
+    x0.plus(randvec(P0))
+    
 x = StateWithCovariance(x0, P0)
 
 ekf = ExtendedKalmanFilter(process_model)
