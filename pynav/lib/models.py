@@ -68,8 +68,8 @@ class DoubleIntegrator(ProcessModel):
         '''
         Ad = np.array([[1, dt],
                       [0, 1]])
-        Ld = np.array([0.5*dt**2, dt])
-        x.value = Ad @ x.value + Ld * u.value
+        Ld = np.array([0.5*dt**2, dt]).reshape((-1,1))
+        x.value = (Ad @ x.value.reshape((-1,1)) + Ld * u.value).ravel()
         return x
 
     def jacobian(self, x, u, dt) -> np.ndarray:
@@ -84,11 +84,10 @@ class DoubleIntegrator(ProcessModel):
         '''
         Discrete-time covariance on process model
         '''
-        Lc = np.array([0, 1]).reshape(-1,1)
-        f = 1e-15
-        fudge_factor = np.array([[f, 0],
+        Ld = np.array([0.5*dt**2, dt]).reshape((-1,1))
+        fudge_factor = np.array([[1e-8, 0],
                                 [0, 0]])
-        return  Lc @ self._Q @ Lc.T * dt**2 + fudge_factor
+        return  Ld @ self._Q @ Ld.T + fudge_factor
 
 class OneDimensionalPositionVelocityRange(MeasurementModel):
     '''

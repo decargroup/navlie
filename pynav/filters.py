@@ -359,8 +359,9 @@ def run_filter(
 
     results_list = []
     for k in range(len(input_data) - 1):
+        results_list.append(x)
+
         u = input_data[k]
-        x = filter.predict(x, u)
 
         # Fuse any measurements that have occurred.
         if len(meas_data) > 0:
@@ -371,5 +372,7 @@ def run_filter(
                 if meas_idx < len(meas_data):
                     y = meas_data[meas_idx]
 
-        results_list.append(x)
+        dt = input_data[k + 1].stamp - x.stamp
+        x = filter.predict(x, u, dt)
+        
     return results_list

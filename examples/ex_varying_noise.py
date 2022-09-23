@@ -24,13 +24,14 @@ x0_true = VectorState(np.array([1, 0]))
 P0 = np.diag([0.5, 0.5])
 R = 0.01**2
 Q = 0.1 * np.identity(1)
-N = 50 # Number MC trials
+N = 100 # Number MC trials
 
 range_models = [
     OneDimensionalPositionVelocityRange(R),
 ]
 
 
+t_max = 10
 range_freqs = [10]
 input_freq = 10
 dt = 1/input_freq
@@ -39,29 +40,34 @@ def Q_profile(t):
     if t <= t_max/4:
         Q = 1
     if t > t_max/4 and t <= t_max*3/4:
-        Q = 9
+        Q = 100
     if t > t_max*3/4:
         Q = 1
-    Q = np.array(Q).reshape(1,1)
+    Q = np.array(Q).reshape((1,1))
     return Q
 
+class VaryingNoiseDoubleIntegrator(DoubleIntegrator):
+    def __init__(self, Q_profile):
+        self.Q_profile = Q_profile
+        super().__init__(Q_profile(0))
+
+    def covariance(self, x, u, dt) -> np.ndarray:
+        self._Q = self.Q_profile(x.stamp)
+        return super().covariance(x, u, dt)
 
 # For data generation, the Q for the process model does not matter as
 # only the evaluate method is used. 
-process_model_dg = DoubleIntegrator(Q)
+process_model = VaryingNoiseDoubleIntegrator(Q_profile)
 input_profile = lambda t, x: np.sin(t)
-t_max = 10
 
 dg = DataGenerator(
-    process_model_dg,
+    process_model,
     input_profile,
     Q_profile,
     input_freq,
     range_models,
     range_freqs
 )
-
-
 
 
 
@@ -83,9 +89,11 @@ def ekf_trial(trial_number:int) -> List[GaussianResult]:
     meas_idx = 0
     y = meas_data[meas_idx]
     results_list = []
+    ekf = ExtendedKalmanFilter(process_model)
     for k in range(len(input_data) - 1):
+
+        results_list.append(GaussianResult(x, state_true[k]))
         u = input_data[k]
-        ekf = ExtendedKalmanFilter(DoubleIntegrator(Q_profile(u.stamp)))
 
         # Fuse any measurements that have occurred.
         while y.stamp < input_data[k + 1].stamp and meas_idx < len(meas_data):
@@ -94,12 +102,8 @@ def ekf_trial(trial_number:int) -> List[GaussianResult]:
             if meas_idx < len(meas_data):
                 y = meas_data[meas_idx]
 
-        if x.state.stamp is not None:
-            dt = u.stamp-x.state.stamp
-        else: 
-            dt = 0
+        dt = input_data[k + 1].stamp - x.stamp
         x = ekf.predict(x, u, dt=dt)
-        results_list.append(GaussianResult(x, state_true[k]))
 
     return GaussianResultList(results_list)
 

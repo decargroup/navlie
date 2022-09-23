@@ -82,12 +82,12 @@ def make_filter_trial(dg, x0_true, P0, t_max, ekf):
 
 @pytest.mark.parametrize("x0, P0, input_profile, process_model, measurement_model, Q, R, input_freq, measurement_freq", 
                 [
-                    (VectorState(np.array([1, 0])), np.diag([1, 1]), 
+                    (VectorState(np.array([1, 0]), 0.0), np.diag([1, 1]), 
                         lambda t, x: np.array([np.sin(t), np.cos(t)]),
                         SingleIntegrator, make_range_models_ekf_vector, 
                         0.1 * np.identity(2), 0.1**2, 
                         10, [1, 1, 1]), 
-                    (VectorState(np.array([1, 0])), np.diag([1, 1]), 
+                    (VectorState(np.array([1, 0]), 0.0), np.diag([1, 1]), 
                         lambda t, x: np.array([np.sin(t), np.cos(t)]),
                         SingleIntegrator, make_range_models_ekf_vector, 
                         0.1 * np.identity(2), 1e-8, 
