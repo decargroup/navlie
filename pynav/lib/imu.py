@@ -108,6 +108,8 @@ class IMUState(CompositeState):
             sub_dx = dx[s]
             self.value[i].plus(sub_dx)
 
+        return self.copy()
+
     def minus(self, x: "IMUState") -> np.ndarray:
         dx = []
         for i, v in enumerate(x.value):
@@ -254,7 +256,6 @@ class IMUKinematics(ProcessModel):
         U_inv = self._U_matrix_inv(unbiased_gyro, unbiased_accel, dt)
         U = self._U_matrix(unbiased_gyro, unbiased_accel, dt)
 
-
         # Jacobian of process model wrt to pose
         if x.direction == "right":
             jac_pose = self._adjoint_IE3(U_inv)
@@ -264,18 +265,31 @@ class IMUKinematics(ProcessModel):
         jac_kwargs = {}
 
         if hasattr(x, "bias_gyro"):
+            a = unbiased_accel
+            om = unbiased_gyro
+            N = self._N_matrix(om * dt)
+            J_att_inv = SO3.left_jacobian_inv(om * dt)
+            v = np.vstack(
+                [
+                    dt * om,
+                    dt * a,
+                    (dt**2 / 2) * J_att_inv @ N @ a,
+                ]
+            )
+            J = SE23.left_jacobian(-v)
+            Upsilon = np.zeros((9, 6))
+            Upsilon[0:3, 0:3] = dt * np.eye(3)
+            Upsilon[3:6, 3:6] = dt * np.eye(3)
+            Upsilon[6:9, 0:3] = dt**3 * (
+                J_att_inv @ SO3.wedge(a) / 6 - SO3.wedge(N @ a) / 4
+            )
+            Upsilon[6:9, 3:6] = (dt**2 / 2) * J_att_inv @ N
 
-
-            M = np.vstack([np.identity(6), np.zeros((3, 6))])
-            u_vec = np.vstack([unbiased_gyro, unbiased_accel])
-            J = SE23.left_jacobian(-dt * M @ u_vec)
-
-            # Jacobian of process model wrt to biases
+            jac_bias_right = - J @ Upsilon
             if x.direction == "right":
-                jac_bias = -dt * J @ M               # A_TB
+                jac_bias = jac_bias_right  
             elif x.direction == "left":
-                jac_bias = -dt * SE23.adjoint(G @ x.pose @ U) @ J @ M
-
+                jac_bias = SE23.adjoint(G @ x.pose @ U) @ jac_bias_right
             # Jacobian of bias random walk wrt to pose
             jac_pose = np.vstack([jac_pose, np.zeros((6, jac_pose.shape[1]))])
 
@@ -303,7 +317,7 @@ class IMUKinematics(ProcessModel):
         M = np.vstack([np.identity(6), np.zeros((3, 6))])
         u_vec = np.vstack([unbiased_accel, unbiased_gyro])
         J = SE23.left_jacobian(-dt * M @ u_vec)
-        
+
         if x.direction == "right":
             L = dt * J @ M
         elif x.direction == "left":
@@ -329,7 +343,7 @@ class IMUKinematics(ProcessModel):
         if hasattr(x, "bias_gyro"):
             bias_gyro = x.bias_gyro.reshape((-1, 1))
         else:
-            bias_gyro = 0 
+            bias_gyro = 0
 
         if hasattr(x, "bias_accel"):
             bias_accel = x.bias_accel.reshape((-1, 1))
@@ -351,9 +365,9 @@ class IMUKinematics(ProcessModel):
             a = a.reshape((-1, 1))
             a_wedge = SO3.wedge(a)
             N = (
-                0.5 * a @ a.T
-                + ((1 - np.sin(phi) / phi)) / phi * a_wedge
-                + (np.cos(phi) - 1) / phi**2 * a_wedge @ a_wedge
+                2 * (1 - np.cos(phi)) / phi**2 * np.identity(3)
+                + (1 - 2 * (1 - np.cos(phi)) / phi**2) * (a @ a.T)
+                + 2 * ((phi - np.sin(phi)) / phi**2) * a_wedge
             )
             return N
 
@@ -366,7 +380,7 @@ class IMUKinematics(ProcessModel):
         U = np.identity(5)
         U[:3, :3] = O
         U[:3, 3] = np.ravel(dt * J @ a)
-        U[:3, 4] = np.ravel(dt**2 * V @ a)
+        U[:3, 4] = np.ravel(dt**2 / 2 * V @ a)
         U[3, 4] = dt
         return U
 
@@ -379,7 +393,7 @@ class IMUKinematics(ProcessModel):
         U_inv = np.identity(5)
         U_inv[:3, :3] = O.T
         U_inv[:3, 3] = np.ravel(-dt * O.T @ J @ a)
-        U_inv[:3, 4] = np.ravel(dt**2 * O.T @ (J - V) @ a)
+        U_inv[:3, 4] = np.ravel(dt**2 * O.T @ (J - V / 2) @ a)
         U_inv[3, 4] = -dt
         return U_inv
 

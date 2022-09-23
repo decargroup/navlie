@@ -3,7 +3,7 @@ from pynav.lib.imu import IMUState, Imu, IMUKinematics
 from pylie import SE23
 import numpy as np
 
-np.set_printoptions(precision=3, suppress=True, linewidth=200)
+np.set_printoptions(precision=4, suppress=True, linewidth=200)
 
 
 def test_U_matrix_inverse_se23():
@@ -103,7 +103,7 @@ def test_left_jacobian_imu():
     x = IMUState(SE23.Exp([1,2,3,4,5,6,7,8,9]), [0.1,0.2,0.3], [4,5,6], 0, direction="left")
     jac = model.jacobian(x, u, dt)
     jac_fd = model.jacobian_fd(x, u, dt)
-    assert np.allclose(jac, jac_fd, atol=1e-4)
+    assert np.allclose(jac, jac_fd, atol=1e-3)
 
 
 
@@ -111,12 +111,12 @@ def test_right_jacobian_imu():
     model = IMUKinematics(np.identity(6))
     dt = 0.1
     u = Imu([1, 2, 3], [2,3,1], 0)
-    x = IMUState(SE23.Exp([1,2,3,4,5,6,7,8,9]), [0.1,0.2,0.3], [4,5,6], 0, direction="left")
+    x = IMUState(SE23.Exp([1,2,3,4,5,6,7,8,9]), [0.1,0.2,0.3], [4,5,6], 0, direction="right")
     jac = model.jacobian(x, u, dt)
     jac_fd = model.jacobian_fd(x, u, dt)
-    assert np.allclose(jac, jac_fd, atol=1e-4)
+    assert np.allclose(jac, jac_fd, atol=1e-3)
 
 
 if __name__ == "__main__":
-    test_left_jacobian_imu()
+    test_right_jacobian_imu()
     print("All tests passed!")
