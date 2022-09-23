@@ -1,5 +1,5 @@
 # %%
-# TODO: i think needs to be fixed. the NEES plots are bad
+
 from pynav.filters import ExtendedKalmanFilter
 from pynav.lib.states import VectorState
 from pynav.datagen import DataGenerator
@@ -18,11 +18,9 @@ sns.set_style("whitegrid")
 This is an example script showing how to define time-varying noise matrices
 and to then run an EKF using these same noise matrices. 
 """
-# ##############################################################################
-# Problem Setup
 
 
-x0_true = VectorState(np.array([1, 0]), stamp=0.0)
+x0_true = VectorState(np.array([1, 0]))
 P0 = np.diag([0.5, 0.5])
 R = 0.01**2
 Q = 0.1 * np.identity(1)
@@ -54,10 +52,6 @@ process_model_dg = DoubleIntegrator(Q)
 input_profile = lambda t, x: np.sin(t)
 t_max = 10
 
-# ##############################################################################
-# Data generation
-
-
 dg = DataGenerator(
     process_model_dg,
     input_profile,
@@ -66,6 +60,9 @@ dg = DataGenerator(
     range_models,
     range_freqs
 )
+
+
+
 
 
 def ekf_trial(trial_number:int) -> List[GaussianResult]:
@@ -88,21 +85,19 @@ def ekf_trial(trial_number:int) -> List[GaussianResult]:
     results_list = []
     for k in range(len(input_data) - 1):
         results_list.append(GaussianResult(x, state_true[k]))
-
         u = input_data[k]
+        
         ekf = ExtendedKalmanFilter(DoubleIntegrator(Q_profile(u.stamp)))
 
         # Fuse any measurements that have occurred.
         while y.stamp < input_data[k + 1].stamp and meas_idx < len(meas_data):
             x = ekf.correct(x, y, u)
-
             meas_idx += 1
             if meas_idx < len(meas_data):
                 y = meas_data[meas_idx]
 
-            dt = u.stamp-x.state.stamp
-
-        x = ekf.predict(x, u, dt)
+        dt = input_data[k+1].stamp - x.state.stamp
+        x = ekf.predict(x, u, dt=dt)
 
     return GaussianResultList(results_list)
 
@@ -114,7 +109,7 @@ results = monte_carlo(ekf_trial, N)
 fig, ax = plt.subplots(1,1)
 ax.plot(results.stamp, results.average_nees)
 ax.plot(results.stamp, results.expected_nees, color = 'r', label = "Expected NEES")
-ax.plot(results.stamp, results.nees_lower_bound(0.99), color='k', linestyle="--", label="99 percent CI")
+ax.plot(results.stamp, results.nees_lower_bound(0.99), color='k', linestyle="--", label="99 percent c.i.")
 ax.plot(results.stamp, results.nees_upper_bound(0.99), color='k', linestyle="--",)
 ax.set_title("{0}-trial average NEES".format(results.num_trials))
 ax.set_ylim(0,None)
