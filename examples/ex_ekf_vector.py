@@ -48,7 +48,9 @@ gt_data, input_data, meas_data = dg.generate(x0, 0, 10, noise=noise_active)
 
 # ##############################################################################
 # Run Filter
-x0.plus(randvec(P0))
+if noise_active:
+    x0.plus(randvec(P0))
+    
 x = StateWithCovariance(x0, P0)
 
 ekf = ExtendedKalmanFilter(process_model)

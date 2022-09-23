@@ -39,7 +39,9 @@ dg = DataGenerator(
     1,
 )
 state_true, input_list, meas_list = dg.generate(x0, 0, 30, noise_active)
-x0.plus(randvec(P0))
+
+if noise_active:
+    x0.plus(randvec(P0))
 # ##############################################################################
 # Run the regular filter
 x0.direction = "right"

@@ -38,8 +38,9 @@ range_models = [
 # Data Generation
 dg = DataGenerator(process_model, input_profile, Q, 200, range_models, 10)
 state_true, input_data, meas_data = dg.generate(x0, 0, 10, noise=noise_active)
-x0.plus(randvec(P0)
-)
+
+if noise_active:
+    x0.plus(randvec(P0))
 # %% ###########################################################################
 # Run Filter
 x = StateWithCovariance(x0, P0)
