@@ -163,6 +163,7 @@ class DataGenerator:
             dt = times[k + 1] - x.stamp
             x = self.process_model.evaluate(x.copy(), u, dt)
             x.stamp = times[k+1]
+            
             # Add noise to input if requested.
             if noise:
                 Q = np.atleast_2d(self.input_covariance(times[k]))
