@@ -54,7 +54,7 @@ class DoubleIntegrator(ProcessModel):
     def __init__(self, Q: np.ndarray):
         '''
         inputs:
-            Q: Continuous time covariance on the input u. 
+            Q: Discrete time covariance on the input u. 
         '''
         if Q.shape[0] != Q.shape[1]:
             raise ValueError("Q must be an n x n matrix.")
@@ -88,7 +88,7 @@ class DoubleIntegrator(ProcessModel):
         f = 1e-15
         fudge_factor = np.array([[f, 0],
                                 [0, 0]])
-        return  Lc @ self._Q @ Lc.T * dt + fudge_factor
+        return  Lc @ self._Q @ Lc.T * dt**2 + fudge_factor
 
 class OneDimensionalPositionVelocityRange(MeasurementModel):
     '''
