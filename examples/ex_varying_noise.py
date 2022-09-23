@@ -84,9 +84,7 @@ def ekf_trial(trial_number:int) -> List[GaussianResult]:
     y = meas_data[meas_idx]
     results_list = []
     for k in range(len(input_data) - 1):
-        results_list.append(GaussianResult(x, state_true[k]))
         u = input_data[k]
-        
         ekf = ExtendedKalmanFilter(DoubleIntegrator(Q_profile(u.stamp)))
 
         # Fuse any measurements that have occurred.
@@ -96,8 +94,12 @@ def ekf_trial(trial_number:int) -> List[GaussianResult]:
             if meas_idx < len(meas_data):
                 y = meas_data[meas_idx]
 
-        dt = input_data[k+1].stamp - x.state.stamp
+        if x.state.stamp is not None:
+            dt = u.stamp-x.state.stamp
+        else: 
+            dt = 0
         x = ekf.predict(x, u, dt=dt)
+        results_list.append(GaussianResult(x, state_true[k]))
 
     return GaussianResultList(results_list)
 
