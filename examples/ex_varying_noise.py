@@ -25,7 +25,7 @@ and to then run an EKF using these same noise matrices.
 x0_true = VectorState(np.array([1, 0]), stamp=0.0)
 P0 = np.diag([0.5, 0.5])
 R = 0.01**2
-Qc = 0.1 * np.identity(1)
+Q = 0.1 * np.identity(1)
 N = 50 # Number MC trials
 
 range_models = [
@@ -37,7 +37,7 @@ range_freqs = [10]
 input_freq = 10
 dt = 1/input_freq
 
-def Qc_profile(t):
+def Q_profile(t):
     if t <= t_max/4:
         Q = 1
     if t > t_max/4 and t <= t_max*3/4:
@@ -50,9 +50,7 @@ def Qc_profile(t):
 
 # For data generation, the Q for the process model does not matter as
 # only the evaluate method is used. 
-process_model_dg = DoubleIntegrator(Qc)
-
-input_covariance_discrete = lambda t: Qc_profile(t)/dt
+process_model_dg = DoubleIntegrator(Q)
 input_profile = lambda t, x: np.sin(t)
 t_max = 10
 
@@ -63,7 +61,7 @@ t_max = 10
 dg = DataGenerator(
     process_model_dg,
     input_profile,
-    input_covariance_discrete,
+    Q_profile,
     input_freq,
     range_models,
     range_freqs
@@ -92,9 +90,7 @@ def ekf_trial(trial_number:int) -> List[GaussianResult]:
         results_list.append(GaussianResult(x, state_true[k]))
 
         u = input_data[k]
-
-        # TODO: why is the EKF instantiation in the inner loop??
-        ekf = ExtendedKalmanFilter(DoubleIntegrator(Qc_profile(u.stamp)))
+        ekf = ExtendedKalmanFilter(DoubleIntegrator(Q_profile(u.stamp)))
 
         # Fuse any measurements that have occurred.
         while y.stamp < input_data[k + 1].stamp and meas_idx < len(meas_data):
