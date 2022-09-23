@@ -66,8 +66,8 @@ def make_filter_trial_prediction_noiseless(dg, x0_true, P0, t_max, kf):
         y = meas_data[meas_idx]
         results_list = []
         for k in range(len(input_data) - 1):
+            results_list.append(GaussianResult(x, state_true[k]))
             u = input_data[k]
-            x = kf.predict(x, u)
             
             # Fuse any measurements that have occurred.
             while y.stamp < input_data[k + 1].stamp and meas_idx < len(meas_data):
@@ -77,7 +77,8 @@ def make_filter_trial_prediction_noiseless(dg, x0_true, P0, t_max, kf):
                 if meas_idx < len(meas_data):
                     y = meas_data[meas_idx]
                     
-            results_list.append(GaussianResult(x, state_true[k]))
+            dt = input_data[k + 1].stamp - x.stamp
+            x = kf.predict(x, u, dt)
         return GaussianResultList(results_list)
 
     return ekf_trial
