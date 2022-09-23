@@ -31,7 +31,7 @@ class VectorState(State):
 
     def plus(self, dx: np.ndarray):
         self.value: np.ndarray = self.value.flatten() + dx.flatten()
-
+        return self.copy()
     def minus(self, x: "VectorState") -> np.ndarray:
         og_shape = self.value.shape
         return (self.value.ravel() - x.value.ravel()).reshape(og_shape)
@@ -64,8 +64,10 @@ class MatrixLieGroupState(State):
     def plus(self, dx: np.ndarray):
         if self.direction == "right":
             self.value: np.ndarray = self.value @ self.group.Exp(dx)
+            return self.copy()
         elif self.direction == "left":
             self.value: np.ndarray = self.group.Exp(dx) @ self.value
+            return self.copy()
         else:
             raise ValueError("direction must either be 'left' or 'right'.")
 
@@ -565,10 +567,12 @@ class CompositeState(State):
         for i, s in enumerate(self._slices):
             sub_dx = dx[s]
             self.value[i].plus(sub_dx)
+            return self.copy()
 
         if new_stamp is not None:
             self.set_stamp_for_all(new_stamp)
 
+        return self.copy()
     def minus(self, x: "CompositeState") -> np.ndarray:
         dx = []
         for i, v in enumerate(x.value):
@@ -585,6 +589,7 @@ class CompositeState(State):
         if new_stamp is not None:
             self.set_stamp_by_id(new_stamp, state_id)
 
+        return self.copy()
     def jacobian_from_blocks(self, block_dict: dict):
         """
         Returns the jacobian of the entire composite state given jacobians

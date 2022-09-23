@@ -32,7 +32,7 @@ class StampedValue:
         og_shape = self.value.shape 
         self.value = self.value.ravel() + w.ravel()
         self.value.reshape(og_shape)
-
+        return self.copy()
     def copy(self) -> "StampedValue":
         """ 
         Returns a copy of the instance with fully seperate memory.
