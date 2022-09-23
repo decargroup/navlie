@@ -4,12 +4,10 @@ import numpy as np
 from pylie import SE23
 from pynav.filters import ExtendedKalmanFilter, run_filter
 from pynav.lib.models import (
-    IMUKinematics,
     InvariantMeasurement,
     PointRelativePosition,
-    Imu,
 )
-from pynav.lib.states import IMUState
+from pynav.lib.imu import Imu, IMUState, IMUKinematics
 from pynav.utils import GaussianResult, GaussianResultList, plot_error, randvec
 from pynav.datagen import DataGenerator
 
