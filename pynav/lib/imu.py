@@ -265,31 +265,8 @@ class IMUKinematics(ProcessModel):
         jac_kwargs = {}
 
         if hasattr(x, "bias_gyro"):
-            a = unbiased_accel
-            om = unbiased_gyro
-            N = self._N_matrix(om * dt)
-            J_att_inv = SO3.left_jacobian_inv(om * dt)
-            v = np.vstack(
-                [
-                    dt * om,
-                    dt * a,
-                    (dt**2 / 2) * J_att_inv @ N @ a,
-                ]
-            )
-            J = SE23.left_jacobian(-v)
-            Upsilon = np.zeros((9, 6))
-            Upsilon[0:3, 0:3] = dt * np.eye(3)
-            Upsilon[3:6, 3:6] = dt * np.eye(3)
-            Upsilon[6:9, 0:3] = dt**3 * (
-                J_att_inv @ SO3.wedge(a) / 6 - SO3.wedge(N @ a) / 4
-            )
-            Upsilon[6:9, 3:6] = (dt**2 / 2) * J_att_inv @ N
-
-            jac_bias_right = - J @ Upsilon
-            if x.direction == "right":
-                jac_bias = jac_bias_right  
-            elif x.direction == "left":
-                jac_bias = SE23.adjoint(G @ x.pose @ U) @ jac_bias_right
+            jac_bias = self._get_input_jacobian(x, u, dt)
+            
             # Jacobian of bias random walk wrt to pose
             jac_pose = np.vstack([jac_pose, np.zeros((6, jac_pose.shape[1]))])
 
@@ -307,23 +284,63 @@ class IMUKinematics(ProcessModel):
         return x.jacobian_from_blocks(**jac_kwargs)
 
     def covariance(self, x: IMUState, u: Imu, dt: float) -> np.ndarray:
+        
+        # Jacobian of pose wrt to noise
+        L_pn = self._get_input_jacobian(x, u, dt)
+        
+        # Jacobian of bias random walk wrt to noise
+        L_bn = np.zeros((6,6))
 
+        if hasattr(x, "bias_gyro"):
+            # Jacobian of pose wrt to bias random walk
+            L_pw = np.zeros((9,6))
+
+            # Jacobian of bias wrt to bias random walk
+            L_bw = dt*np.identity(6)
+
+            L = np.block([[L_pn, L_pw], [L_bn, L_bw]])
+
+        else:
+            L = np.block([[L_pn, L_bn]])
+
+        return L @ self._Q @ L.T
+
+    def _get_input_jacobian(self, x: IMUState, u: Imu, dt: float) -> np.ndarray:
+        """
+        Computes the jacobian of the nav state with respect to the input.
+        """
         # Get unbiased inputs
         unbiased_gyro, unbiased_accel = self._get_unbiased_imu(x, u)
 
         G = self._G_matrix(dt)
         U = self._U_matrix(unbiased_gyro, unbiased_accel, dt)
+       
+        a = unbiased_accel
+        om = unbiased_gyro
+        N = self._N_matrix(om * dt)
+        J_att_inv = SO3.left_jacobian_inv(om * dt)
+        v = np.vstack(
+            [
+                dt * om,
+                dt * a,
+                (dt**2 / 2) * J_att_inv @ N @ a,
+            ]
+        )
+        J = SE23.left_jacobian(-v)
+        Upsilon = np.zeros((9, 6))
+        Upsilon[0:3, 0:3] = -dt * np.eye(3)
+        Upsilon[3:6, 3:6] = -dt * np.eye(3)
+        Upsilon[6:9, 0:3] = -dt**3 * (
+            SO3.wedge(N @ a) / 4 - J_att_inv @ SO3.wedge(a) /6 
+        )
+        Upsilon[6:9, 3:6] = -(dt**2 / 2) * J_att_inv @ N
 
-        M = np.vstack([np.identity(6), np.zeros((3, 6))])
-        u_vec = np.vstack([unbiased_accel, unbiased_gyro])
-        J = SE23.left_jacobian(-dt * M @ u_vec)
-
+        jac_right = J @ Upsilon
         if x.direction == "right":
-            L = dt * J @ M
+            jac = jac_right  
         elif x.direction == "left":
-            L = dt * SE23.adjoint(G @ x.pose @ U) @ J @ M
-
-        return L @ self._Q @ L.T
+            jac = SE23.adjoint(G @ x.pose @ U) @ jac_right
+        return jac
 
     def _get_unbiased_imu(self, x: IMUState, u: Imu):
         """Removes bias from the measurement.
