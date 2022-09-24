@@ -1,5 +1,5 @@
 from pynav.lib.states import SE23State
-from pynav.lib.imu import IMUState, Imu, IMUKinematics
+from pynav.lib.imu import IMUState, IMU, IMUKinematics
 from pylie import SE23, SO3
 import numpy as np
 from math import factorial
@@ -23,7 +23,7 @@ def test_N_matrix():
 def test_U_matrix_inverse_se23():
     model = IMUKinematics(np.identity(6))
     dt = 0.1
-    u = Imu([1, 2, 3], [4, 5, 6], 0)
+    u = IMU([1, 2, 3], [4, 5, 6], 0)
     U = model._U_matrix(u.gyro, u.accel, dt)
     U_inv = model._U_matrix_inv(u.gyro, u.accel, dt)
     U_inv_test = np.linalg.inv(U)
@@ -44,7 +44,7 @@ def test_G_matrix_inverse_se23():
 def test_left_jacobian_se23():
     model = IMUKinematics(np.identity(6))
     dt = 0.1
-    u = Imu([1, 2, 3], [4, 5, 6], 0)
+    u = IMU([1, 2, 3], [4, 5, 6], 0)
     x = SE23State(SE23.random(), 0, direction="left")
     jac = model.jacobian(x, u, dt)
     jac_fd = model.jacobian_fd(x, u, dt)
@@ -54,7 +54,7 @@ def test_left_jacobian_se23():
 def test_U_adjoint_se23():
     model = IMUKinematics(np.identity(6))
     dt = 0.1
-    u = Imu([1, 2, 3], [2, 3, 1], 0)
+    u = IMU([1, 2, 3], [2, 3, 1], 0)
     U = model._U_matrix(u.gyro, u.accel, dt)
     U_adj = model._adjoint_IE3(U)
     xi = np.array([1, 2, 3, 4, 5, 6, 7, 8, 9])
@@ -67,7 +67,7 @@ def test_U_adjoint_se23():
 def test_U_adjoint_inv_se23():
     model = IMUKinematics(np.identity(6))
     dt = 0.1
-    u = Imu([1, 2, 3], [2, 3, 1], 0)
+    u = IMU([1, 2, 3], [2, 3, 1], 0)
     U = model._U_matrix(u.gyro, u.accel, dt)
     U_inv = model._U_matrix_inv(u.gyro, u.accel, dt)
 
@@ -106,7 +106,7 @@ def test_G_adjoint_inv_se23():
 def test_right_jacobian_se23():
     model = IMUKinematics(np.identity(6))
     dt = 0.1
-    u = Imu([1, 2, 3], [2, 3, 1], 0)
+    u = IMU([1, 2, 3], [2, 3, 1], 0)
     x = SE23State(SE23.Exp([1, 2, 3, 4, 5, 6, 7, 8, 9]), 0, direction="right")
     jac = model.jacobian(x, u, dt)
     jac_fd = model.jacobian_fd(x, u, dt)
@@ -116,7 +116,7 @@ def test_right_jacobian_se23():
 def test_left_jacobian_imu():
     model = IMUKinematics(np.identity(6))
     dt = 0.1
-    u = Imu([1, 2, 3], [2, 3, 1], 0)
+    u = IMU([1, 2, 3], [2, 3, 1], 0)
     x = IMUState(
         SE23.Exp([1, 2, 3, 4, 5, 6, 7, 8, 9]),
         [0.1, 0.2, 0.3],
@@ -132,7 +132,7 @@ def test_left_jacobian_imu():
 def test_right_jacobian_imu():
     model = IMUKinematics(np.identity(6))
     dt = 0.1
-    u = Imu([1, 2, 3], [2, 3, 1], 0)
+    u = IMU([1, 2, 3], [2, 3, 1], 0)
     x = IMUState(
         SE23.Exp([1, 2, 3, 4, 5, 6, 7, 8, 9]),
         [0.1, 0.2, 0.3],

@@ -2,8 +2,44 @@ from pylie import SO2, SO3, SE2, SE3, SE23
 from pylie.numpy.base import MatrixLieGroup
 import numpy as np
 from ..types import State, ProcessModel
-from typing import Any, List
+from typing import Any, List, Tuple
 from .states import CompositeState, VectorState, SE23State
+
+
+class IMU:
+    """
+    Data container for an IMU reading.
+    """
+
+    def __init__(
+        self,
+        gyro: np.ndarray,
+        accel: np.ndarray,
+        stamp: float,
+        bias_gyro_walk=[0, 0, 0],
+        bias_accel_walk=[0, 0, 0],
+    ):
+        self.gyro = np.array(gyro).ravel()
+        self.accel = np.array(accel).ravel()
+        self.bias_gyro_walk = np.array(bias_gyro_walk).ravel()
+        self.bias_accel_walk = np.array(bias_accel_walk).ravel()
+        self.stamp = stamp
+
+    def plus(self, w: np.ndarray):
+        w = w.ravel()
+        self.gyro += w[0:3]
+        self.accel += w[3:6]
+        self.bias_gyro_walk += w[6:9]
+        self.bias_accel_walk += w[9:12]
+
+    def copy(self):
+        return IMU(
+            self.gyro.copy(),
+            self.accel.copy(),
+            self.stamp,
+            self.bias_gyro_walk.copy(),
+            self.bias_accel_walk.copy(),
+        )
 
 
 class IMUState(CompositeState):
@@ -13,23 +49,23 @@ class IMUState(CompositeState):
         bias_gyro: np.ndarray,
         bias_accel: np.ndarray,
         stamp: float = None,
-        state_id=None,
+        state_id: Any = None,
         direction="right",
     ):
         """Instantiate and IMUState object.
 
         Parameters
         ----------
-        nav_state : np.ndarray
+        nav_state : np.ndarray with shape (5, 5)
             The navigation state stored as an element of SE_2(3).
             Contains orientation, velocity, and position.
-        bias_gyro : np.ndarray
-            Gyroscope bias, [3 x 1] matrix
-        bias_accel : np.ndarray
-            Accelerometer bias, [3 x 1] matrix
+        bias_gyro : np.ndarray with size 3
+            Gyroscope bias
+        bias_accel : np.ndarray with size 3
+            Accelerometer bias
         stamp : float, optional
             Timestamp, by default None
-        state_id : _type_, optional
+        state_id : Any, optional
             Unique identifier, by default None
         direction : str, optional
             Direction of the perturbation for the nav state, by default "right"
@@ -131,8 +167,8 @@ class IMUState(CompositeState):
             self.direction,
         )
 
-    @staticmethod
     def jacobian_from_blocks(
+        self,
         attitude: np.ndarray = None,
         position: np.ndarray = None,
         velocity: np.ndarray = None,
@@ -142,55 +178,17 @@ class IMUState(CompositeState):
         for jac in [attitude, position, velocity, bias_gyro, bias_accel]:
             if jac is not None:
                 dim = jac.shape[0]
+                break
 
-        if attitude is None:
-            attitude = np.zeros((dim, 3))
-        if position is None:
-            position = np.zeros((dim, 3))
-        if velocity is None:
-            velocity = np.zeros((dim, 3))
+        nav_jacobian = self.value[0].jacobian_from_blocks(
+            attitude=attitude, position=position, velocity=velocity
+        )
         if bias_gyro is None:
             bias_gyro = np.zeros((dim, 3))
         if bias_accel is None:
             bias_accel = np.zeros((dim, 3))
 
-        return np.block([attitude, velocity, position, bias_gyro, bias_accel])
-
-
-class Imu:
-    """
-    Data container for an IMU reading.
-    """
-
-    def __init__(
-        self,
-        gyro: np.ndarray,
-        accel: np.ndarray,
-        stamp: float,
-        bias_gyro_walk=[0, 0, 0],
-        bias_accel_walk=[0, 0, 0],
-    ):
-        self.gyro = np.array(gyro).ravel()
-        self.accel = np.array(accel).ravel()
-        self.bias_gyro_walk = np.array(bias_gyro_walk).ravel()
-        self.bias_accel_walk = np.array(bias_accel_walk).ravel()
-        self.stamp = stamp
-
-    def plus(self, w: np.ndarray):
-        w = w.ravel()
-        self.gyro += w[0:3]
-        self.accel += w[3:6]
-        self.bias_gyro_walk += w[6:9]
-        self.bias_accel_walk += w[9:12]
-
-    def copy(self):
-        return Imu(
-            self.gyro.copy(),
-            self.accel.copy(),
-            self.stamp,
-            self.bias_gyro_walk.copy(),
-            self.bias_accel_walk.copy(),
-        )
+        return np.hstack([nav_jacobian, bias_gyro, bias_accel])
 
 
 class IMUKinematics(ProcessModel):
@@ -209,7 +207,7 @@ class IMUKinematics(ProcessModel):
 
         self._gravity = np.array(g_a).ravel()
 
-    def evaluate(self, x: IMUState, u: Imu, dt: float) -> IMUState:
+    def evaluate(self, x: IMUState, u: IMU, dt: float) -> IMUState:
         """Propagates an IMU state forward one timestep from an IMU measurement.
 
         The continuous-time IMU equations are discretized using the assumption
@@ -219,7 +217,7 @@ class IMUKinematics(ProcessModel):
         ----------
         x : IMUState
             Current IMU state
-        u : Imu
+        u : IMU
             IMU measurement,
         dt : float
             timestep.
@@ -247,14 +245,17 @@ class IMUKinematics(ProcessModel):
 
         return x
 
-    def jacobian(self, x: IMUState, u: Imu, dt: float) -> np.ndarray:
+    def jacobian(self, x: IMUState, u: IMU, dt: float) -> np.ndarray:
+        """
+        Returns the Jacobian of the IMU kinematics model with respect 
+        to the full state
+        """
 
         # Get unbiased inputs
         unbiased_gyro, unbiased_accel = self._get_unbiased_imu(x, u)
 
         G = self._G_matrix(dt)
         U_inv = self._U_matrix_inv(unbiased_gyro, unbiased_accel, dt)
-        U = self._U_matrix(unbiased_gyro, unbiased_accel, dt)
 
         # Jacobian of process model wrt to pose
         if x.direction == "right":
@@ -266,7 +267,7 @@ class IMUKinematics(ProcessModel):
 
         if hasattr(x, "bias_gyro"):
             jac_bias = self._get_input_jacobian(x, u, dt)
-            
+
             # Jacobian of bias random walk wrt to pose
             jac_pose = np.vstack([jac_pose, np.zeros((6, jac_pose.shape[1]))])
 
@@ -283,79 +284,86 @@ class IMUKinematics(ProcessModel):
 
         return x.jacobian_from_blocks(**jac_kwargs)
 
-    def covariance(self, x: IMUState, u: Imu, dt: float) -> np.ndarray:
-        
+    def covariance(self, x: IMUState, u: IMU, dt: float) -> np.ndarray:
+
         # Jacobian of pose wrt to noise
         L_pn = self._get_input_jacobian(x, u, dt)
-        
+
         # Jacobian of bias random walk wrt to noise
-        L_bn = np.zeros((6,6))
+        L_bn = np.zeros((6, 6))
 
         if hasattr(x, "bias_gyro"):
             # Jacobian of pose wrt to bias random walk
-            L_pw = np.zeros((9,6))
+            L_pw = np.zeros((9, 6))
 
             # Jacobian of bias wrt to bias random walk
-            L_bw = dt*np.identity(6)
+            L_bw = dt * np.identity(6)
 
             L = np.block([[L_pn, L_pw], [L_bn, L_bw]])
 
         else:
-            L = np.block([[L_pn, L_bn]])
+            L = np.hstack([[L_pn, L_bn]])
 
         return L @ self._Q @ L.T
 
-    def _get_input_jacobian(self, x: IMUState, u: Imu, dt: float) -> np.ndarray:
+    def _get_input_jacobian(self, x: IMUState, u: IMU, dt: float) -> np.ndarray:
         """
         Computes the jacobian of the nav state with respect to the input.
+
+        Since the noise and bias are both additive to the input, they have the 
+        same jacobians.
         """
         # Get unbiased inputs
         unbiased_gyro, unbiased_accel = self._get_unbiased_imu(x, u)
 
         G = self._G_matrix(dt)
         U = self._U_matrix(unbiased_gyro, unbiased_accel, dt)
-       
+
         a = unbiased_accel
         om = unbiased_gyro
         N = self._N_matrix(om * dt)
         J_att_inv = SO3.left_jacobian_inv(om * dt)
-        v = np.vstack(
+        xi = np.vstack(
             [
                 dt * om,
                 dt * a,
                 (dt**2 / 2) * J_att_inv @ N @ a,
             ]
         )
-        J = SE23.left_jacobian(-v)
-        Upsilon = np.zeros((9, 6))
-        Upsilon[0:3, 0:3] = -dt * np.eye(3)
-        Upsilon[3:6, 3:6] = -dt * np.eye(3)
-        Upsilon[6:9, 0:3] = -dt**3 * (
-            SO3.wedge(N @ a) / 4 - J_att_inv @ SO3.wedge(a) /6 
-        )
-        Upsilon[6:9, 3:6] = -(dt**2 / 2) * J_att_inv @ N
+        J = SE23.left_jacobian(-xi)
 
-        jac_right = J @ Upsilon
+        # See Barfoot 2nd edition.
+        # TODO: These jacobians seem to rely on a small dt assumption.
+        # We will have to talk to barfoot
+        XI = np.zeros((9, 6))
+        XI[0:3, 0:3] = -dt * np.eye(3)
+        XI[3:6, 3:6] = -dt * np.eye(3)
+        XI[6:9, 0:3] = -(dt**3) * (
+            SO3.wedge(N @ a) / 4 - J_att_inv @ SO3.wedge(a) / 6
+        )
+        XI[6:9, 3:6] = -(dt**2 / 2) * J_att_inv @ N
+
+        jac_right = J @ XI
         if x.direction == "right":
-            jac = jac_right  
+            jac = jac_right
         elif x.direction == "left":
             jac = SE23.adjoint(G @ x.pose @ U) @ jac_right
         return jac
 
-    def _get_unbiased_imu(self, x: IMUState, u: Imu):
+    def _get_unbiased_imu(self, x: IMUState, u: IMU) -> Tuple[np.ndarray, np.ndarray]:
         """Removes bias from the measurement.
 
         Parameters
         ----------
         x : IMUState
-            _description_
-        u : Imu
-            _description_
+            Contains the biases
+        u : IMU
+            IMU data correupted by bias
 
         Returns
         -------
-        Imu
-            _description_
+        Tuple[np.ndarray, np.ndarray]
+            unbiased gyro and accelerometer measurements
         """
         if hasattr(x, "bias_gyro"):
             bias_gyro = x.bias_gyro.reshape((-1, 1))
@@ -463,3 +471,7 @@ class IMUKinematics(ProcessModel):
         X_inv[:3, 4] = -R.T @ (c * a - b)
         X_inv[3, 4] = -c
         return X_inv
+
+# TODO: consolidate and simplify some of the matrix functions. They will
+# be needed for preintegration as well, so make them standalone functions
+# in this module. 

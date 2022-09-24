@@ -7,7 +7,7 @@ from pynav.lib.models import (
     InvariantMeasurement,
     PointRelativePosition,
 )
-from pynav.lib.imu import Imu, IMUState, IMUKinematics
+from pynav.lib.imu import IMU, IMUState, IMUKinematics
 from pynav.utils import GaussianResult, GaussianResultList, plot_error, randvec
 from pynav.datagen import DataGenerator
 
@@ -125,7 +125,7 @@ def input_profile(stamp: float, x: IMUState) -> np.ndarray:
     Q_bias = Q_noise[6:, 6:]
     bias_noise = randvec(Q_bias)
 
-    u = Imu(omega, accel, stamp, bias_noise[0:3], bias_noise[3:6])
+    u = IMU(omega, accel, stamp, bias_noise[0:3], bias_noise[3:6])
     return u
 
 
