@@ -146,5 +146,5 @@ def test_right_jacobian_imu():
 
 
 if __name__ == "__main__":
-    test_N_matrix()
+    test_left_jacobian_imu()
     print("All tests passed!")

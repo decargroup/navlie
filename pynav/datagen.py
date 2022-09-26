@@ -167,7 +167,7 @@ class DataGenerator:
             # Add noise to input if requested.
             if noise:
                 Q = np.atleast_2d(self.input_covariance(times[k]))
-                u.plus(randvec(Q))
+                u = u.plus(randvec(Q))
 
             state_list.append(x.copy())
             input_list.append(u)

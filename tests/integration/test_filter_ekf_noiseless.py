@@ -64,7 +64,6 @@ def make_filter_trial_prediction_noiseless(dg, x0_true, P0, t_max, kf):
             x0_true, 0, t_max, noise=False
         )
         x0_check = x0_true.copy()
-        # x0_check.plus(randvec(P0))
         x = StateWithCovariance(x0_check, P0)
 
         meas_idx = 0

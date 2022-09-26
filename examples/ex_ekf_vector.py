@@ -31,7 +31,7 @@ process_model = SingleIntegrator(Q)
 input_profile = lambda t, x: np.array([np.sin(t), np.cos(t)])
 input_covariance = Q
 input_freq = 180
-noise_active = False
+noise_active = True
 # ##############################################################################
 # Data Generation
 
@@ -49,7 +49,7 @@ gt_data, input_data, meas_data = dg.generate(x0, 0, 10, noise=noise_active)
 # ##############################################################################
 # Run Filter
 if noise_active:
-    x0.plus(randvec(P0))
+    x0 = x0.plus(randvec(P0))
     
 x = StateWithCovariance(x0, P0)
 

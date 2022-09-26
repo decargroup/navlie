@@ -41,8 +41,7 @@ def generate_so3_results():
 
     # Run the regular filter
     x0.direction = "right"
-    x0_check = x0.copy() 
-    x0_check.plus(randvec(P0))
+    x0_check = x0.plus(randvec(P0))
     ekf = ExtendedKalmanFilter(process_model=process_model)
     estimate_list = run_filter(ekf, x0_check, P0, input_list, meas_list)
     results = GaussianResultList(

@@ -39,11 +39,13 @@ class IMU:
             w[6:9] is the gyro bias walk noise, w[9:12] is the accel bias walk
             noise
         """
+        new = self.copy()
         w = w.ravel()
-        self.gyro += w[0:3]
-        self.accel += w[3:6]
-        self.bias_gyro_walk += w[6:9]
-        self.bias_accel_walk += w[9:12]
+        new.gyro += w[0:3]
+        new.accel += w[3:6]
+        new.bias_gyro_walk += w[6:9]
+        new.bias_accel_walk += w[9:12]
+        return new
 
     def copy(self):
         return IMU(
@@ -151,17 +153,19 @@ class IMUState(CompositeState):
         """
         Updates the value of each of the IMU state, given a perturbation dx.
         """
+        new = self.copy()
+
         if dx.shape[0] != 15:
             raise ValueError("Perturbation must be dimension 15!")
 
-        for i, s in enumerate(self._slices):
+        for i, s in enumerate(new._slices):
             sub_dx = dx[s]
-            self.value[i].plus(sub_dx)
+            new.value[i] = new.value[i].plus(sub_dx)
 
         if new_stamp is not None:
-            self.set_stamp_for_all(new_stamp)
+            new.set_stamp_for_all(new_stamp)
 
-        return self.copy()
+        return new
 
     def minus(self, x: "IMUState") -> np.ndarray:
         dx = []

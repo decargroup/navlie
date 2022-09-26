@@ -80,8 +80,7 @@ def ekf_trial(trial_number:int) -> List[GaussianResult]:
     np.random.seed(trial_number)
     state_true, input_data, meas_data = dg.generate(x0_true, 0, t_max, noise=True)
 
-    x0_check = x0_true.copy()
-    x0_check.plus(randvec(P0))
+    x0_check = x0_true.plus(randvec(P0))
     x = StateWithCovariance(x0_check, P0)
 
     

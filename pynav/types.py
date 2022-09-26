@@ -13,14 +13,13 @@ class StampedValue:
     Generic data container for timestamped information.
     """
 
-    __slots__ = ["value", "stamp"]
-    # TODO: we should probably let variable by Any, such as a Tuple 
-    # this would require also adding an optional `plus()` method 
+    __slots__ = ["value", "stamp"] 
+
     def __init__(self, value: np.ndarray, stamp: float = 0.0):
         self.value = value #:numpy.ndarray:  Variable containing the data values
         self.stamp = stamp #:float: Timestamp
 
-    def plus(self, w: np.ndarray):
+    def plus(self, w: np.ndarray) -> "StampedValue":
         """
         Generic addition operation to modify the internal value.
         
@@ -29,10 +28,12 @@ class StampedValue:
         w : np.ndarray
             to be added to the instance's .value
         """
-        og_shape = self.value.shape 
-        self.value = self.value.ravel() + w.ravel()
-        self.value.reshape(og_shape)
-        return self.copy()
+        new = self.copy()
+        og_shape = new.value.shape 
+        new.value = new.value.ravel() + w.ravel()
+        new.value.reshape(og_shape)
+        return new
+
     def copy(self) -> "StampedValue":
         """ 
         Returns a copy of the instance with fully seperate memory.
@@ -62,13 +63,11 @@ class State(ABC):
         self.state_id = state_id #:Any: Some identifier associated with the state 
 
     @abstractmethod
-    def plus(self, dx: np.ndarray):
+    def plus(self, dx: np.ndarray) -> "State":
         """
         A generic "addition" operation given a `dx` numpy array with as many
         elements as the `dof` of this state.
         """
-        # TODO: investigate the cost of returning a copy instead. This would 
-        # be much closer to the __add__ method in python and how numpy does things.
         pass
 
     @abstractmethod
@@ -140,8 +139,7 @@ class MeasurementModel(ABC):
         for i in range(N):
             dx = np.zeros((N, 1))
             dx[i, 0] = h
-            x_temp = x.copy()
-            x_temp.plus(dx)
+            x_temp = x.plus(dx)
             jac_fd[:, i] = (self.evaluate(x_temp) - y).flatten() / h
 
         return jac_fd
@@ -238,8 +236,7 @@ class ProcessModel(ABC):
         for i in range(x.dof):
             dx = np.zeros((x.dof, 1))
             dx[i, 0] = h
-            x_pert = x.copy()  # Perturb current state
-            x_pert.plus(dx)
+            x_pert = x.plus(dx)
             Y: State = self.evaluate(x_pert, u, dt)
             jac_fd[:, i] = Y.minus(Y_bar).flatten() / h
 

@@ -28,10 +28,13 @@ class VectorState(State):
             stamp=stamp,
             state_id=state_id,
         )
+        self.value :np.ndarray = self.value # just for type hinting
 
-    def plus(self, dx: np.ndarray):
-        self.value: np.ndarray = self.value.flatten() + dx.flatten()
-        return self.copy()
+    def plus(self, dx: np.ndarray) -> "VectorState":
+        new = self.copy()
+        new.value: np.ndarray = new.value.ravel() + dx.ravel()
+        return new.copy()
+
     def minus(self, x: "VectorState") -> np.ndarray:
         og_shape = self.value.shape
         return (self.value.ravel() - x.value.ravel()).reshape(og_shape)
@@ -60,24 +63,26 @@ class MatrixLieGroupState(State):
         super(MatrixLieGroupState, self).__init__(
             value, self.group.dof, stamp, state_id
         )
-
-    def plus(self, dx: np.ndarray):
+        self.value :np.ndarray = self.value # just for type hinting
+        
+    def plus(self, dx: np.ndarray) -> "MatrixLieGroupState":
+        new = self.copy()
         if self.direction == "right":
-            self.value: np.ndarray = self.value @ self.group.Exp(dx)
-            return self.copy()
+            new.value = new.value @ new.group.Exp(dx)
         elif self.direction == "left":
-            self.value: np.ndarray = self.group.Exp(dx) @ self.value
-            return self.copy()
+            new.value = new.group.Exp(dx) @ new.value
         else:
             raise ValueError("direction must either be 'left' or 'right'.")
+        return new
 
     def minus(self, x: "MatrixLieGroupState") -> np.ndarray:
         if self.direction == "right":
-            return self.group.Log(self.group.inverse(x.value) @ self.value)
+            diff = self.group.Log(self.group.inverse(x.value) @ self.value)
         elif self.direction == "left":
-            return self.group.Log(self.value @ self.group.inverse(x.value))
+            diff = self.group.Log(self.value @ self.group.inverse(x.value))
         else:
             raise ValueError("direction must either be 'left' or 'right'.")
+        return diff.ravel()
 
     def copy(self) -> "MatrixLieGroupState":
         return self.__class__(
@@ -450,6 +455,10 @@ class CompositeState(State):
         self.state_id = state_id
 
         # Compute the slices for each individual state.
+        # TODO: ideally, we need to find away for the slices to 
+        # adapt to possible `.value[i].dof` changes of the substates, but we 
+        # dont want to do this on EVERY plus()/minus() call since this will
+        # be slow. 
         self._slices = []
         counter = 0
         for state in state_list:
@@ -559,20 +568,21 @@ class CompositeState(State):
             [state.copy() for state in self.value], self.stamp, self.state_id
         )
 
-    def plus(self, dx, new_stamp: float = None):
+    def plus(self, dx, new_stamp: float = None) -> "CompositeState":
         """
         Updates the value of each sub-state given a dx. Interally parses
         the dx vector.
         """
-        for i, s in enumerate(self._slices):
+        new = self.copy()
+        for i, s in enumerate(new._slices):
             sub_dx = dx[s]
-            self.value[i].plus(sub_dx)
-            return self.copy()
+            new.value[i] = new.value[i].plus(sub_dx)
 
         if new_stamp is not None:
-            self.set_stamp_for_all(new_stamp)
+            new.set_stamp_for_all(new_stamp)
 
-        return self.copy()
+        return new.copy()
+
     def minus(self, x: "CompositeState") -> np.ndarray:
         dx = []
         for i, v in enumerate(x.value):
@@ -580,16 +590,17 @@ class CompositeState(State):
 
         return np.vstack(dx)
 
-    def plus_by_id(self, dx, state_id: int, new_stamp: float = None):
+    def plus_by_id(self, dx, state_id: int, new_stamp: float = None) -> "CompositeState":
         """
         Updates a specific sub-state.
         """
-        idx = self.get_index_by_id(state_id)
-        self.value[idx].plus(dx)
+        new = self.copy()
+        idx = new.get_index_by_id(state_id)
+        new.value[idx].plus(dx)
         if new_stamp is not None:
-            self.set_stamp_by_id(new_stamp, state_id)
+            new.set_stamp_by_id(new_stamp, state_id)
 
-        return self.copy()
+        return new
     def jacobian_from_blocks(self, block_dict: dict):
         """
         Returns the jacobian of the entire composite state given jacobians
