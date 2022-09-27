@@ -144,6 +144,31 @@ def test_right_jacobian_imu():
     jac_fd = model.jacobian_fd(x, u, dt)
     assert np.allclose(jac, jac_fd, atol=1e-3)
 
+def test_imu_group_jacobian_right():
+    x = IMUState(
+        SE23.Exp([1, 2, 3, 4, 5, 6, 7, 8, 9]),
+        [0.1, 0.2, 0.3],
+        [4, 5, 6],
+        0,
+        direction="right",
+    )
+    dx = np.array([1, 2, 3, 4, 5, 6, 7, 8, 9, 0.1, 0.2, 0.3, 4, 5, 6])
+    jac = x.jacobian(dx)
+    jac_fd = x.jacobian_fd(dx)
+    assert np.allclose(jac, jac_fd, atol=1e-6)
+
+def test_imu_group_jacobian_left():
+    x = IMUState(
+        SE23.Exp([1, 2, 3, 4, 5, 6, 7, 8, 9]),
+        [0.1, 0.2, 0.3],
+        [4, 5, 6],
+        0,
+        direction="left",
+    )
+    dx = np.array([1, 2, 3, 4, 5, 6, 7, 8, 9, 0.1, 0.2, 0.3, 4, 5, 6])
+    jac = x.jacobian(dx)
+    jac_fd = x.jacobian_fd(dx)
+    assert np.allclose(jac, jac_fd, atol=1e-6)
 
 if __name__ == "__main__":
     test_left_jacobian_imu()
