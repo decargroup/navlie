@@ -8,7 +8,10 @@ from pynav.utils import randvec
 from pynav.filters import run_filter
 
 from pynav.utils import monte_carlo, plot_error
-from pynav.lib.models import DoubleIntegrator, OneDimensionalPositionVelocityRange
+from pynav.lib.models import (
+    DoubleIntegrator,
+    OneDimensionalPositionVelocityRange,
+)
 from pynav.lib.models import SingleIntegrator, RangePointToAnchor
 from pynav.lib.models import (
     BodyFrameVelocity,
@@ -33,10 +36,12 @@ def make_range_models_ekf_vector(R):
     ]
     return range_models
 
+
 def make_invariant_so3_models(R):
     mag_model = Magnetometer(R)
     grav_model = Gravitometer(R)
     return [mag_model, grav_model]
+
 
 def make_range_models_iterated_ekf(R):
     range_models = [
@@ -51,8 +56,8 @@ def make_range_models_iterated_ekf(R):
     ]
     return range_models
 
+
 def make_filter_trial(dg, x0_true, P0, t_max, ekf):
-        
     def ekf_trial(trial_number: int) -> List[GaussianResult]:
         """
         A single trial in a monte carlo experiment. This function accepts the trial
@@ -70,38 +75,69 @@ def make_filter_trial(dg, x0_true, P0, t_max, ekf):
         estimate_list = run_filter(ekf, x0_check, P0, input_list, meas_list)
 
         results = GaussianResultList(
-        [
-            GaussianResult(estimate_list[i], state_true[i])
-            for i in range(len(estimate_list))
-        ]
+            [
+                GaussianResult(estimate_list[i], state_true[i])
+                for i in range(len(estimate_list))
+            ]
         )
         return results
-    
+
     return ekf_trial
 
 
-@pytest.mark.parametrize("x0, P0, input_profile, process_model, measurement_model, Q, R, input_freq, measurement_freq", 
-                [
-                    (VectorState(np.array([1, 0]), 0.0), np.diag([1, 1]), 
-                        lambda t, x: np.array([np.sin(t), np.cos(t)]),
-                        SingleIntegrator, make_range_models_ekf_vector, 
-                        0.1 * np.identity(2), 0.1**2, 
-                        10, [1, 1, 1]), 
-                    (VectorState(np.array([1, 0]), 0.0), np.diag([1, 1]), 
-                        lambda t, x: np.array([np.sin(t), np.cos(t)]),
-                        SingleIntegrator, make_range_models_ekf_vector, 
-                        0.1 * np.identity(2), 1e-8, 
-                        10, [1, 1, 1]), 
-                    (SE3State(SE3.Exp([0, 0, 0, 0, 0, 0]), stamp=0.0), 0.1**2 * np.identity(6), 
-                        lambda t, x: np.array([np.sin(0.1 * t), np.cos(0.1 * t), np.sin(0.1 * t), 1, 0, 0]),
-                        BodyFrameVelocity, make_range_models_iterated_ekf, 
-                        np.diag([0.01**2, 0.01**2, 0.01**2, 0.1, 0.1, 0.1]), 0.1**2, 
-                        200, 10), 
-                ])
-
-def test_reasonable_nees(x0, P0, input_profile, process_model, measurement_model, Q, R, input_freq, measurement_freq):
-    dt = 1/input_freq
-    t_max = dt*1000
+@pytest.mark.parametrize(
+    "x0, P0, input_profile, process_model, measurement_model, Q, R, input_freq, measurement_freq",
+    [
+        (
+            VectorState(np.array([1, 0]), 0.0),
+            np.diag([1, 1]),
+            lambda t, x: np.array([np.sin(t), np.cos(t)]),
+            SingleIntegrator,
+            make_range_models_ekf_vector,
+            0.1 * np.identity(2),
+            0.1**2,
+            10,
+            [1, 1, 1],
+        ),
+        (
+            VectorState(np.array([1, 0]), 0.0),
+            np.diag([1, 1]),
+            lambda t, x: np.array([np.sin(t), np.cos(t)]),
+            SingleIntegrator,
+            make_range_models_ekf_vector,
+            0.1 * np.identity(2),
+            1e-8,
+            10,
+            [1, 1, 1],
+        ),
+        (
+            SE3State(SE3.Exp([0, 0, 0, 0, 0, 0]), stamp=0.0),
+            0.1**2 * np.identity(6),
+            lambda t, x: np.array(
+                [np.sin(0.1 * t), np.cos(0.1 * t), np.sin(0.1 * t), 1, 0, 0]
+            ),
+            BodyFrameVelocity,
+            make_range_models_iterated_ekf,
+            np.diag([0.01**2, 0.01**2, 0.01**2, 0.1, 0.1, 0.1]),
+            0.1**2,
+            200,
+            10,
+        ),
+    ],
+)
+def test_reasonable_nees(
+    x0,
+    P0,
+    input_profile,
+    process_model,
+    measurement_model,
+    Q,
+    R,
+    input_freq,
+    measurement_freq,
+):
+    dt = 1 / input_freq
+    t_max = dt * 1000
     N = 2
     kf = ExtendedKalmanFilter(process_model(Q))
     dg = DataGenerator(
@@ -111,17 +147,19 @@ def test_reasonable_nees(x0, P0, input_profile, process_model, measurement_model
         input_freq,
         measurement_model(R),
         measurement_freq,
-        )
+    )
     ekf_trial = make_filter_trial(dg, x0, P0, t_max, kf)
     results = monte_carlo(ekf_trial, N)
 
-
-    nees_in_correct_region =  np.count_nonzero(results.average_nees < 2*results.nees_upper_bound(0.99))
+    nees_in_correct_region = np.count_nonzero(
+        results.average_nees < 2 * results.nees_upper_bound(0.99)
+    )
     nt = results.average_nees.shape[0]
     # Proportion of time NEES remains below 2*upper_bound bigger than 90%
-    assert nees_in_correct_region/nt > 0.90
+    assert nees_in_correct_region / nt > 0.90
 
     # Make sure we essentially never get a completely absurd NEES.
-    nees_in_correct_region =  np.count_nonzero(results.average_nees < 50*results.nees_upper_bound(0.99))
-    assert nees_in_correct_region/nt > 0.9999
-
+    nees_in_correct_region = np.count_nonzero(
+        results.average_nees < 50 * results.nees_upper_bound(0.99)
+    )
+    assert nees_in_correct_region / nt > 0.9999

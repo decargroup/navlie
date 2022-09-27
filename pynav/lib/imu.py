@@ -19,13 +19,26 @@ class IMU:
         bias_gyro_walk=[0, 0, 0],
         bias_accel_walk=[0, 0, 0],
     ):
-        self.gyro = np.array(gyro).ravel()
-        self.accel = np.array(accel).ravel()
+        self.gyro = np.array(gyro).ravel() #:np.ndarray: Gyro reading
+        self.accel = np.array(accel).ravel() #:np.ndarray: Accelerometer reading
+
+        #:np.ndarray: driving input for gyro bias random walk
         self.bias_gyro_walk = np.array(bias_gyro_walk).ravel()
+        #:np.ndarray: driving input for accel bias random walk
         self.bias_accel_walk = np.array(bias_accel_walk).ravel()
-        self.stamp = stamp
+        self.stamp = stamp #:float: Timestamp of the reading
 
     def plus(self, w: np.ndarray):
+        """
+        Modifies the IMU data. This is used to add noise to the IMU data.
+
+        Parameters
+        ----------
+        w : np.ndarray with size 12
+            w[0:3] is the gyro noise, w[3:6] is the accel noise, 
+            w[6:9] is the gyro bias walk noise, w[9:12] is the accel bias walk
+            noise
+        """
         w = w.ravel()
         self.gyro += w[0:3]
         self.accel += w[3:6]
@@ -52,7 +65,8 @@ class IMUState(CompositeState):
         state_id: Any = None,
         direction="right",
     ):
-        """Instantiate and IMUState object.
+        """
+        Instantiate and IMUState object.
 
         Parameters
         ----------
@@ -86,7 +100,7 @@ class IMUState(CompositeState):
         return self.value[0].attitude
 
     @attitude.setter
-    def attitude(self, C):
+    def attitude(self, C: np.ndarray):
         self.value[0].attitude = C
 
     @property
@@ -94,7 +108,7 @@ class IMUState(CompositeState):
         return self.value[0].velocity
 
     @velocity.setter
-    def velocity(self, v):
+    def velocity(self, v : np.ndarray):
         self.value[0].velocity = v
 
     @property
@@ -102,7 +116,7 @@ class IMUState(CompositeState):
         return self.value[0].position
 
     @position.setter
-    def position(self, r):
+    def position(self, r: np.ndarray):
         self.value[0].position = r
 
     @property
@@ -110,7 +124,7 @@ class IMUState(CompositeState):
         return self.value[1].value
 
     @bias_gyro.setter
-    def bias_gyro(self, gyro_bias):
+    def bias_gyro(self, gyro_bias : np.ndarray):
         self.value[1].value = gyro_bias.ravel()
 
     @property
@@ -118,7 +132,7 @@ class IMUState(CompositeState):
         return self.value[2].value
 
     @bias_accel.setter
-    def bias_accel(self, accel_bias):
+    def bias_accel(self, accel_bias: np.ndarray):
         self.value[2].value = accel_bias.ravel()
 
     @property
@@ -143,6 +157,9 @@ class IMUState(CompositeState):
         for i, s in enumerate(self._slices):
             sub_dx = dx[s]
             self.value[i].plus(sub_dx)
+
+        if new_stamp is not None:
+            self.set_stamp_for_all(new_stamp)
 
         return self.copy()
 
@@ -192,9 +209,34 @@ class IMUState(CompositeState):
 
 
 class IMUKinematics(ProcessModel):
-    def __init__(self, Q: np.ndarray, g_a=[0, 0, -9.80665]):
-        """Instantiate the IMUKinematic model.
+    """
+    The IMU Kinematics refer to the following continuous time model:
 
+    .. math::
+
+        \\dot{\mathbf{r}} &= \mathbf{v} 
+
+        \\dot{\mathbf{v}} &= \mathbf{C}\mathbf{a} +  \mathbf{g}
+        
+        \\dot{\mathbf{C}} &= \mathbf{C}\mathbf{\omega}^\wedge
+        
+    Using :math:`SE_2(3)` extended poses, it can be shown that the 
+    discrete-time IMU kinematics are given by:
+
+    .. math::
+        \mathbf{T}_{k} = \mathbf{G}_{k-1} \mathbf{T}_{k-1} \mathbf{U}_{k-1}
+
+    where :math:`\mathbf{T}_{k}` is the pose at time :math:`k`, :math:`\mathbf{G}_{k-1}`
+    is a matrix that depends on the gravity vector, and :math:`\mathbf{U}_{k-1}` is a matrix
+    that depends on the IMU measurements. 
+
+    The :math:`\mathbf{G}_{k-1}` and :math:`\mathbf{U}_{k-1}` matrices are 
+    not quite elements of :math:`SE_2(3)`, but instead belong to a new group
+    named here the "Incremental Euclidean Group" :math:`IE(3)`.
+    
+    """
+    def __init__(self, Q: np.ndarray, g_a=[0, 0, -9.80665]):
+        """
         Parameters
         ----------
         Q : np.ndarray
@@ -208,10 +250,11 @@ class IMUKinematics(ProcessModel):
         self._gravity = np.array(g_a).ravel()
 
     def evaluate(self, x: IMUState, u: IMU, dt: float) -> IMUState:
-        """Propagates an IMU state forward one timestep from an IMU measurement.
+        """
+        Propagates an IMU state forward one timestep from an IMU measurement.
 
         The continuous-time IMU equations are discretized using the assumption
-        that the acceleration in the inertial frame is constant between two timesteps.
+        that the IMU measurements are constant between two timesteps.
 
         Parameters
         ----------
@@ -332,7 +375,7 @@ class IMUKinematics(ProcessModel):
         )
         J = SE23.left_jacobian(-xi)
 
-        # See Barfoot 2nd edition.
+        # See Barfoot 2nd edition, equation 9.247
         # TODO: These jacobians seem to rely on a small dt assumption.
         # We will have to talk to barfoot
         XI = np.zeros((9, 6))
@@ -382,6 +425,9 @@ class IMUKinematics(ProcessModel):
 
     @staticmethod
     def _N_matrix(phi_vec: np.ndarray):
+        """ 
+        The N matrix from Barfoot 2nd edition, equation 9.211
+        """
         if np.linalg.norm(phi_vec) < SO3._small_angle_tol:
             return np.identity(3)
         else:
