@@ -92,6 +92,15 @@ class MatrixLieGroupState(State):
             self.direction,
         )
 
+    def jacobian(self, dx: np.ndarray) -> np.ndarray:
+        if self.direction == "right":
+            jac = self.group.right_jacobian(dx)
+        elif self.direction == "left":
+            jac = self.group.left_jacobian(dx)
+        else:
+            raise ValueError("direction must either be 'left' or 'right'.")
+        return jac          
+
     @property
     def attitude(self) -> np.ndarray:
         raise NotImplementedError(
@@ -601,6 +610,7 @@ class CompositeState(State):
             new.set_stamp_by_id(new_stamp, state_id)
 
         return new
+
     def jacobian_from_blocks(self, block_dict: dict):
         """
         Returns the jacobian of the entire composite state given jacobians
@@ -614,4 +624,12 @@ class CompositeState(State):
             slc = self.get_slice_by_id(state_id)
             jac[:, slc] = block
 
+        return jac
+
+    def jacobian(self, dx: np.ndarray) -> np.ndarray:
+        dof = self.dof
+        jac = np.zeros((dof, dof))
+        for i in range(len(self.value)):
+            slc = self._slices[i]
+            jac[slc, slc] = self.value[i].jacobian(dx[slc])
         return jac

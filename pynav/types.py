@@ -86,12 +86,30 @@ class State(ABC):
         pass
 
 
-    def jacobian(self, x: np.ndarray) -> np.ndarray:
+    def jacobian(self, dx: np.ndarray) -> np.ndarray:
         """
         Jacobian of the `plus` operator. For Lie groups, this is known as the
         *group Jacobian*.
         """
         return np.identity(self.dof)
+
+    def jacobian_fd(self, dx) -> np.ndarray:
+        """
+        Calculates the model jacobian with finite difference.
+        """
+        dx_bar = dx
+        jac_fd = np.zeros((self.dof, self.dof))
+        h = 1e-8
+        Y_bar = self.plus(dx_bar)
+        for i in range(self.dof):
+            dx = np.zeros((self.dof,))
+            dx[i] = h
+            Y: State = self.plus(dx_bar.ravel() + dx)
+            jac_fd[:, i] = Y.minus(Y_bar).flatten() / h
+
+        return jac_fd
+
+
 
 class MeasurementModel(ABC):
     """
