@@ -14,7 +14,8 @@ class StampedValue:
     """
 
     __slots__ = ["value", "stamp"]
-
+    # TODO: we should probably let variable by Any, such as a Tuple 
+    # this would require also adding an optional `plus()` method 
     def __init__(self, value: np.ndarray, stamp: float = 0.0):
         self.value = value #:numpy.ndarray:  Variable containing the data values
         self.stamp = stamp #:float: Timestamp
@@ -66,6 +67,8 @@ class State(ABC):
         A generic "addition" operation given a `dx` numpy array with as many
         elements as the `dof` of this state.
         """
+        # TODO: investigate the cost of returning a copy instead. This would 
+        # be much closer to the __add__ method in python and how numpy does things.
         pass
 
     @abstractmethod

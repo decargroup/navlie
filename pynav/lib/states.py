@@ -364,6 +364,15 @@ class SE23State(MatrixLieGroupState):
     ):
         super().__init__(value, SE23, stamp, state_id, direction)
 
+    
+    @property
+    def pose(self):
+        return self.value[0:5, 0:5]
+
+    @pose.setter
+    def pose(self, T):
+        self.value[0:5, 0:5] = T
+
     @property
     def attitude(self):
         return self.value[0:3, 0:3]
@@ -595,144 +604,3 @@ class CompositeState(State):
             jac[:, slc] = block
 
         return jac
-
-
-class IMUState(CompositeState):
-    def __init__(
-        self,
-        nav_state: np.ndarray,
-        bias_gyro: np.ndarray,
-        bias_accel: np.ndarray,
-        stamp: float = None,
-        state_id=None,
-        direction="right",
-    ):
-        """Instantiate and IMUState object.
-
-        Parameters
-        ----------
-        nav_state : np.ndarray
-            The navigation state stored as an element of SE_2(3).
-            Contains orientation, velocity, and position.
-        bias_gyro : np.ndarray
-            Gyroscope bias, [3 x 1] matrix
-        bias_accel : np.ndarray
-            Accelerometer bias, [3 x 1] matrix
-        stamp : float, optional
-            Timestamp, by default None
-        state_id : _type_, optional
-            Unique identifier, by default None
-        direction : str, optional
-            Direction of the perturbation for the nav state, by default "right"
-        """
-        nav_state = SE23State(nav_state, stamp, state_id, direction)
-        bias_gyro = VectorState(bias_gyro, stamp, state_id)
-        bias_accel = VectorState(bias_accel, stamp, state_id)
-
-        state_list = [nav_state, bias_gyro, bias_accel]
-        super().__init__(state_list, stamp, state_id)
-
-        self.direction = direction
-
-    @property
-    def attitude(self) -> np.ndarray:
-        return self.value[0].attitude
-
-    @attitude.setter
-    def attitude(self, C):
-        self.value[0].attitude = C
-
-    @property
-    def velocity(self) -> np.ndarray:
-        return self.value[0].velocity
-
-    @velocity.setter
-    def velocity(self, v):
-        self.value[0].velocity = v
-
-    @property
-    def position(self) -> np.ndarray:
-        return self.value[0].position
-
-    @position.setter
-    def position(self, r):
-        self.value[0].position = r
-
-    @property
-    def bias_gyro(self) -> np.ndarray:
-        return self.value[1].value
-
-    @bias_gyro.setter
-    def bias_gyro(self, gyro_bias):
-        self.value[1].value = gyro_bias.ravel()
-
-    @property
-    def bias_accel(self) -> np.ndarray:
-        return self.value[2].value
-
-    @bias_accel.setter
-    def bias_accel(self, accel_bias):
-        self.value[2].value = accel_bias.ravel()
-
-    @property
-    def nav_state(self) -> np.ndarray:
-        return self.value[0].value
-
-    def plus(self, dx: np.ndarray, new_stamp: float = None):
-        """
-        Updates the value of each of the IMU state, given a perturbation dx.
-        """
-        if dx.shape[0] != 15:
-            raise ValueError("Perturbation must be dimension 15!")
-
-        for i, s in enumerate(self._slices):
-            sub_dx = dx[s]
-            self.value[i].plus(sub_dx)
-            
-        return self.copy()
-
-    def minus(self, x: "IMUState") -> np.ndarray:
-        dx = []
-        for i, v in enumerate(x.value):
-            dx.append(self.value[i].minus(x.value[i]).reshape((-1, 1)))
-
-        return np.vstack(dx)
-
-    def copy(self):
-        """
-        Returns a new composite state object where the state values have also
-        been copied.
-        """
-        return IMUState(
-            self.nav_state.copy(),
-            self.bias_gyro.copy(),
-            self.bias_accel.copy(),
-            self.stamp,
-            self.state_id,
-            self.direction,
-        )
-
-    @staticmethod
-    def jacobian_from_blocks(
-        attitude: np.ndarray = None,
-        position: np.ndarray = None,
-        velocity: np.ndarray = None,
-        bias_gyro: np.ndarray = None,
-        bias_accel: np.ndarray = None,
-    ):
-        for jac in [attitude, position, velocity, bias_gyro, bias_accel]:
-            if jac is not None:
-                dim = jac.shape[0]
-
-        if attitude is None:
-            attitude = np.zeros((dim, 3))
-        if position is None:
-            position = np.zeros((dim, 3))
-        if velocity is None:
-            velocity = np.zeros((dim, 3))
-        if bias_gyro is None:
-            bias_gyro = np.zeros((dim, 3))
-        if bias_accel is None:
-            bias_accel = np.zeros((dim, 3))
-
-        return np.block([attitude, velocity, position, bias_gyro, bias_accel])
