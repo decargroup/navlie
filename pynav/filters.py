@@ -178,7 +178,7 @@ class ExtendedKalmanFilter:
                 # Do the correction
                 K = np.linalg.solve(S.T, (P @ G.T).T).T
                 dx = K @ z
-                x.state.plus(dx)
+                x.state = x.state.plus(dx)
                 x.covariance = (np.identity(x.state.dof) - K @ G) @ P
                 x.symmetrize()
 
@@ -284,7 +284,7 @@ class IteratedKalmanFilter(ExtendedKalmanFilter):
             if not outlier:
                 K = np.linalg.solve(S.T, (x.covariance @ G.T).T).T
                 dx = e + K @ (z - G @ e)
-                x_op.plus(0.2 * dx)
+                x_op = x_op.plus(0.2 * dx)
             else:
                 break
 

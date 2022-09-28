@@ -8,6 +8,7 @@ import time
 from pylie import SE3
 import numpy as np
 from typing import List
+np.random.seed(0)
 
 # ##############################################################################
 # Problem Setup
@@ -40,7 +41,7 @@ dg = DataGenerator(process_model, input_profile, Q, 200, range_models, 10)
 state_true, input_data, meas_data = dg.generate(x0, 0, 10, noise=noise_active)
 
 if noise_active:
-    x0.plus(randvec(P0))
+    x0 = x0.plus(randvec(P0))
 # %% ###########################################################################
 # Run Filter
 x = StateWithCovariance(x0, P0)

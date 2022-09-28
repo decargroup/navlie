@@ -70,8 +70,7 @@ def make_filter_trial(dg, x0_true, P0, t_max, ekf):
         np.random.seed(trial_number)
         state_true, input_list, meas_list = dg.generate(x0_true, 0, t_max, True)
 
-        x0_check = x0_true.copy()
-        x0_check.plus(randvec(P0))
+        x0_check = x0_true.plus(randvec(P0))
         estimate_list = run_filter(ekf, x0_check, P0, input_list, meas_list)
 
         results = GaussianResultList(

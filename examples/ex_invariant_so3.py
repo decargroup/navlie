@@ -17,9 +17,9 @@ import matplotlib.pyplot as plt
 
 # Define the initial state
 x0 = SO3State(SO3.random(), 0.0, direction="left")
-P0 = 1 * np.identity(3)
+P0 = 0.2**2 * np.identity(3)
 Q = 0.1**2 * np.identity(3)
-noise_active = False 
+noise_active = True 
 
 # Define the process model and measurement models.
 process_model = BodyFrameVelocity(Q)
@@ -41,7 +41,7 @@ dg = DataGenerator(
 state_true, input_list, meas_list = dg.generate(x0, 0, 30, noise_active)
 
 if noise_active:
-    x0.plus(randvec(P0))
+    x0 = x0.plus(randvec(P0))
 # ##############################################################################
 # Run the regular filter
 x0.direction = "right"
