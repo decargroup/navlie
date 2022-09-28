@@ -211,6 +211,153 @@ class IMUState(CompositeState):
 
         return np.hstack([nav_jacobian, bias_gyro, bias_accel])
 
+def get_unbiased_imu(x: IMUState, u: IMU) -> Tuple[np.ndarray, np.ndarray]:
+    """
+    Removes bias from the measurement.
+
+    Parameters
+    ----------
+    x : IMUState
+        Contains the biases
+    u : IMU
+        IMU data correupted by bias
+
+    Returns
+    -------
+    Tuple[np.ndarray, np.ndarray]
+        unbiased gyro and accelerometer measurements
+    """
+    if hasattr(x, "bias_gyro"):
+        bias_gyro = x.bias_gyro.reshape((-1, 1))
+    else:
+        bias_gyro = 0
+
+    if hasattr(x, "bias_accel"):
+        bias_accel = x.bias_accel.reshape((-1, 1))
+    else:
+        bias_accel = 0
+
+    unbiased_gyro = u.gyro.reshape((-1, 1)) - bias_gyro
+    unbiased_accel = u.accel.reshape((-1, 1)) - bias_accel
+
+    return unbiased_gyro, unbiased_accel
+
+def N_matrix(phi_vec: np.ndarray):
+    """ 
+    The N matrix from Barfoot 2nd edition, equation 9.211
+    """
+    if np.linalg.norm(phi_vec) < SO3._small_angle_tol:
+        return np.identity(3)
+    else:
+        phi = np.linalg.norm(phi_vec)
+        a = phi_vec / phi
+        a = a.reshape((-1, 1))
+        a_wedge = SO3.wedge(a)
+        N = (
+            2 * (1 - np.cos(phi)) / phi**2 * np.identity(3)
+            + (1 - 2 * (1 - np.cos(phi)) / phi**2) * (a @ a.T)
+            + 2 * ((phi - np.sin(phi)) / phi**2) * a_wedge
+        )
+        return N
+        
+def adjoint_IE3(X):
+    """
+    Adjoint matrix of the "Incremental Euclidean Group".
+    """
+    R = X[:3, :3]
+    c = X[3, 4]
+    a = X[:3, 3].reshape((-1, 1))
+    b = X[:3, 4].reshape((-1, 1))
+    Ad = np.zeros((9, 9))
+    Ad[:3, :3] = R
+    Ad[3:6, :3] = SO3.wedge(a) @ R
+    Ad[3:6, 3:6] = R
+
+    Ad[6:9, :3] = -SO3.wedge(c * a - b) @ R
+    Ad[6:9, 3:6] = -c * R
+    Ad[6:9, 6:9] = R
+    return Ad
+
+def inverse_IE3(X):
+    """
+    Inverse matrix on the "Incremental Euclidean Group".
+    """
+
+    R = X[:3, :3]
+    c = X[3, 4]
+    a = X[:3, 3].reshape((-1, 1))
+    b = X[:3, 4].reshape((-1, 1))
+    X_inv = np.identity(5)
+    X_inv[:3, :3] = R.T
+    X_inv[:3, 3] = -R.T @ a
+    X_inv[:3, 4] = -R.T @ (c * a - b)
+    X_inv[3, 4] = -c
+    return X_inv
+
+def U_matrix(omega, accel, dt: float):
+    phi = omega * dt
+    O = SO3.Exp(phi)
+    J = SO3.left_jacobian(phi)
+    a = accel.reshape((-1, 1))
+    V = N_matrix(phi)
+    U = np.identity(5)
+    U[:3, :3] = O
+    U[:3, 3] = np.ravel(dt * J @ a)
+    U[:3, 4] = np.ravel(dt**2 / 2 * V @ a)
+    U[3, 4] = dt
+    return U
+
+def U_matrix_inv(omega, accel, dt: float):
+    return inverse_IE3(U_matrix(omega, accel, dt))
+
+def G_matrix(gravity, dt):
+    G = np.identity(5)
+    G[:3, 3] = dt * gravity
+    G[:3, 4] = -0.5 * dt**2 * gravity
+    G[3, 4] = -dt
+    return G
+
+def G_matrix_inv(gravity, dt):
+    return inverse_IE3(G_matrix(gravity, dt))
+
+def L_matrix(x: IMUState, u: IMU, dt: float) -> np.ndarray:
+    """
+    Computes the jacobian of the nav state with respect to the input.
+
+    Since the noise and bias are both additive to the input, they have the 
+    same jacobians.
+    """
+    # Get unbiased inputs
+    unbiased_gyro, unbiased_accel = get_unbiased_imu(x, u)
+
+    a = unbiased_accel
+    om = unbiased_gyro
+    N = N_matrix(om * dt)
+    J_att_inv = SO3.left_jacobian_inv(om * dt)
+    xi = np.vstack(
+        [
+            dt * om,
+            dt * a,
+            (dt**2 / 2) * J_att_inv @ N @ a,
+        ]
+    )
+    J = SE23.left_jacobian(-xi)
+
+    # See Barfoot 2nd edition, equation 9.247
+    # TODO: These jacobians seem to rely on a small dt assumption.
+    # We will have to talk to barfoot
+    XI = np.zeros((9, 6))
+    XI[0:3, 0:3] = -dt * np.eye(3)
+    XI[3:6, 3:6] = -dt * np.eye(3)
+    XI[6:9, 0:3] = -(dt**3) * (
+        SO3.wedge(N @ a) / 4 - J_att_inv @ SO3.wedge(a) / 6
+    )
+    XI[6:9, 3:6] = -(dt**2 / 2) * J_att_inv @ N
+
+    L = J @ XI
+    return L
+
+
 
 class IMUKinematics(ProcessModel):
     """
@@ -363,164 +510,16 @@ class IMUKinematics(ProcessModel):
         # Get unbiased inputs
         unbiased_gyro, unbiased_accel = self._get_unbiased_imu(x, u)
 
-        G = self._G_matrix(dt)
-        U = self._U_matrix(unbiased_gyro, unbiased_accel, dt)
+        G = G_matrix(self.gravity, dt)
+        U = U_matrix(unbiased_gyro, unbiased_accel, dt)
+        L = L_matrix(x, u, dt)
 
-        a = unbiased_accel
-        om = unbiased_gyro
-        N = self._N_matrix(om * dt)
-        J_att_inv = SO3.left_jacobian_inv(om * dt)
-        xi = np.vstack(
-            [
-                dt * om,
-                dt * a,
-                (dt**2 / 2) * J_att_inv @ N @ a,
-            ]
-        )
-        J = SE23.left_jacobian(-xi)
-
-        # See Barfoot 2nd edition, equation 9.247
-        # TODO: These jacobians seem to rely on a small dt assumption.
-        # We will have to talk to barfoot
-        XI = np.zeros((9, 6))
-        XI[0:3, 0:3] = -dt * np.eye(3)
-        XI[3:6, 3:6] = -dt * np.eye(3)
-        XI[6:9, 0:3] = -(dt**3) * (
-            SO3.wedge(N @ a) / 4 - J_att_inv @ SO3.wedge(a) / 6
-        )
-        XI[6:9, 3:6] = -(dt**2 / 2) * J_att_inv @ N
-
-        jac_right = J @ XI
         if x.direction == "right":
-            jac = jac_right
+            jac = L
         elif x.direction == "left":
-            jac = SE23.adjoint(G @ x.pose @ U) @ jac_right
+            jac = SE23.adjoint(G @ x.pose @ U) @ L
         return jac
-
-    def _get_unbiased_imu(self, x: IMUState, u: IMU) -> Tuple[np.ndarray, np.ndarray]:
-        """Removes bias from the measurement.
-
-        Parameters
-        ----------
-        x : IMUState
-            Contains the biases
-        u : IMU
-            IMU data correupted by bias
-
-        Returns
-        -------
-        Tuple[np.ndarray, np.ndarray]
-            unbiased gyro and accelerometer measurements
-        """
-        if hasattr(x, "bias_gyro"):
-            bias_gyro = x.bias_gyro.reshape((-1, 1))
-        else:
-            bias_gyro = 0
-
-        if hasattr(x, "bias_accel"):
-            bias_accel = x.bias_accel.reshape((-1, 1))
-        else:
-            bias_accel = 0
-
-        unbiased_gyro = u.gyro.reshape((-1, 1)) - bias_gyro
-        unbiased_accel = u.accel.reshape((-1, 1)) - bias_accel
-
-        return unbiased_gyro, unbiased_accel
-
-    @staticmethod
-    def _N_matrix(phi_vec: np.ndarray):
-        """ 
-        The N matrix from Barfoot 2nd edition, equation 9.211
-        """
-        if np.linalg.norm(phi_vec) < SO3._small_angle_tol:
-            return np.identity(3)
-        else:
-            phi = np.linalg.norm(phi_vec)
-            a = phi_vec / phi
-            a = a.reshape((-1, 1))
-            a_wedge = SO3.wedge(a)
-            N = (
-                2 * (1 - np.cos(phi)) / phi**2 * np.identity(3)
-                + (1 - 2 * (1 - np.cos(phi)) / phi**2) * (a @ a.T)
-                + 2 * ((phi - np.sin(phi)) / phi**2) * a_wedge
-            )
-            return N
-
-    def _U_matrix(self, omega, accel, dt: float):
-        phi = omega * dt
-        O = SO3.Exp(phi)
-        J = SO3.left_jacobian(phi)
-        a = accel.reshape((-1, 1))
-        V = self._N_matrix(phi)
-        U = np.identity(5)
-        U[:3, :3] = O
-        U[:3, 3] = np.ravel(dt * J @ a)
-        U[:3, 4] = np.ravel(dt**2 / 2 * V @ a)
-        U[3, 4] = dt
-        return U
-
-    def _U_matrix_inv(self, omega, accel, dt: float):
-        phi = omega * dt
-        O = SO3.Exp(phi)
-        V = self._N_matrix(phi)
-        J = SO3.left_jacobian(phi)
-        a = accel.reshape((-1, 1))
-        U_inv = np.identity(5)
-        U_inv[:3, :3] = O.T
-        U_inv[:3, 3] = np.ravel(-dt * O.T @ J @ a)
-        U_inv[:3, 4] = np.ravel(dt**2 * O.T @ (J - V / 2) @ a)
-        U_inv[3, 4] = -dt
-        return U_inv
-
-    def _G_matrix(self, dt):
-        G = np.identity(5)
-        G[:3, 3] = dt * self._gravity
-        G[:3, 4] = -0.5 * dt**2 * self._gravity
-        G[3, 4] = -dt
-        return G
-
-    def _G_matrix_inv(self, dt):
-        G_inv = np.identity(5)
-        G_inv[:3, 3] = -dt * self._gravity
-        G_inv[:3, 4] = -0.5 * dt**2 * self._gravity
-        G_inv[3, 4] = dt
-        return G_inv
-
-    @staticmethod
-    def _adjoint_IE3(X):
-        """
-        Adjoint matrix of the "Incremental Euclidean Group".
-        """
-        R = X[:3, :3]
-        c = X[3, 4]
-        a = X[:3, 3].reshape((-1, 1))
-        b = X[:3, 4].reshape((-1, 1))
-        Ad = np.zeros((9, 9))
-        Ad[:3, :3] = R
-        Ad[3:6, :3] = SO3.wedge(a) @ R
-        Ad[3:6, 3:6] = R
-
-        Ad[6:9, :3] = -SO3.wedge(c * a - b) @ R
-        Ad[6:9, 3:6] = -c * R
-        Ad[6:9, 6:9] = R
-        return Ad
-
-    @staticmethod
-    def _inverse_IE3(X):
-        """
-        Inverse matrix on the "Incremental Euclidean Group".
-        """
-
-        R = X[:3, :3]
-        c = X[3, 4]
-        a = X[:3, 3].reshape((-1, 1))
-        b = X[:3, 4].reshape((-1, 1))
-        X_inv = np.identity(5)
-        X_inv[:3, :3] = R.T
-        X_inv[:3, 3] = -R.T @ a
-        X_inv[:3, 4] = -R.T @ (c * a - b)
-        X_inv[3, 4] = -c
-        return X_inv
+    
 
 # TODO: consolidate and simplify some of the matrix functions. They will
 # be needed for preintegration as well, so make them standalone functions
