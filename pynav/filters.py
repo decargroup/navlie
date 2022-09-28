@@ -1,4 +1,6 @@
 from typing import List
+
+from sympy import false
 from .types import (
     StampedValue,
     State,
@@ -8,6 +10,7 @@ from .types import (
 )
 import numpy as np
 from scipy.stats.distributions import chi2
+
 
 def check_outlier(error: np.ndarray, covariance: np.ndarray):
     """
@@ -47,12 +50,12 @@ class ExtendedKalmanFilter:
         self,
         x: StateWithCovariance,
         u: StampedValue,
-        dt: float =None,
+        dt: float = None,
         x_jac: State = None,
     ) -> StateWithCovariance:
         """
-        Propagates the state forward in time using a process model. The user 
-        must provide the current state, input, and time interval  
+        Propagates the state forward in time using a process model. The user
+        must provide the current state, input, and time interval
 
         .. note::
             If the time interval `dt` is not provided in the arguments, it will
@@ -90,7 +93,7 @@ class ExtendedKalmanFilter:
 
         if dt < 0:
             raise RuntimeError("dt is negative!")
-                
+
         # Load dedicated jacobian evaluation point if user specified.
         if x_jac is None:
             x_jac = x.state
@@ -111,7 +114,7 @@ class ExtendedKalmanFilter:
         y: Measurement,
         u: StampedValue,
         x_jac: State = None,
-        reject_outlier: bool =None,
+        reject_outlier: bool = None,
     ) -> StateWithCovariance:
         """
         Fuses an arbitrary measurement to produce a corrected state estimate.
@@ -121,7 +124,7 @@ class ExtendedKalmanFilter:
         x : StateWithCovariance
             The current state estimate.
         u: StampedValue
-            Most recent input, to be used to predict the state forward 
+            Most recent input, to be used to predict the state forward
             if the measurement stamp is larger than the state stamp.
         y : Measurement
             Measurement to be fused into the current state estimate.
@@ -143,7 +146,7 @@ class ExtendedKalmanFilter:
         if x.state.stamp is None:
             x.state.stamp = y.stamp
 
-        # Load default outlier rejection option 
+        # Load default outlier rejection option
         if reject_outlier is None:
             reject_outlier = self.reject_outliers
 
@@ -152,7 +155,9 @@ class ExtendedKalmanFilter:
         if y.stamp is not None:
             dt = y.stamp - x.state.stamp
             if dt < 0:
-                raise RuntimeError("Measurement stamp is earlier than state stamp")
+                raise RuntimeError(
+                    "Measurement stamp is earlier than state stamp"
+                )
             elif u is not None:
                 x = self.predict(x, u, dt)
 
@@ -189,13 +194,14 @@ class IteratedKalmanFilter(ExtendedKalmanFilter):
     """
     On-manifold iterated extended Kalman filter.
     """
-    __slots__ = ["process_model","reject_outliers", "step_tol", "max_iters"]
+
+    __slots__ = ["process_model", "reject_outliers", "step_tol", "max_iters"]
 
     def __init__(
         self,
         process_model: ProcessModel,
         step_tol=1e-4,
-        max_iters=100,  # TODO. implement max iters
+        max_iters=200,  # TODO. implement max iters
         line_search=True,  # TODO implement line search
         reject_outliers=False,
     ):
@@ -220,7 +226,7 @@ class IteratedKalmanFilter(ExtendedKalmanFilter):
         x : StateWithCovariance
             The current state estimate.
         u: StampedValue
-            Most recent input, to be used to predict the state forward 
+            Most recent input, to be used to predict the state forward
             if the measurement stamp is larger than the state stamp.
         y : Measurement
             Measurement to be fused into the current state estimate.
@@ -239,7 +245,7 @@ class IteratedKalmanFilter(ExtendedKalmanFilter):
         # Make copy to avoid modifying the input
         x = x.copy()
 
-        # Load default outlier rejection option 
+        # Load default outlier rejection option
         if reject_outlier is None:
             reject_outlier = self.reject_outliers
 
@@ -253,60 +259,109 @@ class IteratedKalmanFilter(ExtendedKalmanFilter):
         if y.stamp is not None:
             dt = y.stamp - x.state.stamp
             if dt < 0:
-                raise RuntimeError("Measurement stamp is earlier than state stamp")
+                raise RuntimeError(
+                    "Measurement stamp is earlier than state stamp"
+                )
             elif dt > 0 and u is not None:
                 x = self.predict(x, u, dt)
 
-        dx = 10
+        dx = np.zeros((x.state.dof,))
         x_op = x.state.copy()  # Operating point
-        while np.linalg.norm(dx) > self.step_tol:
+        count = 0
+        while count < self.max_iters:
 
             # Load a dedicated state evaluation point for jacobian
             # if the user supplied it.
-            if x_jac is not None:
-                x_op_jac = x_jac
-            else:
-                x_op_jac = x_op
 
-            R = np.atleast_2d(y.model.covariance(x_op_jac))
-            G = np.atleast_2d(y.model.jacobian(x_op_jac))
-            y_check = y.model.evaluate(x_op)
-            z = y.value.reshape((-1, 1)) - y_check.reshape((-1, 1))
-            S = G @ x.covariance @ G.T + R
+            info = self._get_cost_and_info(x_op, x, y, x_jac)
+            J = info["J"]
+            G = info["G"]
+            R = info["R"]
+            P = info["P"]
+            e = info["e"]
+            z = info["z"]
+            cost_old = info["cost"]
+
+            S = G @ P @ G.T + R
             S = 0.5 * (S + S.T)
-            e = x.state.minus(x_op).reshape((-1, 1))
 
             # Test for outlier if requested.
             outlier = False
             if reject_outlier:
                 outlier = check_outlier(z, S)
 
+            # If not outlier, compute step direction
+            # Otherwise, exit loop.
             if not outlier:
-                K = np.linalg.solve(S.T, (x.covariance @ G.T).T).T
-                dx = e + K @ (z - G @ e)
-                x_op = x_op.plus(0.2 * dx)
+                K = np.linalg.solve(S.T, (P @ G.T).T).T
+                dx = -J @ e + K @ (z + G @ J @ e)
             else:
                 break
 
+            # If step direction is small already, exit loop.
+            if np.linalg.norm(dx) < self.step_tol:
+                break
+
+            # Perform backtracking line search
+            alpha = 1
+            cost_new = cost_old + 9999
+            step_accepted = False
+            while not step_accepted and alpha > self.step_tol:
+                x_new = x_op.plus(alpha * dx)
+                cost_new = self._get_cost_and_info(x_new, x, y, x_jac)["cost"]
+                if cost_new < cost_old:
+                    step_accepted = True
+                else: 
+                    alpha *= 0.9
+
+            # If step was not accepted, exit loop and do not update step
+            if not step_accepted:
+                break
+
+            x_op = x_new
+            count += 1
+
         x.state = x_op
-        x.covariance = (np.identity(x.state.dof) - K @ G) @ x.covariance
+        if not outlier:
+            x.covariance = (np.identity(x.state.dof) - K @ G) @ P
+
         x.symmetrize()
         return x
 
-    def _cost(
+
+    def _get_cost_and_info(
         self,
-        prior_error: np.ndarray,
-        prior_covariance: np.ndarray,
-        meas_error: np.ndarray,
-        meas_covariance: np.ndarray,
-    ):
-        e = prior_error
-        P = prior_covariance
-        z = meas_error
-        R = meas_covariance
+        x_op: State,
+        x_check: StateWithCovariance,
+        y: Measurement,
+        x_jac,
+    ) -> float:
+
+        if x_jac is not None:
+            x_op_jac = x_jac
+        else:
+            x_op_jac = x_op
+        R = np.atleast_2d(y.model.covariance(x_op_jac))
+        G = np.atleast_2d(y.model.jacobian(x_op_jac))
+        y_check = y.model.evaluate(x_op)
+        z = y.value.reshape((-1, 1)) - y_check.reshape((-1, 1))
+        e = x_op.minus(x_check.state).reshape((-1, 1))
+        J = x_op.jacobian(e)
+        P = J @ x_check.covariance @ J.T
+        P = 0.5 * (P + P.T)
         cost_prior = np.ndarray.item(0.5 * e.T @ np.linalg.solve(P, e))
         cost_meas = np.ndarray.item(0.5 * z.T @ np.linalg.solve(R, z))
-        return cost_prior + cost_meas, cost_prior, cost_meas
+
+        out = {
+            "cost": cost_prior + cost_meas,
+            "z": z,
+            "G": G,
+            "J": J,
+            "P": P,
+            "e": e,
+            "R": R,
+        }
+        return out
 
 
 def run_filter(
@@ -334,12 +389,12 @@ def run_filter(
         _description_
     """
     x = StateWithCovariance(x0, P0)
-    if x.state.stamp is None: 
+    if x.state.stamp is None:
         raise ValueError("x0 must have a valid timestamp.")
 
     # Sort the data by time
-    input_data.sort(key = lambda x: x.stamp)
-    meas_data.sort(key = lambda x: x.stamp)
+    input_data.sort(key=lambda x: x.stamp)
+    meas_data.sort(key=lambda x: x.stamp)
 
     # Remove all that are before the current time
     for idx, u in enumerate(input_data):
@@ -352,8 +407,7 @@ def run_filter(
             meas_data = meas_data[idx:]
             break
 
-
-    meas_idx = 0 
+    meas_idx = 0
     if len(meas_data) > 0:
         y = meas_data[meas_idx]
 
@@ -365,7 +419,9 @@ def run_filter(
 
         # Fuse any measurements that have occurred.
         if len(meas_data) > 0:
-            while y.stamp < input_data[k + 1].stamp and meas_idx < len(meas_data):
+            while y.stamp < input_data[k + 1].stamp and meas_idx < len(
+                meas_data
+            ):
 
                 x = filter.correct(x, y, u)
                 meas_idx += 1
@@ -374,5 +430,5 @@ def run_filter(
 
         dt = input_data[k + 1].stamp - x.stamp
         x = filter.predict(x, u, dt)
-        
+
     return results_list

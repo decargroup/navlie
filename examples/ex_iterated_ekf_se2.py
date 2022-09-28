@@ -12,8 +12,8 @@ np.random.seed(0)
 
 # ##############################################################################
 # Problem Setup
-x0 = SE3State(SE3.Exp([0, 0, 0, 0, 0, 0]), stamp=0.0)
-P0 = 1 * np.identity(6)
+x0 = SE3State(SE3.Exp([0, 0, 0, 0, 0, 0]), stamp=0.0, direction="right")
+P0 = np.diag([0.1**2, 0.1**2, 0.1**2, 1, 1, 1])
 Q = np.diag([0.01**2, 0.01**2, 0.01**2, 0.1, 0.1, 0.1])
 process_model = BodyFrameVelocity(Q)
 noise_active = True

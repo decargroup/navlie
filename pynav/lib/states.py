@@ -33,7 +33,7 @@ class VectorState(State):
     def plus(self, dx: np.ndarray) -> "VectorState":
         new = self.copy()
         new.value: np.ndarray = new.value.ravel() + dx.ravel()
-        return new.copy()
+        return new
 
     def minus(self, x: "VectorState") -> np.ndarray:
         og_shape = self.value.shape
@@ -590,7 +590,7 @@ class CompositeState(State):
         if new_stamp is not None:
             new.set_stamp_for_all(new_stamp)
 
-        return new.copy()
+        return new
 
     def minus(self, x: "CompositeState") -> np.ndarray:
         dx = []
