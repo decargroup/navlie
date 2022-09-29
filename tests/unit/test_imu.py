@@ -1,5 +1,16 @@
 from pynav.lib.states import SE23State
-from pynav.lib.imu import IMUState, IMU, IMUKinematics
+from pynav.lib.imu import (
+    IMUState,
+    IMU,
+    IMUKinematics,
+    N_matrix,
+    U_matrix,
+    U_matrix_inv,
+    adjoint_IE3,
+    G_matrix,
+    G_matrix_inv,
+    M_matrix,
+)
 from pylie import SE23, SO3
 import numpy as np
 from math import factorial
@@ -9,8 +20,7 @@ np.set_printoptions(precision=4, suppress=True, linewidth=200)
 
 def test_N_matrix():
     phi = np.array([1, 2, 3])
-    model = IMUKinematics(np.identity(6))
-    N = model._N_matrix(phi)
+    N = N_matrix(phi)
     N_test = np.sum(
         [
             (2 / factorial(n + 2)) * np.linalg.matrix_power(SO3.wedge(phi), n)
@@ -20,22 +30,22 @@ def test_N_matrix():
     )
     assert np.allclose(N, N_test)
 
+
 def test_U_matrix_inverse_se23():
-    model = IMUKinematics(np.identity(6))
     dt = 0.1
     u = IMU([1, 2, 3], [4, 5, 6], 0)
-    U = model._U_matrix(u.gyro, u.accel, dt)
-    U_inv = model._U_matrix_inv(u.gyro, u.accel, dt)
+    U = U_matrix(u.gyro, u.accel, dt)
+    U_inv = U_matrix_inv(u.gyro, u.accel, dt)
     U_inv_test = np.linalg.inv(U)
     assert np.allclose(U_inv, U_inv_test)
     assert np.allclose(U @ U_inv, np.eye(5))
 
 
 def test_G_matrix_inverse_se23():
-    model = IMUKinematics(np.identity(6))
+    g = np.array([0, 0, -9.81])
     dt = 0.1
-    G = model._G_matrix(dt)
-    G_inv = model._G_matrix_inv(dt)
+    G = G_matrix(g, dt)
+    G_inv = G_matrix_inv(g, dt)
     G_inv_test = np.linalg.inv(G)
     assert np.allclose(G_inv, G_inv_test)
     assert np.allclose(G.dot(G_inv), np.eye(5))
@@ -52,11 +62,10 @@ def test_left_jacobian_se23():
 
 
 def test_U_adjoint_se23():
-    model = IMUKinematics(np.identity(6))
     dt = 0.1
     u = IMU([1, 2, 3], [2, 3, 1], 0)
-    U = model._U_matrix(u.gyro, u.accel, dt)
-    U_adj = model._adjoint_IE3(U)
+    U = U_matrix(u.gyro, u.accel, dt)
+    U_adj = adjoint_IE3(U)
     xi = np.array([1, 2, 3, 4, 5, 6, 7, 8, 9])
     test1 = SE23.wedge(U_adj @ xi)
     U_inv = np.linalg.inv(U)
@@ -65,13 +74,12 @@ def test_U_adjoint_se23():
 
 
 def test_U_adjoint_inv_se23():
-    model = IMUKinematics(np.identity(6))
     dt = 0.1
     u = IMU([1, 2, 3], [2, 3, 1], 0)
-    U = model._U_matrix(u.gyro, u.accel, dt)
-    U_inv = model._U_matrix_inv(u.gyro, u.accel, dt)
+    U = U_matrix(u.gyro, u.accel, dt)
+    U_inv = U_matrix_inv(u.gyro, u.accel, dt)
 
-    U_inv_adj = model._adjoint_IE3(U_inv)
+    U_inv_adj = adjoint_IE3(U_inv)
     xi = np.array([1, 2, 3, 4, 5, 6, 7, 8, 9])
     test1 = SE23.wedge(U_inv_adj @ xi)
     test2 = U_inv @ SE23.wedge(xi) @ U
@@ -79,10 +87,10 @@ def test_U_adjoint_inv_se23():
 
 
 def test_G_adjoint_se23():
-    model = IMUKinematics(np.identity(6))
+    g = np.array([0, 0, -9.81])
     dt = 0.1
-    G = model._G_matrix(dt)
-    G_adj = model._adjoint_IE3(G)
+    G = G_matrix(g, dt)
+    G_adj = adjoint_IE3(G)
     xi = np.array([1, 2, 3, 4, 5, 6, 7, 8, 9])
     test1 = SE23.wedge(G_adj @ xi)
     G_inv = np.linalg.inv(G)
@@ -91,12 +99,12 @@ def test_G_adjoint_se23():
 
 
 def test_G_adjoint_inv_se23():
-    model = IMUKinematics(np.identity(6))
+    g = np.array([0, 0, -9.81])
     dt = 0.1
-    G = model._G_matrix(dt)
-    G_inv = model._G_matrix_inv(dt)
+    G = G_matrix(g, dt)
+    G_inv = G_matrix_inv(g, dt)
 
-    G_inv_adj = model._adjoint_IE3(G_inv)
+    G_inv_adj = adjoint_IE3(G_inv)
     xi = np.array([1, 2, 3, 4, 5, 6, 7, 8, 9])
     test1 = SE23.wedge(G_inv_adj @ xi)
     test2 = G_inv @ SE23.wedge(xi) @ G
@@ -144,6 +152,7 @@ def test_right_jacobian_imu():
     jac_fd = model.jacobian_fd(x, u, dt)
     assert np.allclose(jac, jac_fd, atol=1e-3)
 
+
 def test_imu_group_jacobian_right():
     x = IMUState(
         SE23.Exp([1, 2, 3, 4, 5, 6, 7, 8, 9]),
@@ -156,6 +165,7 @@ def test_imu_group_jacobian_right():
     jac = x.jacobian(dx)
     jac_fd = x.jacobian_fd(dx)
     assert np.allclose(jac, jac_fd, atol=1e-6)
+
 
 def test_imu_group_jacobian_left():
     x = IMUState(
