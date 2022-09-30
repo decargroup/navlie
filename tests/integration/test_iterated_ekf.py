@@ -18,46 +18,46 @@ np.random.seed(0)
 
 Q = np.diag([0.01**2, 0.01**2, 0.01**2, 0.1, 0.1, 0.1])
 test1_kwargs = {
+    "duration": 5,
     "x0": SE3State(SE3.Exp([0, 0, 0, 0, 0, 0]), stamp=0.0, direction="right"),
     "P0": np.diag([0.1**2, 0.1**2, 0.1**2, 1, 1, 1]),
     "process_model": BodyFrameVelocity(Q),
-    "range_models": [GlobalPosition(np.diag([0.1**2, 0.1**2, 0.1**2]))],
     "input_profile": lambda t, x: np.array(
         [np.sin(0.1 * t), np.cos(0.1 * t), np.sin(0.1 * t), 1, 0, 0]
     ),
     "input_freq": 50,
     "input_covariance": Q,
-    "duration": 5,
+    "measurement_models": [GlobalPosition(np.diag([0.1**2, 0.1**2, 0.1**2]))],
     "measurement_freq": 10,
     "filter": IteratedKalmanFilter,
 }
 
 test2_kwargs = {
+    "duration": 5,
     "x0": SE3State(SE3.Exp([0, 0, 0, 0, 0, 0]), stamp=0.0, direction="left"),
     "P0": np.diag([0.1**2, 0.1**2, 0.1**2, 1, 1, 1]),
     "process_model": BodyFrameVelocity(Q),
-    "range_models": [GlobalPosition(np.diag([0.1**2, 0.1**2, 0.1**2]))],
     "input_profile": lambda t, x: np.array(
         [np.sin(0.1 * t), np.cos(0.1 * t), np.sin(0.1 * t), 1, 0, 0]
     ),
     "input_freq": 50,
     "input_covariance": Q,
-    "duration": 5,
+    "measurement_models": [GlobalPosition(np.diag([0.1**2, 0.1**2, 0.1**2]))],
     "measurement_freq": 10,
     "filter": IteratedKalmanFilter,
 }
 
 test3_kwargs = {
+    "duration": 5,
     "x0": SE3State(SE3.Exp([0, 0, 0, 0, 0, 0]), stamp=0.0, direction="right"),
     "P0": np.diag([0.1**2, 0.1**2, 0.1**2, 1, 1, 1]),
     "process_model": BodyFrameVelocity(Q),
-    "range_models": [GlobalPosition(np.diag([0.1**2, 0.1**2, 0.1**2]))],
     "input_profile": lambda t, x: np.array(
         [np.sin(0.1 * t), np.cos(0.1 * t), np.sin(0.1 * t), 1, 0, 0]
     ),
     "input_freq": 50,
     "input_covariance": Q,
-    "duration": 5,
+    "measurement_models": [GlobalPosition(np.diag([0.1**2, 0.1**2, 0.1**2]))],
     "measurement_freq": 10,
     "filter": ExtendedKalmanFilter,
 }
@@ -71,7 +71,7 @@ def _filter_trial(
     x0: State,
     P0: np.ndarray,
     process_model,
-    range_models,
+    measurement_models,
     input_profile,
     input_freq,
     input_covariance,
@@ -85,7 +85,7 @@ def _filter_trial(
         input_profile,
         input_covariance,
         input_freq,
-        range_models,
+        measurement_models,
         measurement_freq,
     )
     state_true, input_data, meas_data = dg.generate(x0, 0, duration, noise=True)
