@@ -180,6 +180,40 @@ def test_imu_group_jacobian_left():
     jac_fd = x.jacobian_fd(dx)
     assert np.allclose(jac, jac_fd, atol=1e-6)
 
+def test_bias_jacobian_term():
+    dt = 0.1
+    phi = dt * np.array([[1, 1, 1]])
+    a = np.array([4, 5, 6])
+
+    def func(phi):
+        J_inv = SO3.left_jacobian_inv(phi)
+        N = N_matrix(phi)
+        return J_inv @ N @ a.reshape((-1, 1))
+
+    h = 1e-8
+
+    # Finite difference just that term
+    jac_test = np.zeros((3, 3))
+    for i in range(3):
+        dx = np.zeros((3,))
+        dx[i] = h
+        jac_test[:, i] = np.ravel((func(dt * (phi + dx)) - func(dt * phi)) / h)
+
+
+    # Analytical approximation
+    N = N_matrix(dt * phi)
+    a = a.reshape((-1, 1))
+    Om = SO3.wedge(phi * dt)
+    A = SO3.wedge(a)
+    jac2 = (
+        -(1 / 360)
+        * (dt**3)
+        * (Om @ Om @ A + Om @ (SO3.wedge(Om @ a)) + SO3.wedge(Om @ Om @ a))
+        + (1 / 6) * dt * A
+    )
+    assert(np.allclose(jac_test, jac2, atol=1e-3))
+
+
 if __name__ == "__main__":
     test_left_jacobian_imu()
     print("All tests passed!")

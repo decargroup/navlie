@@ -344,15 +344,13 @@ def G_matrix_inv(gravity, dt):
     return inverse_IE3(G_matrix(gravity, dt))
 
 
-def L_matrix(x: IMUState, u: IMU, dt: float) -> np.ndarray:
+def L_matrix(unbiased_gyro, unbiased_accel, dt: float) -> np.ndarray:
     """
     Computes the jacobian of the nav state with respect to the input.
 
     Since the noise and bias are both additive to the input, they have the
     same jacobians.
     """
-    # Get unbiased inputs
-    unbiased_gyro, unbiased_accel = get_unbiased_imu(x, u)
 
     a = unbiased_accel
     om = unbiased_gyro
@@ -542,15 +540,10 @@ class IMUKinematics(ProcessModel):
 
         G = G_matrix(self._gravity, dt)
         U = U_matrix(unbiased_gyro, unbiased_accel, dt)
-        L = L_matrix(x, u, dt)
+        L = L_matrix(unbiased_gyro, unbiased_accel, dt)
 
         if x.direction == "right":
             jac = L
         elif x.direction == "left":
             jac = SE23.adjoint(G @ x.pose @ U) @ L
         return jac
-
-
-# TODO: consolidate and simplify some of the matrix functions. They will
-# be needed for preintegration as well, so make them standalone functions
-# in this module.
