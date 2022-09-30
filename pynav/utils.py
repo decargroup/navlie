@@ -156,11 +156,11 @@ class MonteCarloResult:
         #:numpy.ndarray with shape (N,): timestamps throughout trajectory
         self.stamp = trial_results[0].stamp
         #:numpy.ndarray with shape (N,): average NEES throughout trajectory
-        self.average_nees = np.average(
+        self.average_nees: np.ndarray = np.average(
             np.array([t.nees for t in trial_results]), axis=0
         )
         #:numpy.ndarray with shape (N,): average EES throughout trajectory
-        self.average_ees = np.average(
+        self.average_ees: np.ndarray = np.average(
             np.array([t.ees for t in trial_results]), axis=0
         )
         #:numpy.ndarray with shape (N,dof): root-mean-squared error of each component
@@ -172,9 +172,9 @@ class MonteCarloResult:
         #:numpy.ndarray with shape (N,): Total RMSE, this can be meaningless if units differ in a state
         self.total_rmse: np.ndarray = np.sqrt(self.average_ees)
         #:numpy.ndarray with shape (N,1): expected NEES value throughout trajectory
-        self.expected_nees = np.array(trial_results[0].dof)
+        self.expected_nees: np.ndarray = np.array(trial_results[0].dof)
         #:numpy.ndarray with shape (N): dof throughout trajectory
-        self.dof = trial_results[0].dof
+        self.dof: np.ndarray = trial_results[0].dof
 
     def nees_lower_bound(self, confidence_interval: float):
         """
