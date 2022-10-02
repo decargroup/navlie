@@ -64,7 +64,7 @@ def _test_odometry_preintegration_se3(direction):
     ekf = ExtendedKalmanFilter(model)
     x0 = StateWithCovariance(x, P0)
     x_dr = x0.copy()
-    rmi = BodyVelocityIncrement(SE3, Q, bias=bias)
+    rmi = BodyVelocityIncrement(x.group, Q, bias=bias)
 
     # Do both dead reckoning and preintegration
     for i in range(100):
