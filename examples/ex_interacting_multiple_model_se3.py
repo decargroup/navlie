@@ -23,8 +23,8 @@ from typing import List
 import time
 from matplotlib import pyplot as plt
 from pynav.imm import InteractingModelFilter, run_interacting_multiple_model_filter
-from pynav.imm import ImmResultList
-from pynav.imm import ImmState, gaussian_mixing, ImmResult
+from pynav.imm import IMMResultList
+from pynav.imm import IMMState, gaussian_mixing, IMMResult
 
 """This example runs an Interacting Multiple Model filter to estimate the process model noise matrix
 for a state that is on a Lie group. The performance is compared to an EKF that knows the ground
@@ -92,15 +92,15 @@ class VaryingNoiseProcessModel(process_model_true):
 
 N = 5
 Q_dg = np.eye(x0.value.shape[0])
-N_MODELS = len(imm_process_model_list)
+n_models = len(imm_process_model_list)
 
 # Kalman Filter bank
 kf_list = [ExtendedKalmanFilter(pm) for pm in imm_process_model_list]
 
 # Set up probability transition matrix
 off_diag_p = 0.02
-Pi = np.ones((N_MODELS, N_MODELS)) * off_diag_p
-Pi = Pi + (1 - off_diag_p * (N_MODELS)) * np.diag(np.ones(N_MODELS))
+Pi = np.ones((n_models, n_models)) * off_diag_p
+Pi = Pi + (1 - off_diag_p * (n_models)) * np.diag(np.ones(n_models))
 imm = InteractingModelFilter(kf_list, Pi)
 
 
@@ -129,10 +129,10 @@ def imm_trial(trial_number: int) -> List[GaussianResult]:
     )
 
     results = [
-        ImmResult(estimate_list[i], state_true[i]) for i in range(len(estimate_list))
+        IMMResult(estimate_list[i], state_true[i]) for i in range(len(estimate_list))
     ]
 
-    return ImmResultList(results)
+    return IMMResultList(results)
 
 
 def ekf_trial(trial_number: int) -> List[GaussianResult]:
@@ -213,14 +213,14 @@ if N < 15:
         np.array([t.model_probabilities for t in results.trial_results]), axis=0
     )
     fig, ax = plt.subplots(1, 1)
-    for lv1 in range(N_MODELS):
+    for lv1 in range(n_models):
         ax.plot(results.stamp, average_model_probabilities[lv1, :])
     ax.set_xlabel("Time (s)")
     ax.set_ylabel("Model Probabilities")
 
 fig, ax = plt.subplots(1, 1)
 Q_ = np.zeros(results.stamp.shape)
-for lv1 in range(N_MODELS):
+for lv1 in range(n_models):
     Q_ = Q_ + average_model_probabilities[lv1, :] * c_list[lv1] * Q_ref[0, 0]
 
 ax.plot(results.stamp, Q_, label=r"$Q_{00}$, Estimated")

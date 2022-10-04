@@ -23,8 +23,8 @@ from typing import List
 import time
 from matplotlib import pyplot as plt
 from pynav.imm import InteractingModelFilter, run_interacting_multiple_model_filter
-from pynav.imm import ImmResultList
-from pynav.imm import ImmState, gaussian_mixing, ImmResult
+from pynav.imm import IMMResultList
+from pynav.imm import IMMState, gaussian_mixing, IMMResult
 
 
 PLOT_FLAG = False
@@ -80,11 +80,11 @@ def make_filter_trial(dg, x0_true, P0, t_max, imm, process_model, Q_profile):
         )
 
         results = [
-            ImmResult(estimate_list[i], state_true[i])
+            IMMResult(estimate_list[i], state_true[i])
             for i in range(len(estimate_list))
         ]
 
-        return ImmResultList(results)
+        return IMMResultList(results)
 
     return imm_trial
 
@@ -180,11 +180,11 @@ def test_reasonable_nees_imm(
     t_max = dt * 100
     N = 10
     Q_dg = np.eye(x0.value.shape[0])
-    N_MODELS = len(imm_process_model_list)
+    n_models = len(imm_process_model_list)
     kf_list = [ExtendedKalmanFilter(pm) for pm in imm_process_model_list]
     off_diag_p = 0.02
-    Pi = np.ones((N_MODELS, N_MODELS)) * off_diag_p
-    Pi = Pi + (1 - off_diag_p * (N_MODELS)) * np.diag(np.ones(N_MODELS))
+    Pi = np.ones((n_models, n_models)) * off_diag_p
+    Pi = Pi + (1 - off_diag_p * (n_models)) * np.diag(np.ones(n_models))
     c_profile = make_c_profile(t_max)
     Q_profile = lambda t: c_profile(t) * Q_ref
 
@@ -259,7 +259,7 @@ def test_reasonable_nees_imm(
             np.array([t.model_probabilities for t in results.trial_results]), axis=0
         )
         fig, ax = plt.subplots(1, 1)
-        for lv1 in range(N_MODELS):
+        for lv1 in range(n_models):
             ax.plot(results.stamp, average_model_probabilities[lv1, :])
         ax.set_xlabel("Time (s)")
         ax.set_ylabel("Model Probabilities")

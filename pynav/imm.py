@@ -139,7 +139,7 @@ def gaussian_mixing(weights: List[float], x_list: List[StateWithCovariance]):
     return X_mix
 
 
-class ImmState:
+class IMMState:
     __slots__ = ["model_states", "model_probabilities"]
 
     def __init__(
@@ -149,7 +149,7 @@ class ImmState:
         self.model_probabilities = model_probabilities
 
 
-class ImmResult(GaussianResult):
+class IMMResult(GaussianResult):
     __slots__ = [
         "stamp",
         "state",
@@ -173,7 +173,7 @@ class ImmResult(GaussianResult):
         self.model_probabilities = imm_estimate.model_probabilities
 
 
-class ImmResultList(GaussianResultList):
+class IMMResultList(GaussianResultList):
     __slots__ = [
         "stamp",
         "state",
@@ -190,13 +190,13 @@ class ImmResultList(GaussianResultList):
         "model_probabilities",
     ]
 
-    def __init__(self, result_list: List[ImmResult]):
+    def __init__(self, result_list: List[IMMResult]):
         super().__init__(result_list)
         self.model_probabilities = []
         # Turn list of "probability at time step" into
         # list of "probability of model"
-        N_MODELS = result_list[0].model_probabilities.shape[0]
-        for lv1 in range(N_MODELS):
+        n_models = result_list[0].model_probabilities.shape[0]
+        for lv1 in range(n_models):
             self.model_probabilities.append(
                 np.array([r.model_probabilities[lv1] for r in result_list])
             )
@@ -248,17 +248,17 @@ class InteractingModelFilter:
 
     def interaction(
         self,
-        x: ImmState,
+        x: IMMState,
     ):
         """The interaction (mixing) step of the IMM.
 
         Parameters
         ----------
-        x : ImmState
+        x : IMMState
 
         Returns
         -------
-        ImmState
+        IMMState
         """
 
         x_km_models = x.model_states.copy()
@@ -277,14 +277,14 @@ class InteractingModelFilter:
             weights = list(mu_mix[:, j])
             x_mix.append(gaussian_mixing(weights, x_km_models))
 
-        return ImmState(x_mix, mu_models)
+        return IMMState(x_mix, mu_models)
 
-    def predict(self, x_km: ImmState, u: StampedValue, dt: float):
+    def predict(self, x_km: IMMState, u: StampedValue, dt: float):
         """Carries out prediction step for each model of the IMM.
 
         Parameters
         ----------
-        x_km : ImmState
+        x_km : IMMState
             Model estimates from previous timestep, after mixing.
         u : StampedValue
             Input
@@ -293,17 +293,17 @@ class InteractingModelFilter:
 
         Returns
         -------
-        ImmState
+        IMMState
         """
         x_km_models = x_km.model_states.copy()
         x_check = []
         for lv1, kf in enumerate(self.kf_list):
             x_check.append(kf.predict(x_km_models[lv1], u, dt))
-        return ImmState(x_check, x_km.model_probabilities)
+        return IMMState(x_check, x_km.model_probabilities)
 
     def correct(
         self,
-        x_check: ImmState,
+        x_check: IMMState,
         y: Measurement,
         u: StampedValue,
     ):
@@ -311,7 +311,7 @@ class InteractingModelFilter:
 
         Parameters
         ----------
-        x_check: ImmState
+        x_check: IMMState
         mu_km_models : List[Float]
             Probabilities for each model from previous timestep.
         y : Measurement
@@ -323,7 +323,7 @@ class InteractingModelFilter:
 
         Returns
         -------
-        ImmState
+        IMMState
             Corrected state estimates and probabilities
         """
         x_models_check = x_check.model_states.copy()
@@ -354,7 +354,7 @@ class InteractingModelFilter:
 
         mu_k = mu_k / np.sum(mu_k)
 
-        return ImmState(x_hat, mu_k)
+        return IMMState(x_hat, mu_k)
 
 
 def run_interacting_multiple_model_filter(
@@ -408,11 +408,11 @@ def run_interacting_multiple_model_filter(
         y = meas_data[meas_idx]
 
     results_list = []
-    N_MODELS = filter.Pi.shape[0]
+    n_models = filter.Pi.shape[0]
 
-    x = ImmState(
-        [StateWithCovariance(x0, P0)] * N_MODELS,
-        1.0 / N_MODELS * np.array(np.ones(N_MODELS)),
+    x = IMMState(
+        [StateWithCovariance(x0, P0)] * n_models,
+        1.0 / n_models * np.array(np.ones(n_models)),
     )
     for k in range(len(input_data) - 1):
         results_list.append(x)
