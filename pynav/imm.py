@@ -4,20 +4,16 @@ from typing import List
 from .types import (
     StampedValue,
     State,
-    ProcessModel,
     Measurement,
     StateWithCovariance,
 )
 import numpy as np
-from scipy.stats.distributions import chi2
 from scipy.stats import multivariate_normal
-from pynav.lib.states import VectorState
-from pynav.filters import ExtendedKalmanFilter, check_outlier
 from pynav.utils import GaussianResultList, GaussianResult
 
 
 def gaussian_mixing_vectorspace(
-    weights: List[float], x_list: List[StateWithCovariance]
+    weights: List[float], means: List[np.ndarray], covariances: List[np.ndarray]
 ):
     """Calculate the mean and covariance of a Gaussian mixture on a vectorspace.
 
@@ -25,29 +21,30 @@ def gaussian_mixing_vectorspace(
     ----------
     weights : List[Float]
         Weights corresponding to each Gaussian.
-    x_list : List[StateWithCovariance]
-        Gaussians to be mixed, with each element of x_list containing the mean
-        and covariance of the corresponding Gaussian. Each state must
-        be a VectorState.
+    means: List[np.ndarray]
+        List containing the means of each Gaussian mixture
+    covariances
+        List containing covariances of each Gaussian mixture
 
     Returns
     -------
-    StateWithCovariance
-        A single StateWithCovariance containing the mean and covariance of the mixed Gaussian.
+    np.ndarray
+        Mean of Gaussian mixture
+    np.ndarray
+        Covariance of Gaussian mixture
     """
-    x_bar = StateWithCovariance(
-        VectorState(np.zeros(x_list[0].state.value.shape), stamp=x_list[0].state.stamp),
-        np.zeros(x_list[0].covariance.shape),
-    ).copy()
 
-    for (weight, x) in zip(weights, x_list):
-        x_bar.state.value = x_bar.state.value + weight * x.state.value
+    x_bar = np.zeros(means[0].shape)
+    P_bar = np.zeros(covariances[0].shape)
 
-    for (weight, x) in zip(weights, x_list):
-        dx = (x.state.value - x_bar.state.value).reshape(-1, 1)
-        x_bar.covariance = x_bar.covariance + weight * x.covariance + weight * dx @ dx.T
+    for (weight, x) in zip(weights, means):
+        x_bar = x_bar + weight * x
 
-    return x_bar
+    for (weight, x, P) in zip(weights, means, covariances):
+        dx = (x - x_bar).reshape(-1, 1)
+        P_bar = P_bar + weight * P + weight * dx @ dx.T
+
+    return x_bar, P_bar
 
 
 def reparametrize_gaussians_about_X_par(
@@ -69,24 +66,26 @@ def reparametrize_gaussians_about_X_par(
 
     Returns
     -------
-    List[StateWithCovariance]
-        Where each state is a VectorState. These correspond to the mean and covariance
-        of X_list, expressed in the tangent space of X_par.
+    List[np.ndarray]
+        Tangent space of X_par mean of each element of X_list.
+    List[np.ndarray]
+        Tangent space of X_par covariance of each element of X_list
     """
-    x_reparametrized = []
+    means_reparametrized = []
+    covariances_reparametrized = []
 
     for X in X_list:
         mu = X_par.minus(X.state)
         J = X_par.jacobian(mu)
         Sigma = J @ X.covariance @ J.T
-        mu = VectorState(mu, stamp=X_par.stamp)
-        x_reparametrized.append(StateWithCovariance(mu, Sigma))
+        means_reparametrized.append(mu)
+        covariances_reparametrized.append(Sigma)
 
-    return x_reparametrized
+    return means_reparametrized, covariances_reparametrized
 
 
-def update_X(X: State, x_hat: StateWithCovariance):
-    """Given a Lie group Gaussian x_hat, expressed in the tangent space of X,
+def update_X(X: State, mu: np.ndarray, P: np.ndarray):
+    """Given a Lie group Gaussian with mean mu and covariance P, expressed in the tangent space of X,
     compute Lie group StateAndCovariance X_hat such that the Lie algebra Gaussian
     around X_hat has zero mean.
 
@@ -94,8 +93,10 @@ def update_X(X: State, x_hat: StateWithCovariance):
     ----------
     X : State
         A Lie group element.
-    x_hat : StateWithCovariance
-        StateWithCovariance whose state is a VectorState.
+    mu : np.ndarray
+        Mean of Gaussian in tangent space of X
+    P: np.ndarray
+        Covariance of Gaussian in tangent space of X
 
     Returns
     -------
@@ -103,10 +104,10 @@ def update_X(X: State, x_hat: StateWithCovariance):
         StateWithCovariance whose state is a Lie group element.
     """
     X_hat = StateWithCovariance(X, np.zeros((X.dof, X.dof)))
-    X_hat.state = X_hat.state.plus(x_hat.state.value)
+    X_hat.state = X_hat.state.plus(mu)
 
-    J = X.jacobian(x_hat.state.value)
-    X_hat.covariance = J @ x_hat.covariance @ J.T
+    J = X.jacobian(mu)
+    X_hat.covariance = J @ P @ J.T
 
     return X_hat
 
@@ -119,21 +120,18 @@ def gaussian_mixing(weights: List[float], x_list: List[StateWithCovariance]):
     ----------
     weights : List[Float]
         Weights of Gaussians to be mixed.
-    x_list : _List[StateWithCovariance]
+    x_list : List[StateWithCovariance]
         List of Gaussians to be mixed.
     Returns
     -------
     StateWithCovariance
         The mixed Gaussian
     """
-    if isinstance(x_list[0].state, VectorState):
-        X_mix = gaussian_mixing_vectorspace(weights, x_list)
-    if not isinstance(x_list[0].state, VectorState):
-        max_idx = np.argmax(np.array(weights))
-        X_par = x_list[max_idx].state
-        x_repar = reparametrize_gaussians_about_X_par(X_par, x_list)
-        x_hat = gaussian_mixing_vectorspace(weights, x_repar)
-        X_mix = update_X(X_par, x_hat)
+    max_idx = np.argmax(np.array(weights))
+    X_par = x_list[max_idx].state
+    mu_repar, P_repar = reparametrize_gaussians_about_X_par(X_par, x_list)
+    x_bar, P_bar = gaussian_mixing_vectorspace(weights, mu_repar, P_repar)
+    X_mix = update_X(X_par, x_bar, P_bar)
     return X_mix
 
 
