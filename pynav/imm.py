@@ -104,11 +104,9 @@ def update_X(X: State, x_hat: StateWithCovariance):
     """
     X_hat = StateWithCovariance(X, np.zeros((X.dof, X.dof)))
     X_hat.state = X_hat.state.plus(x_hat.state.value)
-    g = X.group
 
-    if X.direction == "right":
-        J = g.right_jacobian(x_hat.state.value)
-        X_hat.covariance = J @ x_hat.covariance @ J.T
+    J = X.jacobian(x_hat.state.value)
+    X_hat.covariance = J @ x_hat.covariance @ J.T
 
     return X_hat
 
