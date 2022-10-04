@@ -99,7 +99,7 @@ class IMUIncrement(RelativeMotionIncrement):
 
         Parameters
         ----------
-        input_covariance : np.ndarray with shape (6, 6)
+        input_covariance : np.ndarray with shape (12, 12)
             covariance of gyro, accel measurements
         """
         self.value = np.identity(5)
