@@ -16,6 +16,9 @@ class StampedValue:
     __slots__ = ["value", "stamp"] 
 
     def __init__(self, value: np.ndarray, stamp: float = 0.0):
+        if not isinstance(value, np.ndarray):
+            value = np.array(value)
+            
         self.value = value #:numpy.ndarray:  Variable containing the data values
         self.stamp = stamp #:float: Timestamp
 

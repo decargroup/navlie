@@ -7,7 +7,6 @@ from scipy.stats.distributions import chi2
 from scipy.interpolate import interp1d
 from tqdm import tqdm
 
-
 class GaussianResult:
     """
     A data container that simultaneously computes various interesting metrics
