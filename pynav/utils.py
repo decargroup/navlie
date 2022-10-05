@@ -6,6 +6,8 @@ import time
 from scipy.stats.distributions import chi2
 from scipy.interpolate import interp1d
 from tqdm import tqdm
+from scipy.linalg import block_diag, expm
+
 
 class GaussianResult:
     """
@@ -404,3 +406,44 @@ def plot_meas(
         )
 
     return fig, axs
+
+
+def van_loans(
+    A_c: np.ndarray,
+    L_c: np.ndarray,
+    Q_c: np.ndarray,
+    dt: float,
+) -> Tuple[np.ndarray, np.ndarray]:
+    """Van Loan's method for computing the discrete-time A and Q matrices.
+
+    Given a system of the form
+
+
+    Parameters
+    ----------
+    A_c : np.ndarray
+        Continuous-time A matrix.
+    L_c : np.ndarray
+        Continuous-time L matrix.
+    Q_c : np.ndarray
+        Continous-time noise matrix
+    dt : float
+        Discretization timestep.
+
+    Returns
+    -------
+    Tuple[np.ndarray, np.ndarray]
+        A_d and Q_d, discrete-time matrices.
+    """
+    N = A_c.shape[0]
+
+    # Form Xi matrix and compute Upsilon using matrix exponential
+    Xi = block_diag(A_c, -A_c.T, A_c, np.zeros((N, N)))
+    Xi[:N, N : 2 * N] = L_c @ Q_c @ L_c.T
+    Upsilon = expm(Xi * dt)
+
+    # Extract relevant parts of Upsilon
+    A_d = Upsilon[:N, :N]
+    Q_d = Upsilon[:N, N : 2 * N] @ A_d.T
+
+    return A_d, Q_d
