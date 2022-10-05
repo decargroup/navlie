@@ -84,7 +84,8 @@ class CameraModel:
         """
         return np.array([[0, 0, 1], [-1, 0, 0], [0, -1, 0]])
 
-    def get_camera_intrinsics(self) -> np.ndarray:
+    @property
+    def intrinsics(self) -> np.ndarray:
         """Returns the intrinsic matrix K."""
         return np.array(
             [

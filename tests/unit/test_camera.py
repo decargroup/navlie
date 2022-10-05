@@ -71,7 +71,7 @@ def test_camera_intrinsics():
     cu = 323
     cv = 236
     camera = CameraModel(fu, fv, cu, cv, 480, 640, 0.1)
-    K = camera.get_camera_intrinsics()
+    K = camera.intrinsics
 
     assert K[0, 0] == fu
     assert K[0, 2] == cu
