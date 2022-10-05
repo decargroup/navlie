@@ -97,19 +97,17 @@ class CameraModel:
 
     def copy(self) -> "CameraModel":
         """Returns a copy of the camera model."""
-        return (
-            CameraModel(
-                self.fu,
-                self.fv,
-                self.cu,
-                self.cv,
-                self.sigma,
-                self.image_width,
-                self.image_height,
-                self.T_bc.copy(),
-                self.freq,
-                self.id,
-            ),
+        return CameraModel(
+            self.fu,
+            self.fv,
+            self.cu,
+            self.cv,
+            self.sigma,
+            self.image_width,
+            self.image_height,
+            self.T_bc.copy(),
+            self.freq,
+            self.id,
         )
 
     def is_measurement_valid(self, uv: np.ndarray) -> bool:
@@ -135,9 +133,7 @@ class CameraModel:
             and (uv[0] < self.image_width)
         )
 
-    def is_landmark_in_front_of_cam(
-        self, pose: SE3State, r_pw_a: np.ndarray
-    ) -> bool:
+    def is_landmark_in_front_of_cam(self, pose: SE3State, r_pw_a: np.ndarray) -> bool:
         """Checks if a given landmark is in front of the camera."""
         r_pc_c: np.ndarray = self.resolve_landmark_in_cam_frame(pose, r_pw_a)
         r_pc_c = r_pc_c.ravel()
