@@ -19,6 +19,7 @@ class IMU:
         stamp: float,
         bias_gyro_walk=[0, 0, 0],
         bias_accel_walk=[0, 0, 0],
+        state_id: Any = None,
     ):
         self.gyro = np.array(gyro).ravel()  #:np.ndarray: Gyro reading
         self.accel = np.array(
@@ -30,6 +31,7 @@ class IMU:
         #:np.ndarray: driving input for accel bias random walk
         self.bias_accel_walk = np.array(bias_accel_walk).ravel()
         self.stamp = stamp  #:float: Timestamp of the reading
+        self.state_id = state_id  #:Any: State ID associated with the reading
 
     def plus(self, w: np.ndarray):
         """
@@ -151,31 +153,6 @@ class IMUState(CompositeState):
     @pose.setter
     def pose(self, pose):
         self.value[0].pose = pose
-
-    def plus(self, dx: np.ndarray, new_stamp: float = None):
-        """
-        Updates the value of each of the IMU state, given a perturbation dx.
-        """
-        new = self.copy()
-
-        if dx.shape[0] != 15:
-            raise ValueError("Perturbation must be dimension 15!")
-
-        for i, s in enumerate(new._slices):
-            sub_dx = dx[s]
-            new.value[i] = new.value[i].plus(sub_dx)
-
-        if new_stamp is not None:
-            new.set_stamp_for_all(new_stamp)
-
-        return new
-
-    def minus(self, x: "IMUState") -> np.ndarray:
-        dx = []
-        for i, v in enumerate(x.value):
-            dx.append(self.value[i].minus(x.value[i]).reshape((-1, 1)))
-
-        return np.vstack(dx)
 
     def copy(self):
         """
