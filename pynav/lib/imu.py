@@ -1,7 +1,6 @@
-from pylie import SO2, SO3, SE2, SE3, SE23
-from pylie.numpy.base import MatrixLieGroup
+from pylie import SO3, SE23
 import numpy as np
-from ..types import State, ProcessModel
+from ..types import ProcessModel
 from typing import Any, List, Tuple
 from .states import CompositeState, VectorState, SE23State
 from math import factorial
