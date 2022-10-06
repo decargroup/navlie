@@ -1,14 +1,13 @@
-from pynav.lib.camera import CameraModel
-from pynav.lib.states import SE3State
+from pynav.lib.camera import Camera, PoseMatrix
 import numpy as np
 from pylie import SE3
 
 
 def test_valid_measurements():
     # Create camera with its z-axis pointing forward
-    C_bc = CameraModel.get_enu_to_cam()
-    T_bc = SE3State(SE3.from_components(C_bc, np.array([0, 0, 0])))
-    camera = CameraModel(385, 385, 323, 236, 480, 640, 0.1, T_bc)
+    C_bc = Camera.get_enu_to_cam()
+    T_bc = PoseMatrix(SE3.from_components(C_bc, np.array([0, 0, 0])))
+    camera = Camera(385, 385, 323, 236, 480, 640, 0.1, T_bc)
 
     # Create some invalid measurements
     invalid_meas = [
@@ -32,7 +31,7 @@ def test_valid_measurements():
         np.array([1.0, 0.4, 0.4]),
     ]
 
-    pose = SE3State(value=np.identity(4))
+    pose = PoseMatrix(np.identity(4))
 
     # Check if landmarks are in front of camera
     in_front = []
@@ -52,7 +51,7 @@ def test_valid_measurements():
 
 
 def test_project_function():
-    camera = CameraModel(385, 385, 323, 236, 480, 640, 0.1)
+    camera = Camera(385, 385, 323, 236, 480, 640, 0.1)
     # Define a landmark resolved in the camera frame
     r_pc_c = np.random.randn(3, 1)
     # Project onto image plane
@@ -70,7 +69,7 @@ def test_camera_intrinsics():
     fv = 385
     cu = 323
     cv = 236
-    camera = CameraModel(fu, fv, cu, cv, 480, 640, 0.1)
+    camera = Camera(fu, fv, cu, cv, 480, 640, 0.1)
     K = camera.intrinsics
 
     assert K[0, 0] == fu

@@ -2,9 +2,25 @@
 
 import numpy as np
 from pynav.lib import SE3State
+from typing import Any
 
 
-class CameraModel:
+class PoseMatrix:
+    """A convenient class to store SE(3) poses."""
+
+    def __init__(self, T: np.ndarray):
+        self.pose = T
+
+    @property
+    def attitude(self) -> np.ndarray:
+        return self.pose[0:3, 0:3]
+
+    @property
+    def position(self) -> np.ndarray:
+        return self.pose[0:3, 3]
+
+
+class Camera:
     """Class for a pinhole camera model.
 
     This class contains utilities for generating measurements
@@ -21,11 +37,10 @@ class CameraModel:
         image_width: int,
         image_height: int,
         sigma: float,
-        T_bc: SE3State = None,
-        freq: int = None,
-        id: int = None,
+        T_bc: PoseMatrix = None,
+        camera_id: Any = None,
     ):
-        """Instantiate a CameraModel
+        """Instantiate a Camera
 
         Parameters
         ----------
@@ -37,21 +52,19 @@ class CameraModel:
             Optical axis intersection, horizontal pixels.
         cv : float
             Optical axis intersection, vertical pixels.
-        sigma : float
-            _description_
         image_width : int
-            _description_
+            Image Plane width in pixels.
         image_height : int
-            _description_
-        T_bc : SE3State, optional
+            Image plane height in pixels.
+        sigma : float
+            Camera noise, in pixels.
+        T_bc : PoseMatrix, optional
             Transformation between the body frame
             and the camera frame, by default None.
             If None, transformation will be set to
             identity.
-        freq : int, optional
-            _description_, by default None
-        id : int, optional
-            _description_, by default None
+        camera_id : Any, optional
+            Identifier for this camera, by default None
         """
         # Camera intrinsic parameters
         self.fu = float(fu)
@@ -62,7 +75,7 @@ class CameraModel:
         # Camera extrinsic parameters, an element of SE(3)
         if T_bc is None:
             # If not specified, T_bc is the identity element.
-            T_bc = SE3State(np.identity(4))
+            T_bc = PoseMatrix(np.identity(4))
 
         self.T_bc = T_bc
 
@@ -73,9 +86,8 @@ class CameraModel:
         # Noise parameter
         self.sigma = sigma
 
-        # Camera frequency
-        self.freq = freq
-        self.id = id
+        # Unique identifier
+        self.camera_id = camera_id
 
     @staticmethod
     def get_enu_to_cam() -> np.ndarray:
@@ -95,19 +107,18 @@ class CameraModel:
             ]
         )
 
-    def copy(self) -> "CameraModel":
+    def copy(self) -> "Camera":
         """Returns a copy of the camera model."""
-        return CameraModel(
+        return Camera(
             self.fu,
             self.fv,
             self.cu,
             self.cv,
-            self.sigma,
             self.image_width,
             self.image_height,
+            self.sigma,
             self.T_bc.copy(),
-            self.freq,
-            self.id,
+            self.camera_id,
         )
 
     def is_measurement_valid(self, uv: np.ndarray) -> bool:
@@ -133,7 +144,9 @@ class CameraModel:
             and (uv[0] < self.image_width)
         )
 
-    def is_landmark_in_front_of_cam(self, pose: SE3State, r_pw_a: np.ndarray) -> bool:
+    def is_landmark_in_front_of_cam(
+        self, pose: SE3State, r_pw_a: np.ndarray
+    ) -> bool:
         """Checks if a given landmark is in front of the camera."""
         r_pc_c: np.ndarray = self.resolve_landmark_in_cam_frame(pose, r_pw_a)
         r_pc_c = r_pc_c.ravel()
