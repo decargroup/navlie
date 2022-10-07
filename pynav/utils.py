@@ -415,8 +415,20 @@ def van_loans(
 ) -> Tuple[np.ndarray, np.ndarray]:
     """Van Loan's method for computing the discrete-time A and Q matrices.
 
-    Given a system of the form
+    Given a continuous-time system of the form
 
+    .. math::
+        \dot{\mathbf{x}} = \mathbf{A}_c \mathbf{x} + \mathbf{L}_c \mathbf{w}, \hspace{5mm} 
+        \mathbf{w} \sim \mathcal{N} (\mathbf{0}, \mathbf{Q}_c ),
+
+    where :math:`\mathbf{Q}_c` is a power spectral density,
+    Van Loan's method can be used to find its equivalent discrete-time representation,
+
+    .. math::
+        \mathbf{x}_k = \mathbf{A}_{d} \mathbf{x}_{k-1} + \mathbf{w}_{k-1}, \hspace{5mm}
+        \mathbf{w} \sim \mathcal{N} (\mathbf{0}, \mathbf{Q}_d ).
+
+    These are computed using the matrix exponential, with a sampling period :math:`\Delta t`.
 
     Parameters
     ----------
@@ -425,7 +437,7 @@ def van_loans(
     L_c : np.ndarray
         Continuous-time L matrix.
     Q_c : np.ndarray
-        Continous-time noise matrix
+        Continuous-time noise matrix
     dt : float
         Discretization timestep.
 
