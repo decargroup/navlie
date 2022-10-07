@@ -12,7 +12,6 @@ from pynav.utils import monte_carlo
 from pylie import SO3
 import numpy as np
 import matplotlib.pyplot as plt
-from sympy import re
 
 
 
