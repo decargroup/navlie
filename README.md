@@ -100,7 +100,9 @@ class SE3State(State):
 ```
 
 ## Process and Measurement Models
-There are two more core types in this package, and they are the `ProcessModel` and `MeasurementModel` classes. Both of these are abstract classes requiring the user to implement
+![abstract_system](./docs/source/abstract_system.png)
+
+There are a few more core types in this package. The main ones are the `ProcessModel` and `MeasurementModel` classes. Both of these are abstract classes requiring the user to implement
 
 - an `evaluate()` method, 
 - a `jacobian()` method,
