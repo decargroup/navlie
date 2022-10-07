@@ -204,6 +204,13 @@ Finally, this repo has the following state estimation algorithms implemented:
 - `ExtendedKalmanFilter`
 - `IteratedKalmanFilter`
 
+## Contributing
+If you wish to make some changes, create a branch, make your changes, and then make a pull request. Here are some conventions that should be followed:
+- Code style should follow the PEP8 style guide. https://peps.python.org/pep-0008
+- Everything should be type hinted as much as possible. Essentially, in the VS Code dark theme, you should not have any white text anywhere. 
+
+The goal of this project is to write general algorithms that work for any implementation of the abstract `State`, `ProcessModel` and `MeasurementModel`. As such, please give thought to how this could be done to any algorithm you implement.
+
 
 ## Contributing to the Documentation
 The documentation is automatically generated from python docstrings using `sphinx`, which can be installed by following [these instructions](https://www.sphinx-doc.org/en/master/usage/installation.html).
@@ -212,6 +219,9 @@ After sphinx is installed change to the `./docs/` directory and run
 
     make html
 
-and the documentation will be updated. In terms of actually writing documentation, we use the numpy format, which can be seen in some of the existing docstrings in the code, and can be used as a template. 
+and the documentation will be updated (you may need to install some dependencies... sorry. just follow the error prompts and install whats required. TODO).  In terms of actually writing documentation, we use the numpy format, which can be seen in some of the existing docstrings in the code, and can be used as a template. 
 
 Alternatively and prefereably, install the [autoDocstring extension for VSCode](https://marketplace.visualstudio.com/items?itemName=njpwerner.autodocstring) and change the docstring format in the settings to `numpy`.
+
+
+

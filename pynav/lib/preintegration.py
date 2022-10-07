@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
-from typing import List
-from pynav.types import StampedValue, State, StateWithCovariance
+from typing import List, Any
+from pynav.types import StampedValue, ProcessModel
 from pynav.lib.imu import (
     IMU,
     IMUState,
@@ -10,7 +10,7 @@ from pynav.lib.imu import (
     L_matrix,
     G_matrix,
 )
-from pynav.lib.states import MatrixLieGroupState
+from pynav.lib.states import MatrixLieGroupState, SE23State
 import numpy as np
 from pylie import SO3, SE3, SE2, SE23, MatrixLieGroup
 
@@ -27,6 +27,13 @@ class RelativeMotionIncrement(ABC):
 
         #:np.ndarray: the covariance matrix of the RMI
         self.covariance = None
+
+        #:Any: an ID associated with the RMI
+        self.state_id = None
+
+    @property
+    def stamp(self):
+        return self.stamps[1] 
 
     def increment_many(
         self, u_list: List[StampedValue], end_stamp: float = None
@@ -71,17 +78,19 @@ class RelativeMotionIncrement(ABC):
         pass
 
     @abstractmethod
-    def predict(self, x: StateWithCovariance) -> StateWithCovariance:
+    def plus(self, w) -> "RelativeMotionIncrement":
         """
+        Adds noise to the RMI
+
         Parameters
         ----------
-        x : State
-            The state to apply the RMI to
+        w : np.ndarray
+            The noise to add
 
         Returns
         -------
-        State
-            The updated state
+        RelativeMotionIncrement
+            The updated RMI
         """
         pass
 
@@ -93,6 +102,7 @@ class IMUIncrement(RelativeMotionIncrement):
         gyro_bias: np.ndarray,
         accel_bias: np.ndarray,
         gravity=[0, 0, -9.80665],
+        state_id: Any = None
     ):
         """
         Initializes an "identity" IMU RMI.
@@ -110,6 +120,7 @@ class IMUIncrement(RelativeMotionIncrement):
         self.accel_bias = np.array(accel_bias).ravel()
         self.gyro_bias = np.array(gyro_bias).ravel()
         self.gravity = np.array(gravity).ravel()
+        self.state_id = state_id
 
     def increment(self, u: IMU, dt: float):
         if self.stamps[0] is None:
@@ -162,40 +173,88 @@ class IMUIncrement(RelativeMotionIncrement):
         )
 
         self.value = self.value @ SE23.Exp(self.bias_jacobian @ db)
+        self.gyro_bias = new_gyro_bias
+        self.accel_bias = new_accel_bias
 
-    def predict(self, x: StateWithCovariance) -> StateWithCovariance:
+    def plus(self, w: np.ndarray):
         """
+        Adds noise to the RMI
+
         Parameters
         ----------
-        x : State
-            The state to apply the RMI to
+        w : np.ndarray
+            The noise to add
 
         Returns
         -------
-        State
-            The updated state
+        RelativeMotionIncrement
+            The updated RMI
         """
+        new = self.copy()
+        new.value = new.value @ SE23.Exp(w[0:9])
+        if w.size > 9:
+            new.bias_update(w[9:12], w[12:15])
+        return new
+
+    def copy(self):
+        """
+        Returns
+        -------
+        IMUIncrement
+            A copy of the RMI
+        """
+        new = IMUIncrement(
+            self.input_covariance,
+            self.gyro_bias,
+            self.accel_bias,
+            self.gravity,
+        )
+        new.value = self.value.copy()
+        new.covariance = self.covariance.copy()
+        new.bias_jacobian = self.bias_jacobian.copy()
+        new.stamps = self.stamps.copy()
+        return new
+
+class PreintegratedIMUKinematics(ProcessModel):
+    def __init__(self, gravity=None):
+        if gravity is None:
+            gravity = np.array([0, 0, -9.80665])
+        self.gravity = gravity
+
+    def evaluate(self, x: IMUState, rmi: IMUIncrement, dt=None) -> IMUState:
         x = x.copy()
-        dt = self.stamps[1] - self.stamps[0]
+        dt = rmi.stamps[1] - rmi.stamps[0]
         DG = G_matrix(self.gravity, dt)
-        DU = self.value
-        x_state: IMUState = x.state
-        x_state.pose = DG @ x_state.pose @ DU
-
-        A = np.identity(15)
-        L = np.identity(15)
-        if x_state.direction == "right":
-            A[0:9, 0:9] = adjoint_IE3(inverse_IE3(DU))
-            A[0:9, 9:15] = self.bias_jacobian
-        elif x_state.direction == "left":
-            Ad = SE23.adjoint(x_state.pose)
-            A[0:9, 0:9] = adjoint_IE3(DG)
-            A[0:9, 9:15] = Ad @ self.bias_jacobian
-            L[0:9, 0:9] = Ad
-
-        x.covariance = A @ x.covariance @ A.T + L @ self.covariance @ L.T
-
+        DU = rmi.value
+        x.pose = DG @ x.pose @ DU
         return x
+
+    def jacobian(self, x: IMUState, rmi: IMUIncrement, dt=None) -> np.ndarray:
+        dt = rmi.stamps[1] - rmi.stamps[0]
+        DG = G_matrix(self.gravity, dt)
+        DU = rmi.value
+        A = np.identity(15)
+        if x.direction == "right":
+            A[0:9, 0:9] = adjoint_IE3(inverse_IE3(DU))
+            A[0:9, 9:15] = rmi.bias_jacobian
+        elif x.direction == "left":
+            Ad = SE23.adjoint(DG @ x.pose @ DU)
+            A[0:9, 0:9] = adjoint_IE3(DG)
+            A[0:9, 9:15] = Ad @ rmi.bias_jacobian
+        return A
+
+    def covariance(self, x: IMUState, rmi: IMUIncrement, dt=None) -> np.ndarray:
+        dt = rmi.stamps[1] - rmi.stamps[0]
+        DG = G_matrix(self.gravity, dt)
+        DU = rmi.value
+
+        if x.direction == "right":
+            L = np.identity(15)
+        elif x.direction == "left":
+            L = np.identity(15)
+            Ad = SE23.adjoint(DG @ x.pose @ DU)
+            L[0:9, 0:9] = Ad
+        return L @ rmi.covariance @ L.T
 
 
 class BodyVelocityIncrement(RelativeMotionIncrement):
@@ -217,14 +276,16 @@ class BodyVelocityIncrement(RelativeMotionIncrement):
     """
 
     def __init__(
-        self, group: MatrixLieGroup, Q: np.ndarray, bias: np.ndarray = None
+        self, group: MatrixLieGroup, Q: np.ndarray, bias: np.ndarray = None, state_id = None
     ):
         self.bias = bias
         self.group = group
         self.covariance = np.zeros((group.dof, group.dof))
         self.input_covariance = Q
-        self.value = group.identity()
+        self.value :np.ndarray = group.identity()
         self.bias_jacobian = np.zeros((group.dof, group.dof))
+        self.stamps = [None, None]
+        self.state_id = state_id
         if bias is None:
             self.bias = np.zeros((group.dof))
 
@@ -233,6 +294,12 @@ class BodyVelocityIncrement(RelativeMotionIncrement):
         In-place updating the RMI given an input measurement `u` and a duration `dt`
         over which to preintegrate.
         """
+        if self.stamps[0] is None:
+            self.stamps[0] = u.stamp
+            self.stamps[1] = u.stamp + dt
+        else:
+            self.stamps[1] += dt
+
         unbiased_velocity = u.value - self.bias
 
         # Increment the value
@@ -261,99 +328,155 @@ class BodyVelocityIncrement(RelativeMotionIncrement):
         db = new_bias - self.bias
 
         self.value = self.value @ self.group.Exp(self.bias_jacobian @ db)
+        self.bias = new_bias
 
-    def predict(self, x: StateWithCovariance) -> StateWithCovariance:
+    def plus(self, w: np.ndarray):
         """
+        Adds noise to the RMI
+
         Parameters
         ----------
-        x : State
-            The state to apply the RMI to
+        w : np.ndarray
+            The noise to add
 
         Returns
         -------
-        State
-            The updated state
+        RelativeMotionIncrement
+            The updated RMI
         """
-        x = x.copy()
-        x_state: MatrixLieGroupState = x.state
-        x_state.value = x_state.value @ self.value
+        new = self.copy()
+        new.value = new.value @ new.group.Exp(w)
+        if w.size > new.group.dof:
+            new.bias_update(w[new.group.dof:])
 
-        dof = self.group.dof
-        if self.input_covariance.shape[0] ==  dof:
+        return new
+
+    def copy(self):
+        """
+        Returns
+        -------
+        RelativeMotionIncrement
+            A copy of the RMI
+        """
+        new = BodyVelocityIncrement(self.group, self.input_covariance, self.bias)
+        new.value = self.value.copy()
+        new.covariance = self.covariance.copy()
+        new.bias_jacobian = self.bias_jacobian.copy()
+        new.stamps = self.stamps.copy()
+        return new
+
+class PreintegratedBodyVelocity(ProcessModel):
+    def __init__(self):
+        pass
+
+    def evaluate(
+        self, x: MatrixLieGroupState, rmi: BodyVelocityIncrement, dt=None
+    ) -> MatrixLieGroupState:
+        x = x.copy()
+        x.value = x.value @ rmi.value
+        return x
+
+    def jacobian(
+        self, x: MatrixLieGroupState, rmi: BodyVelocityIncrement, dt=None
+    ) -> np.ndarray:
+        dof = x.dof
+        if rmi.input_covariance.shape[0] == dof:
             estimating_bias = False
-            total_dof =  self.group.dof
-        elif self.input_covariance.shape[0] == 2 * dof:
+            total_dof = x.dof
+        elif rmi.input_covariance.shape[0] == 2 * dof:
             estimating_bias = True
-            total_dof = 2 *  self.group.dof
+            total_dof = 2 * x.dof
         else:
-            raise ValueError("Input covariance has incorrect shape")    
+            raise ValueError("Input covariance has incorrect shape")
 
         A = np.identity(total_dof)
-        L = np.identity(total_dof)
 
-        if x_state.direction == "right":
-            A[0:dof, 0:dof] = self.group.adjoint(self.group.inverse(self.value))
+        if x.direction == "right":
+            A[0:dof, 0:dof] = x.group.adjoint(x.group.inverse(rmi.value))
             if estimating_bias:
-                A[0:dof, dof : total_dof] = self.bias_jacobian
+                A[0:dof, dof:total_dof] = rmi.bias_jacobian
 
-        elif x_state.direction == "left":
-            Ad = self.group.adjoint(x_state.value)
+        elif x.direction == "left":
+            Ad = x.group.adjoint(rmi.value)
             if estimating_bias:
-                A[0:dof, dof:total_dof] = Ad @ self.bias_jacobian
+                A[0:dof, dof:total_dof] = Ad @ rmi.bias_jacobian
 
+        return A
+
+    def covariance(
+        self, x: MatrixLieGroupState, rmi: BodyVelocityIncrement, dt: float
+    ) -> np.ndarray:
+        dof = x.dof
+        if rmi.input_covariance.shape[0] == dof:
+            total_dof = x.dof
+        elif rmi.input_covariance.shape[0] == 2 * dof:
+            total_dof = 2 * x.dof
+        else:
+            raise ValueError("Input covariance has incorrect shape")
+
+        if x.direction == "right":
+            L = np.identity(total_dof)
+        elif x.direction == "left":
+            L = np.identity(total_dof)
+            Ad = x.group.adjoint(x.value @ rmi.value)
             L[0:dof, 0:dof] = Ad
 
-        x.state.value = x_state.value
-        x.covariance = A @ x.covariance @ A.T + L @ self.covariance @ L.T
-        return x
+        return L @ rmi.covariance @ L.T
 
 
 class AngularVelocityIncrement(BodyVelocityIncrement):
     """
     This is a preintegration class for angular velocity measurements, on only
-    attitude. Give a rotation matrix :math:`\mathbf{C}_{k}`, the preintegrated 
-    process model is of the form 
+    attitude. Give a rotation matrix :math:`\mathbf{C}_{k}`, the preintegrated
+    process model is of the form
 
     .. math::
         \mathbf{C}_{j} = \mathbf{C}_{i} \Delta \mathbf{\Omega}_{ij},
 
-    where :math:`\Delta \mathbf{\Omega}_{ij}` is the preintegrated increment given by 
+    where :math:`\Delta \mathbf{\Omega}_{ij}` is the preintegrated increment given by
 
     .. math::
         \Delta \mathbf{\Omega}_{ij} = \prod_{k=i}^{j-1} \exp(\Delta t \mbf{\omega}_{k}^\wedge)
 
     and :math:`\mbf{\omega}_{k}` is the angular velocity measurement at time :math:`k`.
-    
+
     """
 
-    def __init__(self, Q: np.ndarray, bias: np.ndarray = None):
-        super().__init__(SO3, Q, bias)
+    def __init__(self, Q: np.ndarray, bias: np.ndarray = None, state_id = None):
+        super().__init__(SO3, Q, bias, state_id = state_id)
+
 
 class WheelOdometryIncrement(BodyVelocityIncrement):
     """
-    This is a preintegration class for wheel odometry measurements on SE(n). 
-    The preintegrated process model is of the form 
+    This is a preintegration class for wheel odometry measurements on SE(n).
+    The preintegrated process model is of the form
 
-    .. math:: 
+    .. math::
         \mathbf{T}_{j} = \mathbf{T}_{i} \Delta \mathbf{V}_{ij},
 
-    where :math:`\Delta \mathbf{V}_{ij}` is the preintegrated increment given by 
+    where :math:`\Delta \mathbf{V}_{ij}` is the preintegrated increment given by
 
     .. math::
         \Delta \mathbf{V}_{ij} = \prod_{k=i}^{j-1} \exp(\Delta t \mathbf{\\varpi}_{k}^\wedge)
 
-    and :math:`\mathbf{\\varpi}_{k} = [\mathbf{\omega}_k^\\trans \; 
-    \mathbf{v}_k^\trans]^\trans` is the angular and translational velocity of the 
+    and :math:`\mathbf{\\varpi}_{k} = [\mathbf{\omega}_k^\\trans \;
+    \mathbf{v}_k^\trans]^\trans` is the angular and translational velocity of the
     robot at time :math:`k`.
     """
 
-    def __init__(self, Q: np.ndarray, bias: np.ndarray = None):
+    def __init__(self, Q: np.ndarray, bias: np.ndarray = None, state_id = None):
         if Q.shape == (6, 6):
             group = SE3
         elif Q.shape == (3, 3):
             group = SE2
         else:
-            raise ValueError("Input covariance has incorrect shape") 
+            raise ValueError("Input covariance has incorrect shape")
 
-        super().__init__(group, Q, bias) 
-    
+        super().__init__(group, Q, bias, state_id = state_id)
+
+# Alternate names for classes
+class PreintegratedAngularVelocity(PreintegratedBodyVelocity):
+    pass
+
+class PreintegratedWheelOdometry(PreintegratedBodyVelocity):
+    pass
