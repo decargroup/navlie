@@ -51,3 +51,4 @@ Thumbs.db
 
 .vscode/
 *.egg-info
+./docs/build/

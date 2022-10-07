@@ -2,7 +2,6 @@ from typing import Callable, List, Tuple
 from pynav.types import State, Measurement, StateWithCovariance
 import numpy as np
 import matplotlib.pyplot as plt
-import time
 from scipy.stats.distributions import chi2
 from scipy.interpolate import interp1d
 from tqdm import tqdm

@@ -1,4 +1,3 @@
-from logging import Filter
 from typing import List
 
 from .types import (
@@ -10,6 +9,7 @@ from .types import (
 import numpy as np
 from scipy.stats import multivariate_normal
 from pynav.utils import GaussianResultList, GaussianResult
+from pynav.filters import ExtendedKalmanFilter
 
 
 def gaussian_mixing_vectorspace(
@@ -228,7 +228,7 @@ class InteractingModelFilter:
 
     """
 
-    def __init__(self, kf_list: List[Filter], Pi: np.ndarray):
+    def __init__(self, kf_list: List[ExtendedKalmanFilter], Pi: np.ndarray):
         """Initialize InteractingModelFilter.
 
         Parameters

@@ -1,7 +1,6 @@
-from pylie import SO2, SO3, SE2, SE3, SE23
-from pylie.numpy.base import MatrixLieGroup
+from pylie import SO3, SE23
 import numpy as np
-from ..types import State, ProcessModel
+from ..types import ProcessModel, State
 from typing import Any, List, Tuple
 from .states import CompositeState, VectorState, SE23State
 from math import factorial
@@ -19,17 +18,17 @@ class IMU:
         stamp: float,
         bias_gyro_walk=[0, 0, 0],
         bias_accel_walk=[0, 0, 0],
+        state_id: Any = None,
     ):
         self.gyro = np.array(gyro).ravel()  #:np.ndarray: Gyro reading
-        self.accel = np.array(
-            accel
-        ).ravel()  #:np.ndarray: Accelerometer reading
+        self.accel = np.array(accel).ravel()  #:np.ndarray: Accelerometer reading
 
         #:np.ndarray: driving input for gyro bias random walk
         self.bias_gyro_walk = np.array(bias_gyro_walk).ravel()
         #:np.ndarray: driving input for accel bias random walk
         self.bias_accel_walk = np.array(bias_accel_walk).ravel()
         self.stamp = stamp  #:float: Timestamp of the reading
+        self.state_id = state_id  #:Any: State ID associated with the reading
 
     def plus(self, w: np.ndarray):
         """
@@ -151,31 +150,6 @@ class IMUState(CompositeState):
     @pose.setter
     def pose(self, pose):
         self.value[0].pose = pose
-
-    def plus(self, dx: np.ndarray, new_stamp: float = None):
-        """
-        Updates the value of each of the IMU state, given a perturbation dx.
-        """
-        new = self.copy()
-
-        if dx.shape[0] != 15:
-            raise ValueError("Perturbation must be dimension 15!")
-
-        for i, s in enumerate(new._slices):
-            sub_dx = dx[s]
-            new.value[i] = new.value[i].plus(sub_dx)
-
-        if new_stamp is not None:
-            new.set_stamp_for_all(new_stamp)
-
-        return new
-
-    def minus(self, x: "IMUState") -> np.ndarray:
-        dx = []
-        for i, v in enumerate(x.value):
-            dx.append(self.value[i].minus(x.value[i]).reshape((-1, 1)))
-
-        return np.vstack(dx)
 
     def copy(self):
         """
@@ -414,7 +388,7 @@ class IMUKinematics(ProcessModel):
 
     """
 
-    def __init__(self, Q: np.ndarray, gravity=[0, 0, -9.80665]):
+    def __init__(self, Q: np.ndarray, gravity=None):
         """
         Parameters
         ----------
@@ -422,9 +396,12 @@ class IMUKinematics(ProcessModel):
             Discrete-time noise matrix.
         g_a : np.ndarray
             Gravity vector resolved in the inertial frame.
-            If None, default value is set to [0; 0; -9.81].
+            If None, default value is set to [0; 0; -9.80665].
         """
         self._Q = Q
+
+        if gravity is None:
+            gravity = np.array([0, 0, -9.80665])
 
         self._gravity = np.array(gravity).ravel()
 
@@ -547,3 +524,86 @@ class IMUKinematics(ProcessModel):
         elif x.direction == "left":
             jac = SE23.adjoint(G @ x.pose @ U) @ L
         return jac
+
+
+class RelativeIMUKinematics(ProcessModel):
+    """
+    The relative IMU kinematics govern the relative pose between two bodies
+    containing IMUs, given the IMU measurements of each body. Let a single
+    body's extended pose by given by :math:`\mathbf{T}_1` with kinematics given
+    by :math:`\mathbf{T}_{1_k} = \mathbf{G}_{k-1} \mathbf{T}_{1_{k-1}} \mathbf{U}_{1_{k-1}}`.
+    The relative pose :math:`\mathbf{T}_{12} = \mathbf{T}_{1}^{-1} \mathbf{T}_{2}`
+    has kinematics given by
+
+    .. math::
+        \mathbf{T}_{12_k} = \mathbf{U}_{1_{k-1}}^{-1} \mathbf{T}_{12_{k-1}} \mathbf{U}_{2_{k-1}}
+
+    One benefit of this form is that the IMU measurements can be incorporated
+    one at a time, thus allowing for fully asynchronous reception of the IMU
+    measurements on each body.
+    """
+
+    def __init__(self, Q1: np.ndarray, Q2: np.ndarray, id1: Any, id2: Any):
+
+        super().__init__()
+        self.Q1 = Q1
+        self.Q2 = Q2
+        self.id1 = id1
+        self.id2 = id2
+
+    def evaluate(self, x: SE23State, u: IMU, dt: float) -> State:
+
+        if u.state_id == self.id1:
+            U1_inv = inverse_IE3(U_matrix(u.gyro, u.accel, dt))
+            U2 = np.identity(5)
+        elif u.state_id == self.id2:
+            U1_inv = np.identity(5)
+            U2 = U_matrix(u.gyro, u.accel, dt)
+        else:
+            raise ValueError("IMU object has invalid state_id")
+
+        T_12 = x.value
+        T_12_new = U1_inv @ T_12 @ U2
+        x.value = T_12_new
+        return x
+
+    def jacobian(self, x: SE23State, u: IMU, dt: float) -> np.ndarray:
+        if u.state_id == self.id1:
+            U1 = U_matrix(u.gyro, u.accel, dt)
+            U2 = np.identity(5)
+        elif u.state_id == self.id2:
+            U1 = np.identity(5)
+            U2 = U_matrix(u.gyro, u.accel, dt)
+        else:
+            raise ValueError("IMU object has invalid state_id")
+
+        if x.direction == "right":
+            jac = adjoint_IE3(inverse_IE3(U2))
+        elif x.direction == "left":
+            jac = adjoint_IE3(inverse_IE3(U1))
+        return jac
+
+    def covariance(self, x: SE23State, u: IMU, dt: float) -> np.ndarray:
+
+        T_new = self.evaluate(x.copy(), u, dt).value
+        L = L_matrix(u.gyro, u.accel, dt)
+        if u.state_id == self.id1:
+
+            if x.direction == "right":
+                jac = -x.group.adjoint(x.group.inverse(T_new)) @ L
+            elif x.direction == "left":
+                jac = -L
+
+            Q = jac @ self.Q1 @ jac.T
+        elif u.state_id == self.id2:
+
+            if x.direction == "right":
+                jac = L
+            elif x.direction == "left":
+                jac = x.group.adjoint(x.group.inverse(T_new)) @ L
+
+            Q = jac @ self.Q2 @ jac.T
+        else:
+            raise ValueError("IMU object has invalid state_id")
+
+        return Q

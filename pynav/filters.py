@@ -1,6 +1,4 @@
 from typing import List
-
-from sympy import false
 from .types import (
     StampedValue,
     State,
@@ -10,8 +8,6 @@ from .types import (
 )
 import numpy as np
 from scipy.stats.distributions import chi2
-from scipy.stats import multivariate_normal
-from pynav.lib.states import VectorState
 
 
 def check_outlier(error: np.ndarray, covariance: np.ndarray):
