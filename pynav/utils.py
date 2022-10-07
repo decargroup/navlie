@@ -262,11 +262,29 @@ def monte_carlo(
     return MonteCarloResult(trial_results)
 
 
-def randvec(cov: np.ndarray) -> np.ndarray:
+def randvec(cov: np.ndarray, num_samples: int = 1) -> np.ndarray:
     """
+    
     Produces a random zero-mean column vector with covariance given by `cov`
+
+    Parameters
+    ----------
+    cov : np.ndarray
+        square numpy array with shape (n,n)
+    num_samples : int, optional
+        If not None, will make `num_samples` independent random vectors and
+        stack them horizontally, by default None. It can be faster to generate
+        many samples this way to avoid recomputing the Cholesky decomposition
+        every time.
+
+    Returns
+    -------
+    np.ndarray with shape (n, num_samples)
+        Random column vector(s) with covariance `cov`
+       
     """
-    return np.linalg.cholesky(cov) @ np.random.normal(0, 1, (cov.shape[0], 1))
+    L = np.linalg.cholesky(cov)
+    return L @ np.random.normal(0, 1, (cov.shape[0], num_samples))
 
 
 def plot_error(
