@@ -19,6 +19,9 @@ class PoseMatrix:
     def position(self) -> np.ndarray:
         return self.pose[0:3, 3]
 
+    def copy(self):
+        return PoseMatrix(self.pose.copy())
+
 
 class Camera:
     """Class for a pinhole camera model.
@@ -144,9 +147,7 @@ class Camera:
             and (uv[0] < self.image_width)
         )
 
-    def is_landmark_in_front_of_cam(
-        self, pose: SE3State, r_pw_a: np.ndarray
-    ) -> bool:
+    def is_landmark_in_front_of_cam(self, pose: SE3State, r_pw_a: np.ndarray) -> bool:
         """Checks if a given landmark is in front of the camera."""
         r_pc_c: np.ndarray = self.resolve_landmark_in_cam_frame(pose, r_pw_a)
         r_pc_c = r_pc_c.ravel()
