@@ -1,3 +1,4 @@
+from ipaddress import v4_int_to_packed
 from typing import List
 
 from pynav.lib.states import MatrixLieGroupState
@@ -161,7 +162,9 @@ class ExtendedKalmanFilter:
         if y.stamp is not None:
             dt = y.stamp - x.state.stamp
             if dt < 0:
-                raise RuntimeError("Measurement stamp is earlier than state stamp")
+                raise RuntimeError(
+                    "Measurement stamp is earlier than state stamp"
+                )
             elif u is not None:
                 x = self.predict(x, u, dt)
 
@@ -267,7 +270,9 @@ class IteratedKalmanFilter(ExtendedKalmanFilter):
         if y.stamp is not None:
             dt = y.stamp - x.state.stamp
             if dt < 0:
-                raise RuntimeError("Measurement stamp is earlier than state stamp")
+                raise RuntimeError(
+                    "Measurement stamp is earlier than state stamp"
+                )
             elif dt > 0 and u is not None:
                 x = self.predict(x, u, dt)
 
@@ -379,7 +384,7 @@ def generate_sigmapoints(n: int, method: str):
         w_m = 1 / (2 * (n + kappa)) * np.ones((2 * n + 1))
         w_c = 1 / (2 * (n + kappa)) * np.ones((2 * n + 1))
         w_m[0] = kappa / (n + kappa)
-        w_c[0] = kappa / (n + kappa) 
+        w_c[0] = kappa / (n + kappa)
 
     elif method == "cubature":
 
@@ -400,7 +405,6 @@ def generate_sigmapoints(n: int, method: str):
                 factorial(p)
                 / (p * eval_hermitenorm(sigma_points_scalar[i - 1], p)) ** 2
             )
-        
 
     return sigma_points, w_m, w_c
 
@@ -412,7 +416,9 @@ class SigmaPointKalmanFilter:
 
     __slots__ = ["process_model", "reject_outliers"]
 
-    def __init__(self, process_model: ProcessModel, method: str, reject_outliers=False):
+    def __init__(
+        self, process_model: ProcessModel, method: str, reject_outliers=False
+    ):
         """
         Parameters
         ----------
@@ -433,8 +439,8 @@ class SigmaPointKalmanFilter:
     def predict(
         self,
         x: StateWithCovariance,
-        u: StampedValue,
-        input_covariance : np.ndarray,
+        u: Input,
+        input_covariance: np.ndarray,
         dt: float = None,
     ) -> StateWithCovariance:
         """
@@ -449,7 +455,7 @@ class SigmaPointKalmanFilter:
         ----------
         x : StateWithCovariance
             The current state estimate.
-        u : StampedValue
+        u : Input
             Input measurement to be given to process model
         dt : float, optional
             Duration to next time step. If not provided, dt will be calculated
@@ -470,7 +476,12 @@ class SigmaPointKalmanFilter:
             x.state.stamp = u.stamp
 
         if input_covariance is None:
-            input_covariance = u.covariance
+            if u.covariance is not None:
+                input_covariance = u.covariance
+            else:
+                raise ValueError(
+                    "Input covariance information must be provided."
+                )
 
         if dt is None:
             dt = u.stamp - x.state.stamp
@@ -484,12 +495,13 @@ class SigmaPointKalmanFilter:
 
         if u is not None:
 
-            
             n_x = x.state.dof
-            n_u = u.value.size
+            n_u = u.dof
             P = np.block(
-                [[x.covariance, np.zeros((n_x, n_u))], 
-                [np.zeros((n_x, n_u)), input_covariance]]
+                [
+                    [x.covariance, np.zeros((n_x, n_u))],
+                    [np.zeros((n_x, n_u)), input_covariance],
+                ]
             )
             P_sqrt = np.linalg.cholesky(P)
 
@@ -500,28 +512,26 @@ class SigmaPointKalmanFilter:
             sigmapoints = P_sqrt @ unit_sigmapoints
 
             n_sig = w_mean.size
-            x_propagated = np.zeros(( n_sig, x.state.value.shape))
+            x_propagated = []
 
             # Propagate
             for i in range(n_sig):
-                x_propagated[i] = self.process_model.evaluate(x.state.plus(sigmapoints[0:n_x, i]),
-                                                            u.plus(sigmapoints[n_x::]),
-                                                            dt)
-                
+                x_propagated.append(self.process_model.evaluate(
+                    x.state.plus(sigmapoints[0:n_x, i]),
+                    u.plus(sigmapoints[n_x::]),
+                    dt,
+                ))
 
             # Compute mean
-            #TODO Improve mean computation
-            x_mean = self.process_model.evaluate(x.state,
-                                                            u,
-                                                            dt)
-
+            # TODO Improve mean computation
+            x_mean = self.process_model.evaluate(x.state, u, dt)
 
             # Compute covariance
             P_new = np.zeros(x.covariance.shape)
             for i in range(n_sig):
                 err = x_mean.minus(x_propagated[i])
-                err.reshape(-1,1)
-                P_new += w_cov[i]* err @ err.T
+                err.reshape(-1, 1)
+                P_new += w_cov[i] * err @ err.T
 
             x.state = x_mean
             x.covariance = P_new
@@ -534,7 +544,7 @@ class SigmaPointKalmanFilter:
         self,
         x: StateWithCovariance,
         y: Measurement,
-        u: StampedValue,
+        u: Input,
         reject_outlier: bool = None,
     ) -> StateWithCovariance:
         """
@@ -573,56 +583,49 @@ class SigmaPointKalmanFilter:
         if y.stamp is not None:
             dt = y.stamp - x.state.stamp
             if dt < 0:
-                raise RuntimeError("Measurement stamp is earlier than state stamp")
+                raise RuntimeError(
+                    "Measurement stamp is earlier than state stamp"
+                )
             elif u is not None:
                 x = self.predict(x, u, dt)
-
 
         P = x.covariance
         R = y.model.covariance(x.state)
         n_x = x.state.dof
         n_y = y.value.size
-        unit_sigmapoints, w_mean, w_cov = generate_sigmapoints(
-            n_x, self.method
-        )
+        unit_sigmapoints, w_mean, w_cov = generate_sigmapoints(n_x, self.method)
 
         P_sqrt = np.linalg.cholesky(P)
         sigmapoints = P_sqrt @ unit_sigmapoints
 
         n_sig = w_mean.size
 
-
-
         y_check = y.model.evaluate(x.state)
 
         if y_check is not None:
-
-            
-            
 
             y_propagated = np.zeros((n_sig, y.value.shape))
 
             # Propagate
             for i in range(n_sig):
-                y_propagated[i] = y.model.evaluate(x.state.plus(sigmapoints[0:n_x, i]))
-                                    
-            #mean
+                y_propagated[i] = y.model.evaluate(
+                    x.state.plus(sigmapoints[0:n_x, i])
+                )
+
+            # mean
             y_mean = np.zeros(y.value.shape)
             for i in range(n_sig):
-                y_mean += w_mean[i]* y_propagated[i]
+                y_mean += w_mean[i] * y_propagated[i]
 
-            #covariance innovation
+            # covariance innovation
             Pyy = R.copy()
             Pxy = np.zeros((n_x, n_y))
             for i in range(n_sig):
                 err = y_propagated[i] - y_mean
-                Pyy += w_cov[i] * err @err.T
-                Pxy += w_cov[i] * sigmapoints[i] @err.T
-
-
+                Pyy += w_cov[i] * err @ err.T
+                Pxy += w_cov[i] * sigmapoints[i] @ err.T
 
             z = y.value.reshape((-1, 1)) - y_mean.reshape((-1, 1))
-            
 
             outlier = False
 
@@ -697,7 +700,9 @@ def run_filter(
 
         # Fuse any measurements that have occurred.
         if len(meas_data) > 0:
-            while y.stamp < input_data[k + 1].stamp and meas_idx < len(meas_data):
+            while y.stamp < input_data[k + 1].stamp and meas_idx < len(
+                meas_data
+            ):
 
                 x = filter.correct(x, y, u)
                 meas_idx += 1
