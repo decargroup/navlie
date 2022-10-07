@@ -4,6 +4,7 @@ from pynav.lib.imu import (
     IMU,
     IMUKinematics,
     N_matrix,
+    RelativeIMUKinematics,
     U_matrix,
     U_matrix_inv,
     adjoint_IE3,
@@ -15,7 +16,7 @@ from pylie import SE23, SO3
 import numpy as np
 from math import factorial
 
-np.set_printoptions(precision=4, suppress=True, linewidth=200)
+np.set_printoptions(precision=5, linewidth=200)
 
 
 def test_N_matrix():
@@ -213,7 +214,53 @@ def test_bias_jacobian_term():
     )
     assert(np.allclose(jac_test, jac2, atol=1e-3))
 
+def test_relative_imu_equivalence():
+    model = IMUKinematics(np.identity(6))
+    dt = 0.1
+    u1 = IMU([1, 2, 3], [2, 3, 1], 0, state_id=1)
+    u2 = IMU([0.4,0.5,0.6], [1,1,1], 0, state_id=2)
+    x1 = SE23State(SE23.Exp([1, 2, 3, 4, 5, 6, 7, 8, 9]), state_id=1)
+    x2 = SE23State(SE23.Exp(0.1*np.array([1, 2, 3, 4, 5, 6, 7, 8, 9])),  state_id=1)
+    T12 = SE23.inverse(x1.value) @ x2.value
+    x12 = SE23State(T12.copy(), 0, direction="right")
+    relmodel = RelativeIMUKinematics(np.identity(6), np.identity(6), id1=1, id2=2)
+    for i in range(10):
+        x1 = model.evaluate(x1, u1, dt)
+        x2 = model.evaluate(x2, u2, dt)
+        x12 = relmodel.evaluate(x12, u1, dt)
+        x12 = relmodel.evaluate(x12, u2, dt)
+
+    assert np.allclose(SE23.inverse(x1.value) @ x2.value, x12.value)
+
+def test_relative_imu_jacobian():
+
+    dt = 0.1
+    u1 = IMU([1, 2, 3], [2, 3, 1], 0, state_id=1)
+    u2 = IMU([0.4,0.5,0.6], [1,1,1], 0, state_id=2)
+    x1 = SE23State(SE23.Exp([1, 2, 3, 4, 5, 6, 7, 8, 9]), state_id=1)
+    x2 = SE23State(SE23.Exp(0.1*np.array([1, 2, 3, 4, 5, 6, 7, 8, 9])), state_id=1)
+    T12 = SE23.inverse(x1.value) @ x2.value
+    x12 = SE23State(T12.copy(), 0, direction="right")
+    relmodel = RelativeIMUKinematics(np.identity(6), np.identity(6), id1=1, id2=2)
+
+    x12.direction="right"
+    jac = relmodel.jacobian(x12, u1, dt)
+    jac_fd = relmodel.jacobian_fd(x12, u1, dt)
+    assert np.allclose(jac, jac_fd, atol=1e-8)
+
+    jac = relmodel.jacobian(x12, u2, dt)
+    jac_fd = relmodel.jacobian_fd(x12, u2, dt)
+    assert np.allclose(jac, jac_fd, atol=1e-5)
+
+    x12.direction="left"
+    jac = relmodel.jacobian(x12, u1, dt)
+    jac_fd = relmodel.jacobian_fd(x12, u1, dt)
+    assert np.allclose(jac, jac_fd, atol=1e-4)
+
+    jac = relmodel.jacobian(x12, u2, dt)
+    jac_fd = relmodel.jacobian_fd(x12, u2, dt)
+    assert np.allclose(jac, jac_fd, atol=1e-8)
 
 if __name__ == "__main__":
-    test_left_jacobian_imu()
+    test_relative_imu_jacobian()
     print("All tests passed!")
