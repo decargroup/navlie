@@ -431,6 +431,17 @@ class SE23State(MatrixLieGroupState):
         return np.block([attitude, velocity, position])
 
 
+class SL3State(MatrixLieGroupState):
+    def __init__(
+        self, 
+        value: np.ndarray, 
+        stamp: float = None, 
+        state_id=None, 
+        direction="right"
+    ):
+        super().__init__(value, SL3, stamp, state_id, direction)
+
+
 class CompositeState(State):
     """
     A "composite" state object intended to hold a list of State objects as a
@@ -646,16 +657,5 @@ class CompositeState(State):
         for i in range(len(self.value)):
             slc = self.slices[i]
             jac[slc, slc] = self.value[i].jacobian(dx[slc])
+
         return jac
-
-
-class SL3State(MatrixLieGroupState):
-    def __init__(
-        self, 
-        value: np.ndarray, 
-        stamp: float = None, 
-        state_id=None, 
-        direction="right"
-    ):
-        super().__init__(value, SL3, stamp, state_id, direction)
-        
