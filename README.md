@@ -100,7 +100,9 @@ class SE3State(State):
 ```
 
 ## Process and Measurement Models
-![abstract_system](./docs/source/abstract_system.png)
+<p align="center">
+  <img src="./docs/source/abstract_system.png" alt="Sublime's custom image" width="600"/>
+</p>
 
 There are a few more core types in this package. The main ones are the `ProcessModel` and `MeasurementModel` classes. Both of these are abstract classes requiring the user to implement
 
