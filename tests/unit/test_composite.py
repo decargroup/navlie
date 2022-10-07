@@ -18,6 +18,15 @@ def test_composite_process_model():
     jac_fd = process_model.jacobian_fd(x0, u, dt)
     assert np.allclose(jac, jac_fd, atol=1e-6)
 
+def test_composite_jacobian():
+    T12 = SE2State(SE2.Exp([0.5, 1, -1]), stamp=0.0, state_id=2)
+    T13 = SE2State(SE2.Exp([-0.5, 1, 1]), stamp=0.0, state_id=3)
+    x = CompositeState([T12, T13])
+    dx = np.array([i for i in range(x.dof)])
+    jac = x.jacobian(dx)
+    jac_fd = x.jacobian_fd(dx)
+    assert np.allclose(jac, jac_fd, atol=1e-6)
+
 
 def test_range_relative_pose():
 

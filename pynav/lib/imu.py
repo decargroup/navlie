@@ -1,12 +1,12 @@
-from pylie import SO2, SO3, SE2, SE3, SE23
-from pylie.numpy.base import MatrixLieGroup
+from pylie import SO3, SE23
 import numpy as np
-from ..types import State, ProcessModel
+from ..types import ProcessModel, Input
 from typing import Any, List, Tuple
 from .states import CompositeState, VectorState, SE23State
+from math import factorial
 
 
-class IMU:
+class IMU(Input):
     """
     Data container for an IMU reading.
     """
@@ -18,15 +18,17 @@ class IMU:
         stamp: float,
         bias_gyro_walk=[0, 0, 0],
         bias_accel_walk=[0, 0, 0],
+        state_id: Any = None,
     ):
-        self.gyro = np.array(gyro).ravel() #:np.ndarray: Gyro reading
-        self.accel = np.array(accel).ravel() #:np.ndarray: Accelerometer reading
+        super().__init__(dof=12, stamp=stamp)
+        self.gyro = np.array(gyro).ravel()  #:np.ndarray: Gyro reading
+        self.accel = np.array(accel).ravel()  #:np.ndarray: Accelerometer reading
 
         #:np.ndarray: driving input for gyro bias random walk
         self.bias_gyro_walk = np.array(bias_gyro_walk).ravel()
         #:np.ndarray: driving input for accel bias random walk
         self.bias_accel_walk = np.array(bias_accel_walk).ravel()
-        self.stamp = stamp #:float: Timestamp of the reading
+        self.state_id = state_id  #:Any: State ID associated with the reading
 
     def plus(self, w: np.ndarray):
         """
@@ -35,7 +37,7 @@ class IMU:
         Parameters
         ----------
         w : np.ndarray with size 12
-            w[0:3] is the gyro noise, w[3:6] is the accel noise, 
+            w[0:3] is the gyro noise, w[3:6] is the accel noise,
             w[6:9] is the gyro bias walk noise, w[9:12] is the accel bias walk
             noise
         """
@@ -110,7 +112,7 @@ class IMUState(CompositeState):
         return self.value[0].velocity
 
     @velocity.setter
-    def velocity(self, v : np.ndarray):
+    def velocity(self, v: np.ndarray):
         self.value[0].velocity = v
 
     @property
@@ -126,7 +128,7 @@ class IMUState(CompositeState):
         return self.value[1].value
 
     @bias_gyro.setter
-    def bias_gyro(self, gyro_bias : np.ndarray):
+    def bias_gyro(self, gyro_bias: np.ndarray):
         self.value[1].value = gyro_bias.ravel()
 
     @property
@@ -148,31 +150,6 @@ class IMUState(CompositeState):
     @pose.setter
     def pose(self, pose):
         self.value[0].pose = pose
-
-    def plus(self, dx: np.ndarray, new_stamp: float = None):
-        """
-        Updates the value of each of the IMU state, given a perturbation dx.
-        """
-        new = self.copy()
-
-        if dx.shape[0] != 15:
-            raise ValueError("Perturbation must be dimension 15!")
-
-        for i, s in enumerate(new._slices):
-            sub_dx = dx[s]
-            new.value[i] = new.value[i].plus(sub_dx)
-
-        if new_stamp is not None:
-            new.set_stamp_for_all(new_stamp)
-
-        return new
-
-    def minus(self, x: "IMUState") -> np.ndarray:
-        dx = []
-        for i, v in enumerate(x.value):
-            dx.append(self.value[i].minus(x.value[i]).reshape((-1, 1)))
-
-        return np.vstack(dx)
 
     def copy(self):
         """
@@ -212,19 +189,190 @@ class IMUState(CompositeState):
         return np.hstack([nav_jacobian, bias_gyro, bias_accel])
 
 
+def get_unbiased_imu(x: IMUState, u: IMU) -> Tuple[np.ndarray, np.ndarray]:
+    """
+    Removes bias from the measurement.
+
+    Parameters
+    ----------
+    x : IMUState
+        Contains the biases
+    u : IMU
+        IMU data correupted by bias
+
+    Returns
+    -------
+    Tuple[np.ndarray, np.ndarray]
+        unbiased gyro and accelerometer measurements
+    """
+    if hasattr(x, "bias_gyro"):
+        bias_gyro = x.bias_gyro.reshape((-1, 1))
+    else:
+        bias_gyro = 0
+
+    if hasattr(x, "bias_accel"):
+        bias_accel = x.bias_accel.reshape((-1, 1))
+    else:
+        bias_accel = 0
+
+    unbiased_gyro = u.gyro.reshape((-1, 1)) - bias_gyro
+    unbiased_accel = u.accel.reshape((-1, 1)) - bias_accel
+
+    return unbiased_gyro, unbiased_accel
+
+
+def N_matrix(phi_vec: np.ndarray):
+    """
+    The N matrix from Barfoot 2nd edition, equation 9.211
+    """
+    if np.linalg.norm(phi_vec) < SO3._small_angle_tol:
+        return np.identity(3)
+    else:
+        phi = np.linalg.norm(phi_vec)
+        a = phi_vec / phi
+        a = a.reshape((-1, 1))
+        a_wedge = SO3.wedge(a)
+        N = (
+            2 * (1 - np.cos(phi)) / phi**2 * np.identity(3)
+            + (1 - 2 * (1 - np.cos(phi)) / phi**2) * (a @ a.T)
+            + 2 * ((phi - np.sin(phi)) / phi**2) * a_wedge
+        )
+        return N
+
+
+def M_matrix(phi_vec):
+    phi_mat = SO3.wedge(phi_vec)
+    M = np.sum(
+        [
+            (2 / factorial(n + 2)) * np.linalg.matrix_power(phi_mat, n)
+            for n in range(100)
+        ],
+        axis=0,
+    )
+    return M
+
+
+def adjoint_IE3(X):
+    """
+    Adjoint matrix of the "Incremental Euclidean Group".
+    """
+    R = X[:3, :3]
+    c = X[3, 4]
+    a = X[:3, 3].reshape((-1, 1))
+    b = X[:3, 4].reshape((-1, 1))
+    Ad = np.zeros((9, 9))
+    Ad[:3, :3] = R
+    Ad[3:6, :3] = SO3.wedge(a) @ R
+    Ad[3:6, 3:6] = R
+
+    Ad[6:9, :3] = -SO3.wedge(c * a - b) @ R
+    Ad[6:9, 3:6] = -c * R
+    Ad[6:9, 6:9] = R
+    return Ad
+
+
+def inverse_IE3(X):
+    """
+    Inverse matrix on the "Incremental Euclidean Group".
+    """
+
+    R = X[:3, :3]
+    c = X[3, 4]
+    a = X[:3, 3].reshape((-1, 1))
+    b = X[:3, 4].reshape((-1, 1))
+    X_inv = np.identity(5)
+    X_inv[:3, :3] = R.T
+    X_inv[:3, 3] = np.ravel(-R.T @ a)
+    X_inv[:3, 4] = np.ravel(R.T @ (c * a - b))
+    X_inv[3, 4] = np.ravel(-c)
+    return X_inv
+
+
+def U_matrix(omega, accel, dt: float):
+    phi = omega * dt
+    O = SO3.Exp(phi)
+    J = SO3.left_jacobian(phi)
+    a = accel.reshape((-1, 1))
+    V = N_matrix(phi)
+    U = np.identity(5)
+    U[:3, :3] = O
+    U[:3, 3] = np.ravel(dt * J @ a)
+    U[:3, 4] = np.ravel(dt**2 / 2 * V @ a)
+    U[3, 4] = dt
+    return U
+
+
+def U_matrix_inv(omega, accel, dt: float):
+    return inverse_IE3(U_matrix(omega, accel, dt))
+
+
+def G_matrix(gravity, dt):
+    G = np.identity(5)
+    G[:3, 3] = dt * gravity
+    G[:3, 4] = -0.5 * dt**2 * gravity
+    G[3, 4] = -dt
+    return G
+
+
+def G_matrix_inv(gravity, dt):
+    return inverse_IE3(G_matrix(gravity, dt))
+
+
+def L_matrix(unbiased_gyro, unbiased_accel, dt: float) -> np.ndarray:
+    """
+    Computes the jacobian of the nav state with respect to the input.
+
+    Since the noise and bias are both additive to the input, they have the
+    same jacobians.
+    """
+
+    a = unbiased_accel
+    om = unbiased_gyro
+    N = N_matrix(om * dt)
+    J_att_inv = SO3.left_jacobian_inv(om * dt)
+    xi = np.vstack(
+        [
+            dt * om,
+            dt * a,
+            (dt**2 / 2) * J_att_inv @ N @ a,
+        ]
+    )
+    J = SE23.left_jacobian(-xi)
+    Om = SO3.wedge(om * dt)
+    A = SO3.wedge(a)
+    # See Barfoot 2nd edition, equation 9.247
+    XI = np.zeros((9, 6))
+    XI[0:3, 0:3] = -dt * np.eye(3)
+    XI[3:6, 3:6] = -dt * np.eye(3)
+    XI[6:9, 0:3] = (
+        0.5
+        * (dt**2 / 2)
+        * (
+            (1 / 360)
+            * (dt**3)
+            * (Om @ Om @ A + Om @ (SO3.wedge(Om @ a)) + SO3.wedge(Om @ Om @ a))
+            - (1 / 6) * dt * A
+        )
+    )
+    XI[6:9, 3:6] = -(dt**2 / 2) * J_att_inv @ N
+
+    L = J @ XI
+    return L
+
+
 class IMUKinematics(ProcessModel):
     """
     The IMU Kinematics refer to the following continuous time model:
 
     .. math::
 
-        \\dot{\mathbf{r}} &= \mathbf{v} 
+        \\dot{\mathbf{r}} &= \mathbf{v}
 
         \\dot{\mathbf{v}} &= \mathbf{C}\mathbf{a} +  \mathbf{g}
-        
+
         \\dot{\mathbf{C}} &= \mathbf{C}\mathbf{\omega}^\wedge
-        
-    Using :math:`SE_2(3)` extended poses, it can be shown that the 
+
+    Using :math:`SE_2(3)` extended poses, it can be shown that the
     discrete-time IMU kinematics are given by:
 
     .. math::
@@ -232,14 +380,15 @@ class IMUKinematics(ProcessModel):
 
     where :math:`\mathbf{T}_{k}` is the pose at time :math:`k`, :math:`\mathbf{G}_{k-1}`
     is a matrix that depends on the gravity vector, and :math:`\mathbf{U}_{k-1}` is a matrix
-    that depends on the IMU measurements. 
+    that depends on the IMU measurements.
 
-    The :math:`\mathbf{G}_{k-1}` and :math:`\mathbf{U}_{k-1}` matrices are 
+    The :math:`\mathbf{G}_{k-1}` and :math:`\mathbf{U}_{k-1}` matrices are
     not quite elements of :math:`SE_2(3)`, but instead belong to a new group
     named here the "Incremental Euclidean Group" :math:`IE(3)`.
-    
+
     """
-    def __init__(self, Q: np.ndarray, g_a=[0, 0, -9.80665]):
+
+    def __init__(self, Q: np.ndarray, gravity=None):
         """
         Parameters
         ----------
@@ -247,11 +396,14 @@ class IMUKinematics(ProcessModel):
             Discrete-time noise matrix.
         g_a : np.ndarray
             Gravity vector resolved in the inertial frame.
-            If None, default value is set to [0; 0; -9.81].
+            If None, default value is set to [0; 0; -9.80665].
         """
         self._Q = Q
 
-        self._gravity = np.array(g_a).ravel()
+        if gravity is None:
+            gravity = np.array([0, 0, -9.80665])
+
+        self._gravity = np.array(gravity).ravel()
 
     def evaluate(self, x: IMUState, u: IMU, dt: float) -> IMUState:
         """
@@ -276,10 +428,10 @@ class IMUKinematics(ProcessModel):
         """
 
         # Get unbiased inputs
-        unbiased_gyro, unbiased_accel = self._get_unbiased_imu(x, u)
+        unbiased_gyro, unbiased_accel = get_unbiased_imu(x, u)
 
-        G = self._G_matrix(dt)
-        U = self._U_matrix(unbiased_gyro, unbiased_accel, dt)
+        G = G_matrix(self._gravity, dt)
+        U = U_matrix(unbiased_gyro, unbiased_accel, dt)
 
         x.pose = G @ x.pose @ U
 
@@ -294,21 +446,21 @@ class IMUKinematics(ProcessModel):
 
     def jacobian(self, x: IMUState, u: IMU, dt: float) -> np.ndarray:
         """
-        Returns the Jacobian of the IMU kinematics model with respect 
+        Returns the Jacobian of the IMU kinematics model with respect
         to the full state
         """
 
         # Get unbiased inputs
-        unbiased_gyro, unbiased_accel = self._get_unbiased_imu(x, u)
+        unbiased_gyro, unbiased_accel = get_unbiased_imu(x, u)
 
-        G = self._G_matrix(dt)
-        U_inv = self._U_matrix_inv(unbiased_gyro, unbiased_accel, dt)
+        G = G_matrix(self._gravity, dt)
+        U_inv = U_matrix_inv(unbiased_gyro, unbiased_accel, dt)
 
         # Jacobian of process model wrt to pose
         if x.direction == "right":
-            jac_pose = self._adjoint_IE3(U_inv)
+            jac_pose = adjoint_IE3(U_inv)
         elif x.direction == "left":
-            jac_pose = self._adjoint_IE3(G)
+            jac_pose = adjoint_IE3(G)
 
         jac_kwargs = {}
 
@@ -357,171 +509,101 @@ class IMUKinematics(ProcessModel):
         """
         Computes the jacobian of the nav state with respect to the input.
 
-        Since the noise and bias are both additive to the input, they have the 
+        Since the noise and bias are both additive to the input, they have the
         same jacobians.
         """
         # Get unbiased inputs
-        unbiased_gyro, unbiased_accel = self._get_unbiased_imu(x, u)
+        unbiased_gyro, unbiased_accel = get_unbiased_imu(x, u)
 
-        G = self._G_matrix(dt)
-        U = self._U_matrix(unbiased_gyro, unbiased_accel, dt)
+        G = G_matrix(self._gravity, dt)
+        U = U_matrix(unbiased_gyro, unbiased_accel, dt)
+        L = L_matrix(unbiased_gyro, unbiased_accel, dt)
 
-        a = unbiased_accel
-        om = unbiased_gyro
-        N = self._N_matrix(om * dt)
-        J_att_inv = SO3.left_jacobian_inv(om * dt)
-        xi = np.vstack(
-            [
-                dt * om,
-                dt * a,
-                (dt**2 / 2) * J_att_inv @ N @ a,
-            ]
-        )
-        J = SE23.left_jacobian(-xi)
-
-        # See Barfoot 2nd edition, equation 9.247
-        # TODO: These jacobians seem to rely on a small dt assumption.
-        # We will have to talk to barfoot
-        XI = np.zeros((9, 6))
-        XI[0:3, 0:3] = -dt * np.eye(3)
-        XI[3:6, 3:6] = -dt * np.eye(3)
-        XI[6:9, 0:3] = -(dt**3) * (
-            SO3.wedge(N @ a) / 4 - J_att_inv @ SO3.wedge(a) / 6
-        )
-        XI[6:9, 3:6] = -(dt**2 / 2) * J_att_inv @ N
-
-        jac_right = J @ XI
         if x.direction == "right":
-            jac = jac_right
+            jac = L
         elif x.direction == "left":
-            jac = SE23.adjoint(G @ x.pose @ U) @ jac_right
+            jac = SE23.adjoint(G @ x.pose @ U) @ L
         return jac
 
-    def _get_unbiased_imu(self, x: IMUState, u: IMU) -> Tuple[np.ndarray, np.ndarray]:
-        """Removes bias from the measurement.
 
-        Parameters
-        ----------
-        x : IMUState
-            Contains the biases
-        u : IMU
-            IMU data correupted by bias
+class RelativeIMUKinematics(ProcessModel):
+    """
+    The relative IMU kinematics govern the relative pose between two bodies
+    containing IMUs, given the IMU measurements of each body. Let a single
+    body's extended pose by given by :math:`\mathbf{T}_1` with kinematics given
+    by :math:`\mathbf{T}_{1_k} = \mathbf{G}_{k-1} \mathbf{T}_{1_{k-1}} \mathbf{U}_{1_{k-1}}`.
+    The relative pose :math:`\mathbf{T}_{12} = \mathbf{T}_{1}^{-1} \mathbf{T}_{2}`
+    has kinematics given by
 
-        Returns
-        -------
-        Tuple[np.ndarray, np.ndarray]
-            unbiased gyro and accelerometer measurements
-        """
-        if hasattr(x, "bias_gyro"):
-            bias_gyro = x.bias_gyro.reshape((-1, 1))
+    .. math::
+        \mathbf{T}_{12_k} = \mathbf{U}_{1_{k-1}}^{-1} \mathbf{T}_{12_{k-1}} \mathbf{U}_{2_{k-1}}
+
+    One benefit of this form is that the IMU measurements can be incorporated
+    one at a time, thus allowing for fully asynchronous reception of the IMU
+    measurements on each body.
+    """
+
+    def __init__(self, Q1: np.ndarray, Q2: np.ndarray, id1: Any, id2: Any):
+
+        super().__init__()
+        self.Q1 = Q1
+        self.Q2 = Q2
+        self.id1 = id1
+        self.id2 = id2
+
+    def evaluate(self, x: SE23State, u: IMU, dt: float) -> SE23State:
+
+        if u.state_id == self.id1:
+            U1_inv = inverse_IE3(U_matrix(u.gyro, u.accel, dt))
+            U2 = np.identity(5)
+        elif u.state_id == self.id2:
+            U1_inv = np.identity(5)
+            U2 = U_matrix(u.gyro, u.accel, dt)
         else:
-            bias_gyro = 0
+            raise ValueError("IMU object has invalid state_id")
 
-        if hasattr(x, "bias_accel"):
-            bias_accel = x.bias_accel.reshape((-1, 1))
+        T_12 = x.value
+        T_12_new = U1_inv @ T_12 @ U2
+        x.value = T_12_new
+        return x
+
+    def jacobian(self, x: SE23State, u: IMU, dt: float) -> np.ndarray:
+        if u.state_id == self.id1:
+            U1 = U_matrix(u.gyro, u.accel, dt)
+            U2 = np.identity(5)
+        elif u.state_id == self.id2:
+            U1 = np.identity(5)
+            U2 = U_matrix(u.gyro, u.accel, dt)
         else:
-            bias_accel = 0
+            raise ValueError("IMU object has invalid state_id")
 
-        unbiased_gyro = u.gyro.reshape((-1, 1)) - bias_gyro
-        unbiased_accel = u.accel.reshape((-1, 1)) - bias_accel
+        if x.direction == "right":
+            jac = adjoint_IE3(inverse_IE3(U2))
+        elif x.direction == "left":
+            jac = adjoint_IE3(inverse_IE3(U1))
+        return jac
 
-        return unbiased_gyro, unbiased_accel
+    def covariance(self, x: SE23State, u: IMU, dt: float) -> np.ndarray:
 
-    @staticmethod
-    def _N_matrix(phi_vec: np.ndarray):
-        """ 
-        The N matrix from Barfoot 2nd edition, equation 9.211
-        """
-        if np.linalg.norm(phi_vec) < SO3._small_angle_tol:
-            return np.identity(3)
+        T_new = self.evaluate(x.copy(), u, dt).value
+        L = L_matrix(u.gyro, u.accel, dt)
+        if u.state_id == self.id1:
+
+            if x.direction == "right":
+                jac = -x.group.adjoint(x.group.inverse(T_new)) @ L
+            elif x.direction == "left":
+                jac = -L
+
+            Q = jac @ self.Q1 @ jac.T
+        elif u.state_id == self.id2:
+
+            if x.direction == "right":
+                jac = L
+            elif x.direction == "left":
+                jac = x.group.adjoint(x.group.inverse(T_new)) @ L
+
+            Q = jac @ self.Q2 @ jac.T
         else:
-            phi = np.linalg.norm(phi_vec)
-            a = phi_vec / phi
-            a = a.reshape((-1, 1))
-            a_wedge = SO3.wedge(a)
-            N = (
-                2 * (1 - np.cos(phi)) / phi**2 * np.identity(3)
-                + (1 - 2 * (1 - np.cos(phi)) / phi**2) * (a @ a.T)
-                + 2 * ((phi - np.sin(phi)) / phi**2) * a_wedge
-            )
-            return N
+            raise ValueError("IMU object has invalid state_id")
 
-    def _U_matrix(self, omega, accel, dt: float):
-        phi = omega * dt
-        O = SO3.Exp(phi)
-        J = SO3.left_jacobian(phi)
-        a = accel.reshape((-1, 1))
-        V = self._N_matrix(phi)
-        U = np.identity(5)
-        U[:3, :3] = O
-        U[:3, 3] = np.ravel(dt * J @ a)
-        U[:3, 4] = np.ravel(dt**2 / 2 * V @ a)
-        U[3, 4] = dt
-        return U
-
-    def _U_matrix_inv(self, omega, accel, dt: float):
-        phi = omega * dt
-        O = SO3.Exp(phi)
-        V = self._N_matrix(phi)
-        J = SO3.left_jacobian(phi)
-        a = accel.reshape((-1, 1))
-        U_inv = np.identity(5)
-        U_inv[:3, :3] = O.T
-        U_inv[:3, 3] = np.ravel(-dt * O.T @ J @ a)
-        U_inv[:3, 4] = np.ravel(dt**2 * O.T @ (J - V / 2) @ a)
-        U_inv[3, 4] = -dt
-        return U_inv
-
-    def _G_matrix(self, dt):
-        G = np.identity(5)
-        G[:3, 3] = dt * self._gravity
-        G[:3, 4] = -0.5 * dt**2 * self._gravity
-        G[3, 4] = -dt
-        return G
-
-    def _G_matrix_inv(self, dt):
-        G_inv = np.identity(5)
-        G_inv[:3, 3] = -dt * self._gravity
-        G_inv[:3, 4] = -0.5 * dt**2 * self._gravity
-        G_inv[3, 4] = dt
-        return G_inv
-
-    @staticmethod
-    def _adjoint_IE3(X):
-        """
-        Adjoint matrix of the "Incremental Euclidean Group".
-        """
-        R = X[:3, :3]
-        c = X[3, 4]
-        a = X[:3, 3].reshape((-1, 1))
-        b = X[:3, 4].reshape((-1, 1))
-        Ad = np.zeros((9, 9))
-        Ad[:3, :3] = R
-        Ad[3:6, :3] = SO3.wedge(a) @ R
-        Ad[3:6, 3:6] = R
-
-        Ad[6:9, :3] = -SO3.wedge(c * a - b) @ R
-        Ad[6:9, 3:6] = -c * R
-        Ad[6:9, 6:9] = R
-        return Ad
-
-    @staticmethod
-    def _inverse_IE3(X):
-        """
-        Inverse matrix on the "Incremental Euclidean Group".
-        """
-
-        R = X[:3, :3]
-        c = X[3, 4]
-        a = X[:3, 3].reshape((-1, 1))
-        b = X[:3, 4].reshape((-1, 1))
-        X_inv = np.identity(5)
-        X_inv[:3, :3] = R.T
-        X_inv[:3, 3] = -R.T @ a
-        X_inv[:3, 4] = -R.T @ (c * a - b)
-        X_inv[3, 4] = -c
-        return X_inv
-
-# TODO: consolidate and simplify some of the matrix functions. They will
-# be needed for preintegration as well, so make them standalone functions
-# in this module. 
+        return Q

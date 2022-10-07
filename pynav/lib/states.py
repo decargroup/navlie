@@ -33,7 +33,7 @@ class VectorState(State):
     def plus(self, dx: np.ndarray) -> "VectorState":
         new = self.copy()
         new.value: np.ndarray = new.value.ravel() + dx.ravel()
-        return new.copy()
+        return new
 
     def minus(self, x: "VectorState") -> np.ndarray:
         og_shape = self.value.shape
@@ -91,6 +91,15 @@ class MatrixLieGroupState(State):
             self.state_id,
             self.direction,
         )
+
+    def jacobian(self, dx: np.ndarray) -> np.ndarray:
+        if self.direction == "right":
+            jac = self.group.right_jacobian(dx)
+        elif self.direction == "left":
+            jac = self.group.left_jacobian(dx)
+        else:
+            raise ValueError("direction must either be 'left' or 'right'.")
+        return jac          
 
     @property
     def attitude(self) -> np.ndarray:
@@ -442,7 +451,7 @@ class CompositeState(State):
     and by ID.
     """
 
-    __slots__ = ["_slices"]
+    __slots__ = ["slices"]
 
     def __init__(
         self, state_list: List[State], stamp: float = None, state_id=None
@@ -459,10 +468,10 @@ class CompositeState(State):
         # adapt to possible `.value[i].dof` changes of the substates, but we 
         # dont want to do this on EVERY plus()/minus() call since this will
         # be slow. 
-        self._slices = []
+        self.slices = []
         counter = 0
         for state in state_list:
-            self._slices.append(slice(counter, counter + state.dof))
+            self.slices.append(slice(counter, counter + state.dof))
             counter += state.dof
 
     def __getstate__(self):
@@ -477,7 +486,7 @@ class CompositeState(State):
                 "value": self.value,
                 "stamp": self.stamp,
                 "state_id": self.state_id,
-                "_slices": self._slices,
+                "slices": self.slices,
             },
         )
 
@@ -492,7 +501,7 @@ class CompositeState(State):
         self.value = attributes["value"]
         self.stamp = attributes["stamp"]
         self.state_id = attributes["state_id"]
-        self._slices = attributes["_slices"]
+        self.slices = attributes["slices"]
 
     @property
     def dof(self):
@@ -509,7 +518,7 @@ class CompositeState(State):
         Get slice of a particular state_id in the list of states.
         """
         idx = self.get_index_by_id(state_id)
-        return self._slices[idx]
+        return self.slices[idx]
 
     def get_value_by_id(self, state_id):
         """
@@ -546,6 +555,20 @@ class CompositeState(State):
         idx = self.get_index_by_id(state_id)
         self.value[idx].stamp = stamp
 
+    def set_state_by_id(self, state: State, state_id):
+        """
+        Set the whole sub-state by id.
+        """
+        idx = self.get_index_by_id(state_id)
+        self.value[idx] = state
+
+    def set_value_by_id(self, value: Any, state_id: Any):
+        """
+        Set the value of a sub-state by id.
+        """
+        idx = self.get_index_by_id(state_id)
+        self.value[idx].value = value
+
     def set_stamp_for_all(self, stamp: float):
         """
         Set the timestamp of all substates.
@@ -574,19 +597,19 @@ class CompositeState(State):
         the dx vector.
         """
         new = self.copy()
-        for i, s in enumerate(new._slices):
+        for i, s in enumerate(new.slices):
             sub_dx = dx[s]
             new.value[i] = new.value[i].plus(sub_dx)
 
         if new_stamp is not None:
             new.set_stamp_for_all(new_stamp)
 
-        return new.copy()
+        return new
 
     def minus(self, x: "CompositeState") -> np.ndarray:
         dx = []
         for i, v in enumerate(x.value):
-            dx.append(self.value[i].minus(x.value[i]))
+            dx.append(self.value[i].minus(x.value[i]).reshape((-1,1)))
 
         return np.vstack(dx)
 
@@ -601,6 +624,7 @@ class CompositeState(State):
             new.set_stamp_by_id(new_stamp, state_id)
 
         return new
+
     def jacobian_from_blocks(self, block_dict: dict):
         """
         Returns the jacobian of the entire composite state given jacobians
@@ -614,4 +638,12 @@ class CompositeState(State):
             slc = self.get_slice_by_id(state_id)
             jac[:, slc] = block
 
+        return jac
+
+    def jacobian(self, dx: np.ndarray) -> np.ndarray:
+        dof = self.dof
+        jac = np.zeros((dof, dof))
+        for i in range(len(self.value)):
+            slc = self.slices[i]
+            jac[slc, slc] = self.value[i].jacobian(dx[slc])
         return jac
