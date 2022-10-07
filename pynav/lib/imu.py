@@ -22,9 +22,7 @@ class IMU(Input):
     ):
         super().__init__(dof=12, stamp=stamp)
         self.gyro = np.array(gyro).ravel()  #:np.ndarray: Gyro reading
-        self.accel = np.array(
-            accel
-        ).ravel()  #:np.ndarray: Accelerometer reading
+        self.accel = np.array(accel).ravel()  #:np.ndarray: Accelerometer reading
 
         #:np.ndarray: driving input for gyro bias random walk
         self.bias_gyro_walk = np.array(bias_gyro_walk).ravel()
@@ -404,7 +402,7 @@ class IMUKinematics(ProcessModel):
 
         if gravity is None:
             gravity = np.array([0, 0, -9.80665])
-            
+
         self._gravity = np.array(gravity).ravel()
 
     def evaluate(self, x: IMUState, u: IMU, dt: float) -> IMUState:
@@ -528,25 +526,25 @@ class IMUKinematics(ProcessModel):
         return jac
 
 
-
 class RelativeIMUKinematics(ProcessModel):
     """
-    The relative IMU kinematics govern the relative pose between two bodies 
+    The relative IMU kinematics govern the relative pose between two bodies
     containing IMUs, given the IMU measurements of each body. Let a single
     body's extended pose by given by :math:`\mathbf{T}_1` with kinematics given
     by :math:`\mathbf{T}_{1_k} = \mathbf{G}_{k-1} \mathbf{T}_{1_{k-1}} \mathbf{U}_{1_{k-1}}`.
     The relative pose :math:`\mathbf{T}_{12} = \mathbf{T}_{1}^{-1} \mathbf{T}_{2}`
-    has kinematics given by 
+    has kinematics given by
 
     .. math::
         \mathbf{T}_{12_k} = \mathbf{U}_{1_{k-1}}^{-1} \mathbf{T}_{12_{k-1}} \mathbf{U}_{2_{k-1}}
 
     One benefit of this form is that the IMU measurements can be incorporated
     one at a time, thus allowing for fully asynchronous reception of the IMU
-    measurements on each body. 
+    measurements on each body.
     """
+
     def __init__(self, Q1: np.ndarray, Q2: np.ndarray, id1: Any, id2: Any):
-        
+
         super().__init__()
         self.Q1 = Q1
         self.Q2 = Q2
@@ -559,7 +557,7 @@ class RelativeIMUKinematics(ProcessModel):
             U1_inv = inverse_IE3(U_matrix(u.gyro, u.accel, dt))
             U2 = np.identity(5)
         elif u.state_id == self.id2:
-            U1_inv =  np.identity(5)
+            U1_inv = np.identity(5)
             U2 = U_matrix(u.gyro, u.accel, dt)
         else:
             raise ValueError("IMU object has invalid state_id")
