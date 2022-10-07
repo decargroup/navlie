@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from typing import List, Any
-from pynav.types import StampedValue, ProcessModel
+from pynav.types import StampedValue, ProcessModel, Input
 from pynav.lib.imu import (
     IMU,
     IMUState,
@@ -10,15 +10,17 @@ from pynav.lib.imu import (
     L_matrix,
     G_matrix,
 )
-from pynav.lib.states import MatrixLieGroupState, SE23State
+from pynav.lib.states import MatrixLieGroupState
 import numpy as np
 from pylie import SO3, SE3, SE2, SE23, MatrixLieGroup
 
 
-class RelativeMotionIncrement(ABC):
+class RelativeMotionIncrement(Input):
     __slots__ = ["value", "stamps", "covariance"]
 
-    def __init__(self):
+    def __init__(self, dof: int):
+        self.dof = dof
+
         #:Any: the value of the RMI
         self.value = None
 
@@ -36,7 +38,7 @@ class RelativeMotionIncrement(ABC):
         return self.stamps[1] 
 
     def increment_many(
-        self, u_list: List[StampedValue], end_stamp: float = None
+        self, u_list: List[Input], end_stamp: float = None
     ) -> "RelativeMotionIncrement":
         """
         Creates an RMI object directly from a list of input measurements.
@@ -61,11 +63,11 @@ class RelativeMotionIncrement(ABC):
 
         for k in range(len(u_list) - 1):
             dt = u_list[k + 1].stamp - u_list[k].stamp
-            self.increment(u_list[k].value, dt)
+            self.increment(u_list[k], dt)
 
         if end_stamp is not None:
             dt = end_stamp - u_list[-1].stamp
-            self.increment(u_list[-1].value, dt)
+            self.increment(u_list[-1], dt)
 
         return self
 
@@ -77,23 +79,6 @@ class RelativeMotionIncrement(ABC):
         """
         pass
 
-    @abstractmethod
-    def plus(self, w) -> "RelativeMotionIncrement":
-        """
-        Adds noise to the RMI
-
-        Parameters
-        ----------
-        w : np.ndarray
-            The noise to add
-
-        Returns
-        -------
-        RelativeMotionIncrement
-            The updated RMI
-        """
-        pass
-
 
 class IMUIncrement(RelativeMotionIncrement):
     def __init__(
@@ -101,7 +86,7 @@ class IMUIncrement(RelativeMotionIncrement):
         input_covariance: np.ndarray,
         gyro_bias: np.ndarray,
         accel_bias: np.ndarray,
-        gravity=[0, 0, -9.80665],
+        gravity=None,
         state_id: Any = None
     ):
         """
@@ -112,6 +97,13 @@ class IMUIncrement(RelativeMotionIncrement):
         input_covariance : np.ndarray with shape (12, 12)
             covariance of gyro, accel measurements
         """
+        # TODO: allow the case where biases are not being estimated. 
+        # in this case the covariance would 9 x 9 with 9 dof
+        if gravity is None:
+            gravity = np.array([0, 0, -9.80665])
+
+        super().__init__(dof=15)
+
         self.value = np.identity(5)
         self.stamps = [None, None]
         self.covariance = np.zeros((15, 15))
@@ -278,6 +270,7 @@ class BodyVelocityIncrement(RelativeMotionIncrement):
     def __init__(
         self, group: MatrixLieGroup, Q: np.ndarray, bias: np.ndarray = None, state_id = None
     ):
+        super().__init__(group.dof)
         self.bias = bias
         self.group = group
         self.covariance = np.zeros((group.dof, group.dof))

@@ -1,7 +1,7 @@
 from typing import List
 
 from .types import (
-    StampedValue,
+    Input,
     State,
     Measurement,
     StateWithCovariance,
@@ -275,14 +275,14 @@ class InteractingModelFilter:
 
         return IMMState(x_mix, mu_models)
 
-    def predict(self, x_km: IMMState, u: StampedValue, dt: float):
+    def predict(self, x_km: IMMState, u: Input, dt: float):
         """Carries out prediction step for each model of the IMM.
 
         Parameters
         ----------
         x_km : IMMState
             Model estimates from previous timestep, after mixing.
-        u : StampedValue
+        u : Input
             Input
         dt : Float
             Timestep
@@ -301,7 +301,7 @@ class InteractingModelFilter:
         self,
         x_check: IMMState,
         y: Measurement,
-        u: StampedValue,
+        u: Input,
     ):
         """Carry out the correction step for each model and update model probabilities.
 
@@ -312,7 +312,7 @@ class InteractingModelFilter:
             Probabilities for each model from previous timestep.
         y : Measurement
             Measurement to be fused into the current state estimate.
-        u: StampedValue
+        u: Input
             Most recent input, to be used to predict the state forward
             if the measurement stamp is larger than the state stamp.
 
@@ -357,7 +357,7 @@ def run_interacting_multiple_model_filter(
     filter,
     x0: State,
     P0: np.ndarray,
-    input_data: List[StampedValue],
+    input_data: List[Input],
     meas_data: List[Measurement],
 ) -> List[StateWithCovariance]:
     """
@@ -375,7 +375,7 @@ def run_interacting_multiple_model_filter(
         _description_
     P0 : np.ndarray
         _description_
-    input_data : List[StampedValue]
+    input_data : List[Input]
         _description_
     meas_data : List[Measurement]
         _description_
