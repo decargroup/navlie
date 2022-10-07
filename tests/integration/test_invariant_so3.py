@@ -7,12 +7,14 @@ from pynav.lib.models import (
 )
 from pynav.datagen import DataGenerator
 from pynav.filters import ExtendedKalmanFilter, run_filter
-from pynav.utils import GaussianResult, GaussianResultList, MonteCarloResult, randvec, plot_error
-from pynav.utils import monte_carlo
+from pynav.utils import (
+    GaussianResult,
+    GaussianResultList,
+    MonteCarloResult,
+    randvec,
+)
 from pylie import SO3
 import numpy as np
-import matplotlib.pyplot as plt
-
 
 
 def generate_so3_results():
@@ -36,7 +38,6 @@ def generate_so3_results():
     )
     state_true, input_list, meas_list = dg.generate(x0, 0, 30, True)
 
-
     # Run the regular filter
     x0.direction = "right"
     x0_check = x0.plus(randvec(P0))
@@ -50,16 +51,21 @@ def generate_so3_results():
     )
     return results
 
+
 def test_reasonable_nees_so3():
     np.random.seed(0)
     results = generate_so3_results()
     results = MonteCarloResult([results])
     N = 1
-    nees_in_correct_region =  np.count_nonzero(results.average_nees < 2*results.nees_upper_bound(0.99))
+    nees_in_correct_region = np.count_nonzero(
+        results.average_nees < 2 * results.nees_upper_bound(0.99)
+    )
     nt = results.average_nees.shape[0]
     # Proportion of time NEES remains below 2*upper_bound bigger than 95%
-    assert nees_in_correct_region/nt > 0.80
+    assert nees_in_correct_region / nt > 0.80
 
     # Make sure we essentially never get a completely absurd NEES.
-    nees_in_correct_region =  np.count_nonzero(results.average_nees < 50*results.nees_upper_bound(0.99))
-    assert nees_in_correct_region/nt > 0.9999
+    nees_in_correct_region = np.count_nonzero(
+        results.average_nees < 50 * results.nees_upper_bound(0.99)
+    )
+    assert nees_in_correct_region / nt > 0.9999

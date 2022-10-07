@@ -1,6 +1,6 @@
 from typing import List
 from .types import (
-    StampedValue,
+    Input,
     State,
     ProcessModel,
     Measurement,
@@ -47,7 +47,7 @@ class ExtendedKalmanFilter:
     def predict(
         self,
         x: StateWithCovariance,
-        u: StampedValue,
+        u: Input,
         dt: float = None,
         x_jac: State = None,
     ) -> StateWithCovariance:
@@ -63,7 +63,7 @@ class ExtendedKalmanFilter:
         ----------
         x : StateWithCovariance
             The current state estimate.
-        u : StampedValue
+        u : Input
             Input measurement to be given to process model
         dt : float, optional
             Duration to next time step. If not provided, dt will be calculated
@@ -110,7 +110,7 @@ class ExtendedKalmanFilter:
         self,
         x: StateWithCovariance,
         y: Measurement,
-        u: StampedValue,
+        u: Input,
         x_jac: State = None,
         reject_outlier: bool = None,
         output_details: bool = False,
@@ -122,7 +122,7 @@ class ExtendedKalmanFilter:
         ----------
         x : StateWithCovariance
             The current state estimate.
-        u: StampedValue
+        u: Input
             Most recent input, to be used to predict the state forward
             if the measurement stamp is larger than the state stamp.
         y : Measurement
@@ -217,7 +217,7 @@ class IteratedKalmanFilter(ExtendedKalmanFilter):
         self,
         x: StateWithCovariance,
         y: Measurement,
-        u: StampedValue,
+        u: Input,
         x_jac: State = None,
         reject_outlier=None,
     ):
@@ -228,7 +228,7 @@ class IteratedKalmanFilter(ExtendedKalmanFilter):
         ----------
         x : StateWithCovariance
             The current state estimate.
-        u: StampedValue
+        u: Input
             Most recent input, to be used to predict the state forward
             if the measurement stamp is larger than the state stamp.
         y : Measurement
@@ -369,7 +369,7 @@ def run_filter(
     filter: ExtendedKalmanFilter,
     x0: State,
     P0: np.ndarray,
-    input_data: List[StampedValue],
+    input_data: List[Input],
     meas_data: List[Measurement],
 ) -> List[StateWithCovariance]:
     """
@@ -384,7 +384,7 @@ def run_filter(
         _description_
     P0 : np.ndarray
         _description_
-    input_data : List[StampedValue]
+    input_data : List[Input]
         _description_
     meas_data : List[Measurement]
         _description_

@@ -5,6 +5,7 @@ from .types import (
     State,
     ProcessModel,
     MeasurementModel,
+    Input,
     StampedValue,
     Measurement,
 )
@@ -94,7 +95,7 @@ class DataGenerator:
         -------
         List[State]
             Ground truth states
-        List[StampedValue]
+        List[Input]
             Inputs, possibly noisy if requested.
         List[Measurement]
             Measurements, possibly noisy if requested.
@@ -126,7 +127,7 @@ class DataGenerator:
         x = x0.copy()
         x.stamp = times[0]
         state_list = [x.copy()]
-        input_list: List[StampedValue] = []
+        input_list: List[Input] = []
 
         for k in range(0, len(times) - 1):
 
