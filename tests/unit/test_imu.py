@@ -16,7 +16,7 @@ from pylie import SE23, SO3
 import numpy as np
 from math import factorial
 
-np.set_printoptions(precision=5, linewidth=200)
+np.set_printoptions(precision=5, suppress=True, linewidth=200)
 
 
 def test_N_matrix():
@@ -262,5 +262,5 @@ def test_relative_imu_jacobian():
     assert np.allclose(jac, jac_fd, atol=1e-8)
 
 if __name__ == "__main__":
-    test_relative_imu_jacobian()
+    test_imu_group_jacobian_right()
     print("All tests passed!")

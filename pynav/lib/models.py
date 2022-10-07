@@ -3,6 +3,7 @@ from pynav.types import (
     ProcessModel,
     MeasurementModel,
     StampedValue,
+    Input
 )
 from pynav.lib.states import (
     CompositeState,
@@ -182,6 +183,28 @@ class RelativeBodyFrameVelocity(ProcessModel):
                 "TODO: left covariance not yet implemented."
             )
 
+class CompositeInput(Input):
+    def __init__(self, input_list: List[Input]) -> None:
+        self.input_list = input_list
+
+    @property 
+    def dof(self) -> int:
+        return sum([input.dof for input in self.input_list])
+
+    @property
+    def stamp(self) -> float:
+        return self.input_list[0].stamp
+
+    def copy(self) -> "CompositeInput":
+        return CompositeInput([input.copy() for input in self.input_list])
+
+    def plus(self, w: np.ndarray):
+        new = self.copy()
+        for i, input in enumerate(self.input_list):
+            new.input_list[i] = input.plus(w[:input.dof])
+            w = w[input.dof:]
+    
+        return new
 
 class CompositeProcessModel(ProcessModel):
     """
@@ -192,30 +215,30 @@ class CompositeProcessModel(ProcessModel):
         self._model_list = model_list
 
     def evaluate(
-        self, x: CompositeState, u: StampedValue, dt: float
+        self, x: CompositeState, u: CompositeInput, dt: float
     ) -> CompositeState:
         for i, x_sub in enumerate(x.value):
-            u_sub = StampedValue(u.value[i], u.stamp)
+            u_sub = u.input_list[i]
             x.value[i] = self._model_list[i].evaluate(x_sub, u_sub, dt)
 
         return x
 
     def jacobian(
-        self, x: CompositeState, u: StampedValue, dt: float
+        self, x: CompositeState, u: CompositeInput, dt: float
     ) -> np.ndarray:
         jac = []
         for i, x_sub in enumerate(x.value):
-            u_sub = StampedValue(u.value[i], u.stamp)
+            u_sub = u.input_list[i]
             jac.append(self._model_list[i].jacobian(x_sub, u_sub, dt))
 
         return block_diag(*jac)
 
     def covariance(
-        self, x: CompositeState, u: StampedValue, dt: float
+        self, x: CompositeState, u: CompositeInput, dt: float
     ) -> np.ndarray:
         cov = []
         for i, x_sub in enumerate(x.value):
-            u_sub = StampedValue(u.value[i], u.stamp)
+            u_sub = u.input_list[i]
             cov.append(self._model_list[i].covariance(x_sub, u_sub, dt))
 
         return block_diag(*cov)
