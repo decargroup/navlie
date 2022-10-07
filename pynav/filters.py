@@ -1,6 +1,4 @@
 from typing import List
-
-from sympy import false
 from .types import (
     StampedValue,
     State,
@@ -115,6 +113,7 @@ class ExtendedKalmanFilter:
         u: StampedValue,
         x_jac: State = None,
         reject_outlier: bool = None,
+        output_details: bool = False,
     ) -> StateWithCovariance:
         """
         Fuses an arbitrary measurement to produce a corrected state estimate.
@@ -134,7 +133,9 @@ class ExtendedKalmanFilter:
         reject_outlier : bool, optional
             Whether to apply the NIS test to this measurement, by default None,
             in which case the value of `self.reject_outliers` will be used.
-
+        output_details : bool, optional
+            Whether to output intermediate computation results (innovation, innovation covariance)
+                in an additional returned dict.
         Returns
         -------
         StateWithCovariance
@@ -155,9 +156,7 @@ class ExtendedKalmanFilter:
         if y.stamp is not None:
             dt = y.stamp - x.state.stamp
             if dt < 0:
-                raise RuntimeError(
-                    "Measurement stamp is earlier than state stamp"
-                )
+                raise RuntimeError("Measurement stamp is earlier than state stamp")
             elif u is not None:
                 x = self.predict(x, u, dt)
 
@@ -187,7 +186,11 @@ class ExtendedKalmanFilter:
                 x.covariance = (np.identity(x.state.dof) - K @ G) @ P
                 x.symmetrize()
 
-        return x
+        details_dict = {"z": z, "S": S}
+        if output_details:
+            return x, details_dict
+        else:
+            return x
 
 
 class IteratedKalmanFilter(ExtendedKalmanFilter):
@@ -259,9 +262,7 @@ class IteratedKalmanFilter(ExtendedKalmanFilter):
         if y.stamp is not None:
             dt = y.stamp - x.state.stamp
             if dt < 0:
-                raise RuntimeError(
-                    "Measurement stamp is earlier than state stamp"
-                )
+                raise RuntimeError("Measurement stamp is earlier than state stamp")
             elif dt > 0 and u is not None:
                 x = self.predict(x, u, dt)
 
@@ -311,7 +312,7 @@ class IteratedKalmanFilter(ExtendedKalmanFilter):
                 cost_new = self._get_cost_and_info(x_new, x, y, x_jac)["cost"]
                 if cost_new < cost_old:
                     step_accepted = True
-                else: 
+                else:
                     alpha *= 0.9
 
             # If step was not accepted, exit loop and do not update step
@@ -326,8 +327,8 @@ class IteratedKalmanFilter(ExtendedKalmanFilter):
             x.covariance = (np.identity(x.state.dof) - K @ G) @ P
 
         x.symmetrize()
-        return x
 
+        return x
 
     def _get_cost_and_info(
         self,
@@ -419,9 +420,7 @@ def run_filter(
 
         # Fuse any measurements that have occurred.
         if len(meas_data) > 0:
-            while y.stamp < input_data[k + 1].stamp and meas_idx < len(
-                meas_data
-            ):
+            while y.stamp < input_data[k + 1].stamp and meas_idx < len(meas_data):
 
                 x = filter.correct(x, y, u)
                 meas_idx += 1

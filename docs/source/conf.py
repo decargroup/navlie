@@ -36,7 +36,6 @@ extensions = [
     'sphinx.ext.mathjax',
     'sphinx.ext.autosummary',
     'autodocsumm',
-    'sphinxcontrib.toctree_plus',
 ]
 autodoc_default_options = {
     'member-order': 'bysource',
