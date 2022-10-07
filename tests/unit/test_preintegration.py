@@ -153,4 +153,4 @@ def test_preintegrated_process_body_velocity_left():
     _test_preintegrated_process_body_velocity("left")
 
 if __name__ == "__main__":
-    test_preintegrated_process_imu_right()
+    test_imu_preintegration_right()

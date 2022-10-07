@@ -1,12 +1,12 @@
 from pylie import SO3, SE23
 import numpy as np
-from ..types import ProcessModel, State
+from ..types import ProcessModel, Input
 from typing import Any, List, Tuple
 from .states import CompositeState, VectorState, SE23State
 from math import factorial
 
 
-class IMU:
+class IMU(Input):
     """
     Data container for an IMU reading.
     """
@@ -20,6 +20,7 @@ class IMU:
         bias_accel_walk=[0, 0, 0],
         state_id: Any = None,
     ):
+        super().__init__(dof=12, stamp=stamp)
         self.gyro = np.array(gyro).ravel()  #:np.ndarray: Gyro reading
         self.accel = np.array(accel).ravel()  #:np.ndarray: Accelerometer reading
 
@@ -27,7 +28,6 @@ class IMU:
         self.bias_gyro_walk = np.array(bias_gyro_walk).ravel()
         #:np.ndarray: driving input for accel bias random walk
         self.bias_accel_walk = np.array(bias_accel_walk).ravel()
-        self.stamp = stamp  #:float: Timestamp of the reading
         self.state_id = state_id  #:Any: State ID associated with the reading
 
     def plus(self, w: np.ndarray):
@@ -551,7 +551,7 @@ class RelativeIMUKinematics(ProcessModel):
         self.id1 = id1
         self.id2 = id2
 
-    def evaluate(self, x: SE23State, u: IMU, dt: float) -> State:
+    def evaluate(self, x: SE23State, u: IMU, dt: float) -> SE23State:
 
         if u.state_id == self.id1:
             U1_inv = inverse_IE3(U_matrix(u.gyro, u.accel, dt))
