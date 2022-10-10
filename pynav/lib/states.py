@@ -1,4 +1,4 @@
-from pylie import SO2, SO3, SE2, SE3, SE23
+from pylie import SO2, SO3, SE2, SE3, SE23, SL3
 from pylie.numpy.base import MatrixLieGroup
 import numpy as np
 from ..types import State
@@ -48,7 +48,7 @@ class MatrixLieGroupState(State):
     The MatrixLieGroupState class.
     """
 
-    __slots__ = ["direction"]
+    __slots__ = ["group", "direction"]
 
     def __init__(
         self,
@@ -431,6 +431,17 @@ class SE23State(MatrixLieGroupState):
         return np.block([attitude, velocity, position])
 
 
+class SL3State(MatrixLieGroupState):
+    def __init__(
+        self, 
+        value: np.ndarray, 
+        stamp: float = None, 
+        state_id=None, 
+        direction="right"
+    ):
+        super().__init__(value, SL3, stamp, state_id, direction)
+
+
 class CompositeState(State):
     """
     A "composite" state object intended to hold a list of State objects as a
@@ -646,4 +657,5 @@ class CompositeState(State):
         for i in range(len(self.value)):
             slc = self.slices[i]
             jac[slc, slc] = self.value[i].jacobian(dx[slc])
+
         return jac

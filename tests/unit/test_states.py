@@ -1,5 +1,5 @@
-from pynav.lib.states import VectorState, SO2State, SO3State, SE2State, SE3State, SE23State
-from pylie import SO2, SO3, SE2, SE3, SE23
+from pynav.lib.states import VectorState, SO2State, SO3State, SE2State, SE3State, SE23State, SL3, SL3State
+from pylie import SO2, SO3, SE2, SE3, SE23, SL3
 import numpy as np 
 
 try:
@@ -109,7 +109,12 @@ def test_jacobian_so3():
     jac_test = x1.jacobian_fd(dx)
     assert np.allclose(jac, jac_test, atol=1e-8)
 
-
+def test_plus_minus_sl3():
+    x1 = SL3State(SL3.Exp([0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8]))
+    dx = 0.1*np.array([3,4,5,6,7,8,9,1])
+    x2 = x1.plus(dx)
+    dx_test = x2.minus(x1)
+    assert np.allclose(dx,dx_test, atol=1e-8)
 
 if __name__ == "__main__":
     test_jacobian_so2()
