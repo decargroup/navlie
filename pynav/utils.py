@@ -448,6 +448,10 @@ def van_loans(
     """
     N = A_c.shape[0]
 
+    A_c = np.atleast_2d(A_c)
+    L_c = np.atleast_2d(L_c)
+    Q_c = np.atleast_2d(Q_c)
+
     # Form Xi matrix and compute Upsilon using matrix exponential
     Xi = block_diag(A_c, -A_c.T, A_c, np.zeros((N, N)))
     Xi[:N, N : 2 * N] = L_c @ Q_c @ L_c.T
