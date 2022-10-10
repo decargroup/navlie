@@ -5,6 +5,8 @@ import matplotlib.pyplot as plt
 from scipy.stats.distributions import chi2
 from scipy.interpolate import interp1d
 from tqdm import tqdm
+from scipy.linalg import block_diag, expm
+
 
 class GaussianResult:
     """
@@ -403,3 +405,60 @@ def plot_meas(
         )
 
     return fig, axs
+
+
+def van_loans(
+    A_c: np.ndarray,
+    L_c: np.ndarray,
+    Q_c: np.ndarray,
+    dt: float,
+) -> Tuple[np.ndarray, np.ndarray]:
+    """Van Loan's method for computing the discrete-time A and Q matrices.
+
+    Given a continuous-time system of the form
+
+    .. math::
+        \dot{\mathbf{x}} = \mathbf{A}_c \mathbf{x} + \mathbf{L}_c \mathbf{w}, \hspace{5mm} 
+        \mathbf{w} \sim \mathcal{N} (\mathbf{0}, \mathbf{Q}_c ),
+
+    where :math:`\mathbf{Q}_c` is a power spectral density,
+    Van Loan's method can be used to find its equivalent discrete-time representation,
+
+    .. math::
+        \mathbf{x}_k = \mathbf{A}_{d} \mathbf{x}_{k-1} + \mathbf{w}_{k-1}, \hspace{5mm}
+        \mathbf{w} \sim \mathcal{N} (\mathbf{0}, \mathbf{Q}_d ).
+
+    These are computed using the matrix exponential, with a sampling period :math:`\Delta t`.
+
+    Parameters
+    ----------
+    A_c : np.ndarray
+        Continuous-time A matrix.
+    L_c : np.ndarray
+        Continuous-time L matrix.
+    Q_c : np.ndarray
+        Continuous-time noise matrix
+    dt : float
+        Discretization timestep.
+
+    Returns
+    -------
+    Tuple[np.ndarray, np.ndarray]
+        A_d and Q_d, discrete-time matrices.
+    """
+    N = A_c.shape[0]
+
+    A_c = np.atleast_2d(A_c)
+    L_c = np.atleast_2d(L_c)
+    Q_c = np.atleast_2d(Q_c)
+
+    # Form Xi matrix and compute Upsilon using matrix exponential
+    Xi = block_diag(A_c, -A_c.T, A_c, np.zeros((N, N)))
+    Xi[:N, N : 2 * N] = L_c @ Q_c @ L_c.T
+    Upsilon = expm(Xi * dt)
+
+    # Extract relevant parts of Upsilon
+    A_d = Upsilon[:N, :N]
+    Q_d = Upsilon[:N, N : 2 * N] @ A_d.T
+
+    return A_d, Q_d
