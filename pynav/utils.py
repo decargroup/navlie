@@ -1,3 +1,4 @@
+from multiprocessing.spawn import set_executable
 from typing import Callable, List, Tuple
 from pynav.types import State, Measurement, StateWithCovariance
 import numpy as np
@@ -6,6 +7,9 @@ from scipy.stats.distributions import chi2
 from scipy.interpolate import interp1d
 from tqdm import tqdm
 from scipy.linalg import block_diag, expm
+
+from mpl_toolkits.mplot3d import Axes3D
+from pynav.lib.states import SE3State
 
 
 class GaussianResult:
@@ -418,7 +422,7 @@ def van_loans(
     Given a continuous-time system of the form
 
     .. math::
-        \dot{\mathbf{x}} = \mathbf{A}_c \mathbf{x} + \mathbf{L}_c \mathbf{w}, \hspace{5mm} 
+        \dot{\mathbf{x}} = \mathbf{A}_c \mathbf{x} + \mathbf{L}_c \mathbf{w}, \hspace{5mm}
         \mathbf{w} \sim \mathcal{N} (\mathbf{0}, \mathbf{Q}_c ),
 
     where :math:`\mathbf{Q}_c` is a power spectral density,
@@ -462,3 +466,75 @@ def van_loans(
     Q_d = Upsilon[:N, N : 2 * N] @ A_d.T
 
     return A_d, Q_d
+
+
+def plot_poses(
+    poses: List[SE3State],
+    ax: plt.Axes = None,
+    c: str = "tab:blue",
+    l: float = 1,
+    step: int = 5,
+    label: str = None,
+):
+    """Plots poses as triads in 3D.
+
+    Parameters
+    ----------
+    poses : List[SE3State]
+        A list of SE3State poses
+    ax : plt.Axes, optional
+        Axes to plot on, if none, 3D axes are created.
+    c : str, optional
+        Triad color, by default "tab:blue"
+    l : int, optional
+        Triad length, by default 1
+    step : int, optional
+        Step size in list of poses, by default 20
+    label : str, optional
+        Optional label for the plot
+    """
+
+    if ax is None:
+        fig = plt.figure()
+        ax = plt.axes(projection="3d")
+
+    # Plot a line for the positions
+    r = np.array([pose.position for pose in poses])
+    ax.plot3D(r[:, 0], r[:, 1], r[:, 2], color=c, label=label)
+
+    # Plot triads using quiver
+    for i in range(0, len(poses), step):
+
+        pose = poses[i]
+        C = pose.attitude.T
+        x, y, z = pose.position.ravel()
+
+        ax.quiver(x, y, z, C[0, 0], C[0, 1], C[0, 2], color=c, length=l)
+        ax.quiver(x, y, z, C[1, 0], C[1, 1], C[1, 2], color=c, length=l)
+        ax.quiver(x, y, z, C[2, 0], C[2, 1], C[2, 2], color=c, length=l)
+
+    set_axes_equal(ax)
+
+
+def set_axes_equal(ax: plt.Axes):
+    """Sets the axes of a 3D plot to have equal scale.
+
+
+    Parameters
+    ----------
+    ax : plt.Axes
+        Matplotlib axes.
+    """
+    x_limits = ax.get_xlim3d()
+    y_limits = ax.get_ylim3d()
+    z_limits = ax.get_zlim3d()
+    x_range = abs(x_limits[1] - x_limits[0])
+    x_middle = np.mean(x_limits)
+    y_range = abs(y_limits[1] - y_limits[0])
+    y_middle = np.mean(y_limits)
+    z_range = abs(z_limits[1] - z_limits[0])
+    z_middle = np.mean(z_limits)
+    length = 0.5 * max([x_range, y_range, z_range])
+    ax.set_xlim3d([x_middle - length, x_middle + length])
+    ax.set_ylim3d([y_middle - length, y_middle + length])
+    ax.set_zlim3d([z_middle - length, z_middle + length])
