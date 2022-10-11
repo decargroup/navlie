@@ -471,12 +471,14 @@ def van_loans(
 def plot_poses(
     poses: List[SE3State],
     ax: plt.Axes = None,
-    c: str = "tab:blue",
-    l: float = 1,
+    line_color: str = "tab:blue",
+    triad_color: str = None,
+    arrow_length: float = 1,
     step: int = 5,
     label: str = None,
 ):
-    """Plots poses as triads in 3D.
+    """Plots position trajectory in 3D
+    and poses along the trajectory as triads.
 
     Parameters
     ----------
@@ -484,34 +486,38 @@ def plot_poses(
         A list of SE3State poses
     ax : plt.Axes, optional
         Axes to plot on, if none, 3D axes are created.
-    c : str, optional
-        Triad color, by default "tab:blue"
-    l : int, optional
-        Triad length, by default 1
+    line_color : str, optional
+        Color of the position trajectory.
+    triad_color : str, optional
+        Triad color. If none are specified, defaults to RGB.
+    arrow_length : int, optional
+        Triad arrow length, by default 1.
     step : int, optional
-        Step size in list of poses, by default 20
+        Step size in list of poses, by default 5.
     label : str, optional
-        Optional label for the plot
+        Optional label for the triad
     """
 
     if ax is None:
         fig = plt.figure()
         ax = plt.axes(projection="3d")
 
+    if triad_color is None:
+        colors = ["tab:red", "tab:green", "tab:blue"] # Default to RGB
+    else:
+        colors = [triad_color] * 3
+
     # Plot a line for the positions
     r = np.array([pose.position for pose in poses])
-    ax.plot3D(r[:, 0], r[:, 1], r[:, 2], color=c, label=label)
+    ax.plot3D(r[:, 0], r[:, 1], r[:, 2], color=line_color, label=label)
 
     # Plot triads using quiver
-    for i in range(0, len(poses), step):
-
-        pose = poses[i]
-        C = pose.attitude.T
-        x, y, z = pose.position.ravel()
-
-        ax.quiver(x, y, z, C[0, 0], C[0, 1], C[0, 2], color=c, length=l)
-        ax.quiver(x, y, z, C[1, 0], C[1, 1], C[1, 2], color=c, length=l)
-        ax.quiver(x, y, z, C[2, 0], C[2, 1], C[2, 2], color=c, length=l)
+    C = np.array([poses[i].attitude.T for i in range(0, len(poses), step)])
+    r = np.array([poses[i].position for i in range(0, len(poses), step)])
+    x, y, z = r[:, 0], r[:, 1], r[:, 2]
+    ax.quiver(x, y, z, C[:, 0, 0], C[:, 0, 1], C[:, 0, 2], color=colors[0], length=arrow_length)
+    ax.quiver(x, y, z, C[:, 1, 0], C[:, 1, 1], C[:, 1, 2], color=colors[1], length=arrow_length)
+    ax.quiver(x, y, z, C[:, 2, 0], C[:, 2, 1], C[:, 2, 2], color=colors[2], length=arrow_length)
 
     set_axes_equal(ax)
 
