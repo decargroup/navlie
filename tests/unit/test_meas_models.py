@@ -25,13 +25,7 @@ def _left_right_jacobian_test(x: MatrixLieGroupState, model: MeasurementModel, a
     x.direction = "right"
     jac = model.jacobian(x)
     jac_fd = model.jacobian_fd(x)
-    assert np.allclose(jac, jac_fd, atol=1e-6)
-
-
-    x.direction = "right"
-    jac = model.jacobian(x)
-    jac_fd = model.jacobian_fd(x)
-    assert np.allclose(jac, jac_fd, atol=1e-6)
+    assert np.allclose(jac, jac_fd, atol=atol, rtol=rtol)
 
 
 
@@ -41,9 +35,7 @@ def test_range_pose_anchor_se2():
         direction="right",
     )
     model = RangePoseToAnchor([1, 2], [0.3, 0.1], 1)
-    jac = model.jacobian(x)
-    jac_fd = model.jacobian_fd(x)
-    assert np.allclose(jac, jac_fd, atol=1e-6)
+    _left_right_jacobian_test(x ,model)
 
 
 def test_range_pose_anchor_se3():
@@ -52,9 +44,7 @@ def test_range_pose_anchor_se3():
         direction="right",
     )
     model = RangePoseToAnchor([1, 2, 0], [0.3, 0.1, 0], 1)
-    jac = model.jacobian(x)
-    jac_fd = model.jacobian_fd(x)
-    assert np.allclose(jac, jac_fd, atol=1e-6)
+    _left_right_jacobian_test(x ,model)
 
 
 def test_range_pose_anchor_se23():
@@ -63,9 +53,7 @@ def test_range_pose_anchor_se23():
         direction="right",
     )
     model = RangePoseToAnchor([1, 2, 0], [0.3, 0.1, 0], 1)
-    jac = model.jacobian(x)
-    jac_fd = model.jacobian_fd(x)
-    assert np.allclose(jac, jac_fd, atol=1e-6)
+    _left_right_jacobian_test(x ,model)
 
 
 def test_range_pose_to_pose_se2():
@@ -74,6 +62,16 @@ def test_range_pose_to_pose_se2():
     x = CompositeState([T12, T13])
     tags = [[0.17, 0.17], [-0.17, 0.17]]
 
+    x.value[0].direction = "right"
+    x.value[1].direction = "right"
+    model = RangePoseToPose(tags[0], tags[1], T12.state_id, T13.state_id, 1)
+    jac = model.jacobian(x)
+    jac_fd = model.jacobian_fd(x)
+    assert np.allclose(jac, jac_fd, atol=1e-6)
+
+
+    x.value[0].direction = "left"
+    x.value[1].direction = "left"
     model = RangePoseToPose(tags[0], tags[1], T12.state_id, T13.state_id, 1)
     jac = model.jacobian(x)
     jac_fd = model.jacobian_fd(x)
@@ -86,6 +84,16 @@ def test_range_pose_to_pose_se3():
     x = CompositeState([T12, T13])
     tags = [[0.17, 0.17, 0], [-0.17, 0.17, 0]]
 
+    x.value[0].direction = "right"
+    x.value[1].direction = "right"
+    model = RangePoseToPose(tags[0], tags[1], T12.state_id, T13.state_id, 1)
+    jac = model.jacobian(x)
+    jac_fd = model.jacobian_fd(x)
+    assert np.allclose(jac, jac_fd, atol=1e-6)
+
+
+    x.value[0].direction = "left"
+    x.value[1].direction = "left"
     model = RangePoseToPose(tags[0], tags[1], T12.state_id, T13.state_id, 1)
     jac = model.jacobian(x)
     jac_fd = model.jacobian_fd(x)
@@ -98,6 +106,16 @@ def test_range_pose_to_pose_se23():
     x = CompositeState([T12, T13])
     tags = [[0.17, 0.17, 0], [-0.17, 0.17, 0]]
 
+    x.value[0].direction = "right"
+    x.value[1].direction = "right"
+    model = RangePoseToPose(tags[0], tags[1], T12.state_id, T13.state_id, 1)
+    jac = model.jacobian(x)
+    jac_fd = model.jacobian_fd(x)
+    assert np.allclose(jac, jac_fd, atol=1e-6)
+
+
+    x.value[0].direction = "left"
+    x.value[1].direction = "left"
     model = RangePoseToPose(tags[0], tags[1], T12.state_id, T13.state_id, 1)
     jac = model.jacobian(x)
     jac_fd = model.jacobian_fd(x)
@@ -214,4 +232,4 @@ def test_landmark_relative_position_se23():
 
 
 if __name__ == "__main__":
-    test_altitude_se3()
+    test_range_pose_to_pose_se3()

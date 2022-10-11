@@ -418,28 +418,31 @@ class RangePoseToAnchor(MeasurementModel):
         return np.linalg.norm(r_tc_a)
 
     def jacobian(self, x: MatrixLieGroupState) -> np.ndarray:
-        if x.direction == "right":
-            r_zw_a = x.position
-            C_ab = x.attitude
-            if C_ab.shape == (2, 2):
-                att_group = SO2
-            elif C_ab.shape == (3, 3):
-                att_group = SO3
+        r_zw_a = x.position
+        C_ab = x.attitude
+        if C_ab.shape == (2, 2):
+            att_group = SO2
+        elif C_ab.shape == (3, 3):
+            att_group = SO3
 
-            r_tw_a = C_ab @ self._r_tz_b.reshape((-1, 1)) + r_zw_a.reshape(
-                (-1, 1)
-            )
-            r_tc_a: np.ndarray = r_tw_a - self._r_cw_a.reshape((-1, 1))
-            rho = r_tc_a / np.linalg.norm(r_tc_a)
+        r_tw_a = C_ab @ self._r_tz_b.reshape((-1, 1)) + r_zw_a.reshape(
+            (-1, 1)
+        )
+        r_tc_a: np.ndarray = r_tw_a - self._r_cw_a.reshape((-1, 1))
+        rho = r_tc_a / np.linalg.norm(r_tc_a)
+
+        if x.direction == "right":
             jac_attitude = rho.T @ C_ab @ att_group.odot(self._r_tz_b)
             jac_position = rho.T @ C_ab
-            jac = x.jacobian_from_blocks(
-                attitude=jac_attitude,
-                position=jac_position,
-            )
-            return jac
-        else:
-            raise NotImplementedError("Left jacobian not implemented.")
+        elif x.direction == "left":
+            jac_attitude = rho.T @ att_group.odot( C_ab @ self._r_tz_b + r_zw_a)
+            jac_position = rho.T @ np.identity(r_zw_a.size)
+
+        jac = x.jacobian_from_blocks(
+            attitude=jac_attitude,
+            position=jac_position,
+        )
+        return jac
 
     def covariance(self, x: MatrixLieGroupState) -> np.ndarray:
         return self._R
@@ -494,22 +497,30 @@ class RangePoseToPose(MeasurementModel):
         rho: np.ndarray = (
             r_t1t2_a / np.linalg.norm(r_t1t2_a.flatten())
         ).reshape((-1, 1))
-        jac1 = x1.jacobian_from_blocks(
-            attitude=rho.T @ C_a1 @ att_group.odot(r_t1_1),
-            position=rho.T @ C_a1,
-        )
-        jac2 = x2.jacobian_from_blocks(
-            attitude=-rho.T @ C_a2 @ att_group.odot(r_t2_2),
-            position=-rho.T @ C_a2,
-        )
 
-        slc1 = x.get_slice_by_id(self._id1)
-        slc2 = x.get_slice_by_id(self._id2)
+        if x1.direction == "right":
+            jac1 = x1.jacobian_from_blocks(
+                attitude=rho.T @ C_a1 @ att_group.odot(r_t1_1),
+                position=rho.T @ C_a1,
+            )
+        elif x1.direction == "left":
+            jac1 = x1.jacobian_from_blocks(
+                attitude=rho.T @ att_group.odot(C_a1 @ r_t1_1 + r_1w_a),
+                position=rho.T @ np.identity(r_t1_1.size),
+            )
 
-        jac = np.zeros((1, x.dof))
-        jac[:, slc1] = jac1
-        jac[:, slc2] = jac2
-        return jac
+        if x2.direction == "right":
+            jac2 = x2.jacobian_from_blocks(
+                attitude=-rho.T @ C_a2 @ att_group.odot(r_t2_2),
+                position=-rho.T @ C_a2,
+            )
+        elif x2.direction == "left":
+            jac2 = x2.jacobian_from_blocks(
+                attitude=-rho.T @ att_group.odot(C_a2 @ r_t2_2 + r_2w_a),
+                position=-rho.T @ np.identity(r_t2_2.size),
+            )
+
+        return x.jacobian_from_blocks({self._id1: jac1, self._id2: jac2})
 
     def covariance(self, x: CompositeState) -> np.ndarray:
         return self._R
@@ -552,7 +563,10 @@ class GlobalPosition(MeasurementModel):
             )
 
     def covariance(self, x: MatrixLieGroupState) -> np.ndarray:
-        return self.R
+        if np.isscalar(self.R):
+            return self.R * np.identity(x.position.size)
+        else:
+            return self.R
 
 
 class Altitude(MeasurementModel):
