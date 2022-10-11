@@ -167,6 +167,7 @@ class ExtendedKalmanFilter:
         G = np.atleast_2d(y.model.jacobian(x_jac))
         y_check = y.model.evaluate(x.state)
 
+        details_dict = {}
         if y_check is not None:
             z = y.value.reshape((-1, 1)) - y_check.reshape((-1, 1))
             S = G @ P @ G.T + R
@@ -186,7 +187,8 @@ class ExtendedKalmanFilter:
                 x.covariance = (np.identity(x.state.dof) - K @ G) @ P
                 x.symmetrize()
 
-        details_dict = {"z": z, "S": S}
+            details_dict = {"z": z, "S": S}
+
         if output_details:
             return x, details_dict
         else:
