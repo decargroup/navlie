@@ -1,4 +1,3 @@
-from multiprocessing.spawn import set_executable
 from typing import Callable, List, Tuple
 from pynav.types import State, Measurement, StateWithCovariance
 import numpy as np
@@ -8,7 +7,6 @@ from scipy.interpolate import interp1d
 from tqdm import tqdm
 from scipy.linalg import block_diag, expm
 
-from mpl_toolkits.mplot3d import Axes3D
 from pynav.lib.states import SE3State
 
 
@@ -60,7 +58,7 @@ class GaussianResult:
         e = state.minus(state_true).reshape((-1, 1))
         cov_inv = np.linalg.inv(covariance)
         #:numpy.ndarray: error vector between estimated and true state
-        self.error = e.flatten()
+        self.error = e.ravel()
         #:float: sum of estimation error squared (EES)
         self.ees = np.ndarray.item(e.T @ e)
         #:float: normalized estimation error squared (NEES)

@@ -59,6 +59,15 @@ class IMU(Input):
             self.state_id,
         )
 
+    @staticmethod
+    def random():
+        return IMU(
+            np.random.normal(size=3),
+            np.random.normal(size=3),
+            0.0,
+            np.random.normal(size=3),
+            np.random.normal(size=3),
+        )
 
 class IMUState(CompositeState):
     def __init__(

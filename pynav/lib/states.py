@@ -376,6 +376,9 @@ class SE23State(MatrixLieGroupState):
         state_id=None,
         direction="right",
     ):
+        if value.shape != (5,5):
+            raise ValueError("Value must be a 5x5 matrix")
+
         super().__init__(value, SE23, stamp, state_id, direction)
 
     @property
@@ -460,6 +463,7 @@ class CompositeState(State):
     It is possible to access sub-states in the composite states both by index
     and by ID.
     """
+    __slots__ = ["state_id"]
 
     def __init__(
         self, state_list: List[State], stamp: float = None, state_id=None
@@ -467,7 +471,7 @@ class CompositeState(State):
 
         #:List[State]: The substates are the CompositeState's value.
         self.value = state_list
-
+    
         self.stamp = stamp
         self.state_id = state_id
 
