@@ -12,9 +12,12 @@ class Input(ABC):
 
     __slots__ = ["stamp","dof"]
 
-    def __init__(self, dof:int, stamp: float = None):
+    def __init__(self, dof:int, stamp: float = None, state_id: Any= None):
         self.stamp = stamp #:float: Timestamp
         self.dof = dof #:int: Degrees of freedom of the object
+
+        #:Any: Arbitrary optional identifier, possible to "assign" to a state.
+        self.state_id = state_id 
 
     @abstractmethod
     def plus(self, w: np.ndarray) -> "Input":
@@ -29,16 +32,15 @@ class StampedValue(Input):
     Generic data container for timestamped information.
     """
 
-    __slots__ = ["value"] 
+    __slots__ = ["value","state_id"] 
 
-    def __init__(self, value: np.ndarray, stamp: float = None):
+    def __init__(self, value: np.ndarray, stamp: float = None, state_id: Any= None):
         if not isinstance(value, np.ndarray):
             value = np.array(value)
             
-        
         self.value = value #:numpy.ndarray:  Variable containing the data values
         
-        super().__init__(value.size, stamp)
+        super().__init__(value.size, stamp, state_id)
 
     def plus(self, w: np.ndarray) -> "StampedValue":
         """
@@ -59,7 +61,7 @@ class StampedValue(Input):
         """ 
         Returns a copy of the instance with fully seperate memory.
         """
-        return StampedValue(self.value.copy(), self.stamp)
+        return StampedValue(self.value.copy(), self.stamp, self.state_id)
         
 
 class State(ABC):
@@ -288,13 +290,14 @@ class Measurement:
     and corresponding model.
     """
 
-    __slots__ = ["value", "stamp", "model"]
+    __slots__ = ["value", "stamp", "model", "state_id"]
 
     def __init__(
         self,
         value: np.ndarray,
         stamp: float = None,
         model: MeasurementModel = None,
+        state_id: Any = None
     ):
         #:numpy.ndarray: Container for the measurement value
         self.value = np.array(value) if np.isscalar(value) else value
@@ -302,6 +305,8 @@ class Measurement:
         self.stamp = stamp
         #:pynav.types.MeasurementModel: measurement model associated with this measurement.
         self.model = model
+        #:Any: Optional, ID of the state this measurement is associated.
+        self.state_id = state_id
 
 
 class StateWithCovariance:

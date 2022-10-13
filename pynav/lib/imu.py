@@ -56,6 +56,7 @@ class IMU(Input):
             self.stamp,
             self.bias_gyro_walk.copy(),
             self.bias_accel_walk.copy(),
+            self.state_id,
         )
 
 

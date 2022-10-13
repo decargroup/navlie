@@ -251,23 +251,23 @@ class CompositeMeasurementModel(MeasurementModel):
     """
 
     def __init__(self, model: MeasurementModel, state_id):
-        self._model = model
-        self._state_id = state_id
+        self.model = model
+        self.state_id = state_id
 
     def evaluate(self, x: CompositeState) -> np.ndarray:
-        return self._model.evaluate(x.get_state_by_id(self._state_id))
+        return self.model.evaluate(x.get_state_by_id(self.state_id))
 
     def jacobian(self, x: CompositeState) -> np.ndarray:
-        x_sub = x.get_state_by_id(self._state_id)
-        jac_sub = self._model.jacobian(x_sub)
+        x_sub = x.get_state_by_id(self.state_id)
+        jac_sub = self.model.jacobian(x_sub)
         jac = np.zeros((jac_sub.shape[0], x.dof))
-        slc = x.get_slice_by_id(self._state_id)
+        slc = x.get_slice_by_id(self.state_id)
         jac[:, slc] = jac_sub
         return jac
 
     def covariance(self, x: CompositeState) -> np.ndarray:
-        x_sub = x.get_state_by_id(self._state_id)
-        return self._model.covariance(x_sub)
+        x_sub = x.get_state_by_id(self.state_id)
+        return self.model.covariance(x_sub)
 
 
 class RangePointToAnchor(MeasurementModel):
@@ -456,35 +456,35 @@ class RangePoseToPose(MeasurementModel):
     def __init__(
         self, tag_body_position1, tag_body_position2, state_id1, state_id2, R
     ):
-        self._r_t1_1 = np.array(tag_body_position1).flatten()
-        self._r_t2_2 = np.array(tag_body_position2).flatten()
-        self._id1 = state_id1
-        self._id2 = state_id2
+        self.tag_body_position1 = np.array(tag_body_position1).flatten()
+        self.tag_body_position2 = np.array(tag_body_position2).flatten()
+        self.state_id1 = state_id1
+        self.state_id2 = state_id2
         self._R = R
 
     def evaluate(self, x: CompositeState) -> np.ndarray:
-        x1: MatrixLieGroupState = x.get_state_by_id(self._id1)
-        x2: MatrixLieGroupState = x.get_state_by_id(self._id2)
+        x1: MatrixLieGroupState = x.get_state_by_id(self.state_id1)
+        x2: MatrixLieGroupState = x.get_state_by_id(self.state_id2)
         r_1w_a = x1.position.reshape((-1, 1))
         C_a1 = x1.attitude
         r_2w_a = x2.position.reshape((-1, 1))
         C_a2 = x2.attitude
-        r_t1_1 = self._r_t1_1.reshape((-1, 1))
-        r_t2_2 = self._r_t2_2.reshape((-1, 1))
+        r_t1_1 = self.tag_body_position1.reshape((-1, 1))
+        r_t2_2 = self.tag_body_position2.reshape((-1, 1))
         r_t1t2_a: np.ndarray = (C_a1 @ r_t1_1 + r_1w_a) - (
             C_a2 @ r_t2_2 + r_2w_a
         )
         return np.array(np.linalg.norm(r_t1t2_a.flatten()))
 
     def jacobian(self, x: CompositeState) -> np.ndarray:
-        x1: MatrixLieGroupState = x.get_state_by_id(self._id1)
-        x2: MatrixLieGroupState = x.get_state_by_id(self._id2)
+        x1: MatrixLieGroupState = x.get_state_by_id(self.state_id1)
+        x2: MatrixLieGroupState = x.get_state_by_id(self.state_id2)
         r_1w_a = x1.position.reshape((-1, 1))
         C_a1 = x1.attitude
         r_2w_a = x2.position.reshape((-1, 1))
         C_a2 = x2.attitude
-        r_t1_1 = self._r_t1_1.reshape((-1, 1))
-        r_t2_2 = self._r_t2_2.reshape((-1, 1))
+        r_t1_1 = self.tag_body_position1.reshape((-1, 1))
+        r_t2_2 = self.tag_body_position2.reshape((-1, 1))
         r_t1t2_a: np.ndarray = (C_a1 @ r_t1_1 + r_1w_a) - (
             C_a2 @ r_t2_2 + r_2w_a
         )
@@ -520,7 +520,7 @@ class RangePoseToPose(MeasurementModel):
                 position=-rho.T @ np.identity(r_t2_2.size),
             )
 
-        return x.jacobian_from_blocks({self._id1: jac1, self._id2: jac2})
+        return x.jacobian_from_blocks({self.state_id1: jac1, self.state_id2: jac2})
 
     def covariance(self, x: CompositeState) -> np.ndarray:
         return self._R
