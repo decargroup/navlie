@@ -13,10 +13,10 @@ jobs:
     steps:
     - uses: actions/checkout@v3
     - uses: actions/setup-python@v4
-        with:
-          python-version: '3.8' 
+      with:
+        python-version: '3.8' 
     - run: python3.8 -m pip install -e .
-    
+
     # Standard drop-in approach that should work for most people.
     - uses: ammaraskar/sphinx-action@master
       with:
