@@ -50,6 +50,6 @@ Thumbs.db
 *.wmv
 
 .vscode/
+docs/html/
+docs/doctrees/
 *.egg-info
-./docs/html/*
-./docs/doctrees/*
