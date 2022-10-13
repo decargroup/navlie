@@ -35,7 +35,6 @@ extensions = [
     'sphinx.ext.napoleon',
     'sphinx.ext.mathjax',
     'sphinx.ext.autosummary',
-    'autodocsumm',
 ]
 autodoc_default_options = {
     'member-order': 'bysource',
