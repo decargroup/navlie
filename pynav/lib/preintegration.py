@@ -16,7 +16,7 @@ from pylie import SO3, SE3, SE2, SE23, MatrixLieGroup
 
 
 class RelativeMotionIncrement(Input):
-    __slots__ = ["value", "stamps", "covariance"]
+    __slots__ = ["value", "stamps", "covariance", "state_id"]
 
     def __init__(self, dof: int):
         self.dof = dof
@@ -35,7 +35,7 @@ class RelativeMotionIncrement(Input):
 
     @property
     def stamp(self):
-        return self.stamps[1] 
+        return self.stamps[1]
 
     def increment_many(
         self, u_list: List[Input], end_stamp: float = None
@@ -79,15 +79,31 @@ class RelativeMotionIncrement(Input):
         """
         pass
 
+    @abstractmethod
+    def new(self):
+        pass
+
 
 class IMUIncrement(RelativeMotionIncrement):
+    __slots__ = [
+        "value",
+        "stamps",
+        "covariance",
+        "input_covariance",
+        "bias_jacobian",
+        "accel_bias",
+        "gyro_bias",
+        "gravity",
+        "state_id",
+    ]
+
     def __init__(
         self,
         input_covariance: np.ndarray,
         gyro_bias: np.ndarray,
         accel_bias: np.ndarray,
         gravity=None,
-        state_id: Any = None
+        state_id: Any = None,
     ):
         """
         Initializes an "identity" IMU RMI.
@@ -97,7 +113,7 @@ class IMUIncrement(RelativeMotionIncrement):
         input_covariance : np.ndarray with shape (12, 12)
             covariance of gyro, accel measurements
         """
-        # TODO: allow the case where biases are not being estimated. 
+        # TODO: allow the case where biases are not being estimated.
         # in this case the covariance would 9 x 9 with 9 dof
         if gravity is None:
             gravity = np.array([0, 0, -9.80665])
@@ -207,6 +223,22 @@ class IMUIncrement(RelativeMotionIncrement):
         new.stamps = self.stamps.copy()
         return new
 
+    def new(self):
+        """
+        Returns
+        -------
+        IMUIncrement
+            A copy of the RMI with reinitialized values
+        """
+        new = IMUIncrement(
+            self.input_covariance,
+            self.gyro_bias,
+            self.accel_bias,
+            self.gravity,
+        )
+        return new
+
+
 class PreintegratedIMUKinematics(ProcessModel):
     def __init__(self, gravity=None):
         if gravity is None:
@@ -268,14 +300,18 @@ class BodyVelocityIncrement(RelativeMotionIncrement):
     """
 
     def __init__(
-        self, group: MatrixLieGroup, Q: np.ndarray, bias: np.ndarray = None, state_id = None
+        self,
+        group: MatrixLieGroup,
+        Q: np.ndarray,
+        bias: np.ndarray = None,
+        state_id=None,
     ):
         super().__init__(group.dof)
         self.bias = bias
         self.group = group
         self.covariance = np.zeros((group.dof, group.dof))
         self.input_covariance = Q
-        self.value :np.ndarray = group.identity()
+        self.value: np.ndarray = group.identity()
         self.bias_jacobian = np.zeros((group.dof, group.dof))
         self.stamps = [None, None]
         self.state_id = state_id
@@ -340,7 +376,7 @@ class BodyVelocityIncrement(RelativeMotionIncrement):
         new = self.copy()
         new.value = new.value @ new.group.Exp(w)
         if w.size > new.group.dof:
-            new.bias_update(w[new.group.dof:])
+            new.bias_update(w[new.group.dof :])
 
         return new
 
@@ -351,12 +387,27 @@ class BodyVelocityIncrement(RelativeMotionIncrement):
         RelativeMotionIncrement
             A copy of the RMI
         """
-        new = BodyVelocityIncrement(self.group, self.input_covariance, self.bias)
+        new = BodyVelocityIncrement(
+            self.group, self.input_covariance, self.bias
+        )
         new.value = self.value.copy()
         new.covariance = self.covariance.copy()
         new.bias_jacobian = self.bias_jacobian.copy()
         new.stamps = self.stamps.copy()
         return new
+
+    def new(self):
+        """
+        Returns
+        -------
+        RelativeMotionIncrement
+            A copy of the RMI
+        """
+        new = BodyVelocityIncrement(
+            self.group, self.input_covariance, self.bias
+        )
+        return new
+
 
 class PreintegratedBodyVelocity(ProcessModel):
     def __init__(self):
@@ -435,8 +486,8 @@ class AngularVelocityIncrement(BodyVelocityIncrement):
 
     """
 
-    def __init__(self, Q: np.ndarray, bias: np.ndarray = None, state_id = None):
-        super().__init__(SO3, Q, bias, state_id = state_id)
+    def __init__(self, Q: np.ndarray, bias: np.ndarray = None, state_id=None):
+        super().__init__(SO3, Q, bias, state_id=state_id)
 
 
 class WheelOdometryIncrement(BodyVelocityIncrement):
@@ -457,7 +508,7 @@ class WheelOdometryIncrement(BodyVelocityIncrement):
     robot at time :math:`k`.
     """
 
-    def __init__(self, Q: np.ndarray, bias: np.ndarray = None, state_id = None):
+    def __init__(self, Q: np.ndarray, bias: np.ndarray = None, state_id=None):
         if Q.shape == (6, 6):
             group = SE3
         elif Q.shape == (3, 3):
@@ -465,11 +516,13 @@ class WheelOdometryIncrement(BodyVelocityIncrement):
         else:
             raise ValueError("Input covariance has incorrect shape")
 
-        super().__init__(group, Q, bias, state_id = state_id)
+        super().__init__(group, Q, bias, state_id=state_id)
+
 
 # Alternate names for classes
 class PreintegratedAngularVelocity(PreintegratedBodyVelocity):
     pass
+
 
 class PreintegratedWheelOdometry(PreintegratedBodyVelocity):
     pass
