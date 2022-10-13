@@ -228,7 +228,7 @@ class SE2State(MatrixLieGroupState):
         super().__init__(value, SE2, stamp, state_id, direction)
 
     @property
-    def attitude(self):
+    def attitude(self)-> np.ndarray:
         return self.value[0:2, 0:2]
 
     @attitude.setter
@@ -236,7 +236,7 @@ class SE2State(MatrixLieGroupState):
         self.value[0:2, 0:2] = C
 
     @property
-    def position(self):
+    def position(self)-> np.ndarray:
         return self.value[0:2, 2]
 
     @position.setter
@@ -271,7 +271,7 @@ class SE3State(MatrixLieGroupState):
         super().__init__(value, SE3, stamp, state_id, direction)
 
     @property
-    def attitude(self):
+    def attitude(self) -> np.ndarray:
         return self.value[0:3, 0:3]
 
     @attitude.setter
@@ -279,7 +279,7 @@ class SE3State(MatrixLieGroupState):
         self.value[0:3, 0:3] = C
 
     @property
-    def position(self):
+    def position(self)-> np.ndarray:
         return self.value[0:3, 3]
 
     @position.setter
@@ -539,14 +539,14 @@ class CompositeState(State):
         Get degrees of freedom of sub-state by id.
         """
         idx = self.get_index_by_id(state_id)
-        return self.value[idx].dof[idx]
+        return self.value[idx].dof
 
     def get_stamp_by_id(self, state_id):
         """
         Get timestamp of sub-state by id.
         """
         idx = self.get_index_by_id(state_id)
-        return self.value[idx].stamp[idx]
+        return self.value[idx].stamp
 
     def set_stamp_by_id(self, stamp: float, state_id):
         """
@@ -633,7 +633,7 @@ class CompositeState(State):
         associated with some of the substates. These are provided as a dictionary
         with the the keys being the substate IDs.
         """
-        block: np.ndarray = block_dict.values()[0]
+        block: np.ndarray = list(block_dict.values())[0]
         m = block.shape[0]  # Dimension of "y" value
         jac = np.zeros((m, self.dof))
         slices = self.get_slices()
