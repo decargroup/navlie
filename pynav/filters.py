@@ -1,7 +1,8 @@
 from ipaddress import v4_int_to_packed
-from typing import List
+from operator import length_hint
+from typing import List, Tuple
 
-from pynav.lib.states import MatrixLieGroupState
+from pynav.lib.states import MatrixLieGroupState, VectorState
 from .types import (
     Input,
     State,
@@ -29,6 +30,41 @@ def check_outlier(error: np.ndarray, covariance: np.ndarray):
         is_outlier = False
 
     return is_outlier
+
+
+def mean_state(x_array: List[State], weights: np.ndarray) -> np.ndarray:
+    """Computes a weighted mean of an array  of states.
+    It does so in an iterated manner, till the difference is
+    less than a tolerance
+
+    Args:
+        x_array (List[State]): array of states to be averaged
+        weights (np.ndarray): weight associated to each state
+
+    Returns:
+        res (np.ndarray): value of the mean state
+    """
+    x_0 = x_array[0]
+    n = len(x_array)
+
+    x_mean = x_0.copy()
+    conv = False
+    iter = 0
+    while conv == False:
+        err = np.zeros(x_0.dof)
+        for i in range(n):
+            err += weights[i] * x_array[i].minus(x_mean)
+
+        if np.linalg.norm(err) < 1e-6 or iter == 50:
+            conv = True
+            x_mean = x_mean.plus(err)
+        else:
+            x_mean = x_mean.plus(err)
+            iter += 1
+
+    res = x_mean.value
+
+    return res
 
 
 class ExtendedKalmanFilter:
@@ -375,38 +411,69 @@ class IteratedKalmanFilter(ExtendedKalmanFilter):
         return out
 
 
-def generate_sigmapoints(n: int, method: str):
+def generate_sigmapoints(n: int, method: str) -> Tuple[np.ndarray, np.ndarray]:
+    """Generate unit sigma points and weights in three
+    different ways.
 
+    Args:
+        n (int): number of sigma points
+        method (str): Way to compute sigma points
+            'cubature': cubature method
+            'unscented': unscented method
+            'gh': Gauss-Hermite method
+
+    Returns:
+        sigma_points: array containing the unit sigma points
+        w: weights to compute mean and covariance
+    """
     if method == "unscented":
         kappa = 2
-        sigma_points = np.sqrt(n + kappa) * np.block([[np.eye(n), -np.eye(n)]])
+        sigma_points = np.sqrt(n + kappa) * np.block(
+            [[np.zeros((n, 1)), np.eye(n), -np.eye(n)]]
+        )
 
-        w_m = 1 / (2 * (n + kappa)) * np.ones((2 * n + 1))
-        w_c = 1 / (2 * (n + kappa)) * np.ones((2 * n + 1))
-        w_m[0] = kappa / (n + kappa)
-        w_c[0] = kappa / (n + kappa)
+        w = 1 / (2 * (n + kappa)) * np.ones((2 * n + 1))
+        w[0] = kappa / (n + kappa)
 
     elif method == "cubature":
 
         sigma_points = np.sqrt(n) * np.block([[np.eye(n), -np.eye(n)]])
 
-        w_m = 1 / (2 * n) * np.ones((2 * n))
-        w_c = 1 / (2 * n) * np.ones((2 * n))
+        w = 1 / (2 * n) * np.ones((2 * n))
 
     elif method == "gh":
-        p = 4
+        p = 3
 
         c = np.zeros(p + 1)
         c[-1] = 1
         sigma_points_scalar = hermeroots(c)
         weights_scalar = np.zeros(p)
-        for i in range(1, p + 1):
-            weights_scalar[i - 1] = (
-                factorial(p)
-                / (p * eval_hermitenorm(sigma_points_scalar[i - 1], p)) ** 2
+        for i in range(p):
+            weights_scalar[i] = factorial(p) / (
+                (p * eval_hermitenorm(p - 1, sigma_points_scalar[i])) ** 2
             )
 
-    return sigma_points, w_m, w_c
+        # Generate all p^n collections of indexes by
+        # transforming numbers 0...p^n-1) into p-base system
+        # and by adding 1 to each digit
+        num = np.linspace(0, p ** (n) - 1, p ** (n))
+        ind = np.zeros((n, p**n))
+        for i in range(n):
+            ind[i, :] = num % p
+            num = num // p
+
+        sigma_points = np.zeros((n, p**n))
+        w = np.zeros(p**n)
+        for i in range(p**n):
+
+            w[i] = 1
+            sigma_point = []
+            for j in range(n):
+                w[i] *= weights_scalar[int(ind[j, i])]
+                sigma_point.append(sigma_points_scalar[int(ind[j, i])])
+            sigma_points[:, i] = np.vstack(sigma_point).ravel()
+
+    return sigma_points, w
 
 
 class SigmaPointKalmanFilter:
@@ -414,10 +481,19 @@ class SigmaPointKalmanFilter:
     On-manifold nonlinear Sigma Point Kalman filter.
     """
 
-    __slots__ = ["process_model", "reject_outliers"]
+    __slots__ = [
+        "process_model",
+        "method",
+        "reject_outliers",
+        "_sigmapoint_cache",
+    ]
 
     def __init__(
-        self, process_model: ProcessModel, method: str, reject_outliers=False
+        self,
+        process_model: ProcessModel,
+        method: str,
+        reject_outliers=False,
+        sigma_mean=True,
     ):
         """
         Parameters
@@ -431,17 +507,23 @@ class SigmaPointKalmanFilter:
                 'gh': Gauss-hermite sigma points
         reject_outliers : bool, optional
             whether to apply the NIS test to measurements, by default False
+        sigma_mean : bool, optional
+            whether to compute the mean state with sigma points or
+            by propagating \check {x_{k-1}} on the process model
         """
         self.process_model = process_model
         self.method = method
         self.reject_outliers = reject_outliers
+        self.sigma_mean = sigma_mean
+        self._sigmapoint_cache = {}
+
 
     def predict(
         self,
         x: StateWithCovariance,
         u: Input,
-        input_covariance: np.ndarray,
         dt: float = None,
+        input_covariance: np.ndarray = None,
     ) -> StateWithCovariance:
         """
         Propagates the state forward in time using a process model. The user
@@ -460,7 +542,9 @@ class SigmaPointKalmanFilter:
         dt : float, optional
             Duration to next time step. If not provided, dt will be calculated
             with `dt = u.stamp - x.state.stamp`.
-
+        input_covariance: np.ndarray, optional
+            Covariance associated to the inpu measurement. If not provided,
+            it will be grabbed from u.covariance
         Returns
         -------
         StateWithCovariance
@@ -477,6 +561,7 @@ class SigmaPointKalmanFilter:
 
         if input_covariance is None:
             if u.covariance is not None:
+
                 input_covariance = u.covariance
             else:
                 raise ValueError(
@@ -489,49 +574,56 @@ class SigmaPointKalmanFilter:
         if dt < 0:
             raise RuntimeError("dt is negative!")
 
-        # Load dedicated jacobian evaluation point if user specified.
-        if x_jac is None:
-            x_jac = x.state
-
         if u is not None:
 
             n_x = x.state.dof
             n_u = u.dof
+
             P = np.block(
                 [
                     [x.covariance, np.zeros((n_x, n_u))],
-                    [np.zeros((n_x, n_u)), input_covariance],
+                    [np.zeros((n_u, n_x)), input_covariance],
                 ]
             )
+
             P_sqrt = np.linalg.cholesky(P)
 
-            unit_sigmapoints, w_mean, w_cov = generate_sigmapoints(
-                n_x + n_u, self.method
-            )
+            n = n_x + n_u
+
+            if (n, self.method) in self._sigmapoint_cache:
+                unit_sigmapoints, w = self._sigmapoint_cache[(n, self.method)]
+            else:
+                unit_sigmapoints, w = generate_sigmapoints(n, self.method)
+                self._sigmapoint_cache[(n, self.method)] = (unit_sigmapoints, w)
 
             sigmapoints = P_sqrt @ unit_sigmapoints
 
-            n_sig = w_mean.size
+            n_sig = w.size
             x_propagated = []
 
             # Propagate
             for i in range(n_sig):
-                x_propagated.append(self.process_model.evaluate(
-                    x.state.plus(sigmapoints[0:n_x, i]),
-                    u.plus(sigmapoints[n_x::]),
-                    dt,
-                ))
+                x_propagated.append(
+                    self.process_model.evaluate(
+                        x.state.plus(sigmapoints[0:n_x, i]),
+                        u.plus(sigmapoints[n_x::, i]),
+                        dt,
+                    )
+                )
 
-            # Compute mean
-            # TODO Improve mean computation
-            x_mean = self.process_model.evaluate(x.state, u, dt)
+            # Compute mean. This probably wont work for composite states
+            if self.sigma_mean:
+                x_mean = x.state.copy()
+                x_mean.value = mean_state(x_propagated, w)
+            else:
+                x_mean = self.process_model.evaluate(x.state, u, dt)
 
             # Compute covariance
             P_new = np.zeros(x.covariance.shape)
             for i in range(n_sig):
                 err = x_mean.minus(x_propagated[i])
-                err.reshape(-1, 1)
-                P_new += w_cov[i] * err @ err.T
+                err = err.reshape((-1, 1))
+                P_new += w[i] * err @ err.T
 
             x.state = x_mean
             x.covariance = P_new
@@ -591,39 +683,48 @@ class SigmaPointKalmanFilter:
 
         P = x.covariance
         R = y.model.covariance(x.state)
+
         n_x = x.state.dof
         n_y = y.value.size
-        unit_sigmapoints, w_mean, w_cov = generate_sigmapoints(n_x, self.method)
+
+        if (n_x, self.method) in self._sigmapoint_cache:
+            unit_sigmapoints, w = self._sigmapoint_cache[(n_x, self.method)]
+        else:
+            unit_sigmapoints, w = generate_sigmapoints(n_x, self.method)
+            self._sigmapoint_cache[(n_x, self.method)] = (unit_sigmapoints, w)
 
         P_sqrt = np.linalg.cholesky(P)
         sigmapoints = P_sqrt @ unit_sigmapoints
 
-        n_sig = w_mean.size
+        n_sig = w.size
 
         y_check = y.model.evaluate(x.state)
 
         if y_check is not None:
 
-            y_propagated = np.zeros((n_sig, y.value.shape))
+            y_propagated = np.zeros((n_sig, n_y))
 
-            # Propagate
+            # Propagate sigma points through measurement model
             for i in range(n_sig):
                 y_propagated[i] = y.model.evaluate(
                     x.state.plus(sigmapoints[0:n_x, i])
                 )
 
-            # mean
-            y_mean = np.zeros(y.value.shape)
+            # predicted measurement mean
+            y_mean = np.zeros(n_y)
             for i in range(n_sig):
-                y_mean += w_mean[i] * y_propagated[i]
+                y_mean += w[i] * y_propagated[i]
 
-            # covariance innovation
-            Pyy = R.copy()
+            # compute covariance of innovation and cross covariance
+            Pyy = np.zeros((n_y, n_y))
             Pxy = np.zeros((n_x, n_y))
             for i in range(n_sig):
-                err = y_propagated[i] - y_mean
-                Pyy += w_cov[i] * err @ err.T
-                Pxy += w_cov[i] * sigmapoints[i] @ err.T
+                err = y_propagated[i].reshape((-1, 1)) - y_mean.reshape((-1, 1))
+
+                Pyy += w[i] * err @ err.T
+                Pxy += w[i] * sigmapoints[0:n_x, i].reshape((-1, 1)) @ err.T
+
+            Pyy += R
 
             z = y.value.reshape((-1, 1)) - y_mean.reshape((-1, 1))
 
