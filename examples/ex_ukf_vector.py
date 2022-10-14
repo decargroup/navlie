@@ -53,7 +53,7 @@ if noise_active:
     
 x = StateWithCovariance(x0, P0)
 
-ukf = SigmaPointKalmanFilter(process_model, method= 'cubature')
+ukf = SigmaPointKalmanFilter(process_model, method= 'cubature', sigma_mean=True)
 # ukf = IteratedKalmanFilter(process_model) # or try the Iukf!
 
 meas_idx = 0

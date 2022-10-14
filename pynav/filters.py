@@ -485,6 +485,7 @@ class SigmaPointKalmanFilter:
         "process_model",
         "method",
         "reject_outliers",
+        "sigma_mean",
         "_sigmapoint_cache",
     ]
 
