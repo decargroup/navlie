@@ -4,7 +4,7 @@ An on-manifold state estimation library for robotics.
 
 The core idea behind this project is to abstract-away the state definition such that a single estimator implementation can operate on a variety of state manifolds, such as the usual vector space, and any Lie group. 
 
-Documentation can be found by opening this file in your browser: [./docs/build/html/index.html](./docs/build/html/index.html).
+Documentation can be found by https://decargroup.github.io/pynav
 
 Setup
 -----
@@ -12,7 +12,7 @@ Setup
 Dependencies
 ^^^^^^^^^^^^
 - python3.6+
-- `pylie` Clone and install [this repo](https://github.com/decarsg/pylie) by following the README.
+- `pylie` Clone and install https://github.com/decarsg/pylie by following the README.
 - All other dependencies should get installed automatically by `pip`
 
 Installation
@@ -47,14 +47,14 @@ The Core Concept - Defining a `State` Implementation
 
 The algorithms and models in this repo are centered around the abstract `State` class. An instance of `State` is an object containing, at a minimum, the following attributes:
 
-    - `value`: a value of some sort;
-    - `dof`: the degrees of freedom associated with the state.
+- `value`: a value of some sort;
+- `dof`: the degrees of freedom associated with the state.
 
 It will also contain the following mandatory methods that must be implemented by the user.
 
-    - `plus()`:  A generic "addition" operation given a `dx` vector with as many elements as the `dof` of this state.
-    - `minus()`:  A generic "subtraction" operation given another State object of the same type, which returns a numpy array of error values.
-    - `copy()`: A method that returns a new object of the same type, and with the same attibute values.
+- `plus()`:  A generic "addition" operation given a `dx` vector with as many elements as the `dof` of this state.
+- `minus()`:  A generic "subtraction" operation given another State object of the same type, which returns a numpy array of error values.
+- `copy()`: A method that returns a new object of the same type, and with the same attibute values.
 
 Optionally, it is often useful to assign a timestamp (`stamp`) and a label (`state_id`) to differentiate state instances from others. The snippet below shows how to define a simple vector-space state:  
 
@@ -207,35 +207,35 @@ Many state, process, and measurement models are already written and part of the 
 
 The following state types are currently part of the lib:
 
-    - `VectorState`
-    - `SO2State`
-    - `SO3State`
-    - `SE2State`
-    - `SE3State`
-    - `SE23State`
-    - `CompositeState` (for holding many sub-states as a single state)
+- `VectorState`
+- `SO2State`
+- `SO3State`
+- `SE2State`
+- `SE3State`
+- `SE23State`
+- `CompositeState` (for holding many sub-states as a single state)
 
 The following process models are currently part of the lib:
 
-    - `SingleIntegrator`
-    - `BodyFrameVelocity`
-    - `RelativeBodyFrameVelocity`
-    - `CompositeProcessModel`
+- `SingleIntegrator`
+- `BodyFrameVelocity`
+- `RelativeBodyFrameVelocity`
+- `CompositeProcessModel`
 
 The following measurement models are currently part of the lib:
 
-    - `RangePointToAnchor`
-    - `RangePoseToAnchor`
-    - `RangePoseToPose`
-    - `RangeRelativePose`
-    - `GlobalPosition`
-    - `Altitude` 
-    - `Gravitometer`
+- `RangePointToAnchor`
+- `RangePoseToAnchor`
+- `RangePoseToPose`
+- `RangeRelativePose`
+- `GlobalPosition`
+- `Altitude` 
+- `Gravitometer`
 
 Finally, this repo has the following state estimation algorithms implemented:
 
-    - `ExtendedKalmanFilter`
-    - `IteratedKalmanFilter`
+- `ExtendedKalmanFilter`
+- `IteratedKalmanFilter`
 
 Contributing
 ------------
@@ -248,7 +248,7 @@ The goal of this project is to write general algorithms that work for any implem
 
 Contributing to the Documentation
 ---------------------------------
-The documentation is automatically generated from python docstrings using `sphinx`, which can be installed by following [these instructions](https://www.sphinx-doc.org/en/master/usage/installation.html).
+The documentation is automatically generated from python docstrings using `sphinx`, which can be installed by following these instructions: https://www.sphinx-doc.org/en/master/usage/installation.html.
 
 After sphinx is installed change to the `./docs/` directory and run 
 
@@ -258,7 +258,7 @@ After sphinx is installed change to the `./docs/` directory and run
 
 and the documentation will be updated (you may need to install some dependencies... sorry. just follow the error prompts and install whats required. TODO).  In terms of actually writing documentation, we use the numpy format, which can be seen in some of the existing docstrings in the code, and can be used as a template. 
 
-Alternatively and prefereably, install the [autoDocstring extension for VSCode](https://marketplace.visualstudio.com/items?itemName=njpwerner.autodocstring) and change the docstring format in the settings to `numpy`.
+Alternatively and prefereably, install the autoDocstring extension for VSCode: https://marketplace.visualstudio.com/items?itemName=njpwerner.autodocstring and change the docstring format in the settings to `numpy`.
 
 
 
