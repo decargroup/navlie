@@ -22,7 +22,9 @@ class IMU(Input):
     ):
         super().__init__(dof=12, stamp=stamp)
         self.gyro = np.array(gyro).ravel()  #:np.ndarray: Gyro reading
-        self.accel = np.array(accel).ravel()  #:np.ndarray: Accelerometer reading
+        self.accel = np.array(
+            accel
+        ).ravel()  #:np.ndarray: Accelerometer reading
 
         #:np.ndarray: driving input for gyro bias random walk
         self.bias_gyro_walk = np.array(bias_gyro_walk).ravel()
@@ -426,6 +428,7 @@ class IMUKinematics(ProcessModel):
         IMUState
             Propagated IMUState.
         """
+        x = x.copy()
 
         # Get unbiased inputs
         unbiased_gyro, unbiased_accel = get_unbiased_imu(x, u)
@@ -552,7 +555,7 @@ class RelativeIMUKinematics(ProcessModel):
         self.id2 = id2
 
     def evaluate(self, x: SE23State, u: IMU, dt: float) -> SE23State:
-
+        x = x.copy()
         if u.state_id == self.id1:
             U1_inv = inverse_IE3(U_matrix(u.gyro, u.accel, dt))
             U2 = np.identity(5)
