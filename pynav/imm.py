@@ -77,7 +77,7 @@ def reparametrize_gaussians_about_X_par(
     for X in X_list:
         mu = X.state.minus(X_par)
         # TODO: Replace with minus_jacobians
-        J = X_par.jacobian(mu)
+        J = X_par.plus_jacobian(mu)
         Jinv = np.linalg.inv(J)
         Sigma = Jinv @ X.covariance @ Jinv.T
         means_reparametrized.append(mu)
@@ -108,7 +108,7 @@ def update_X(X: State, mu: np.ndarray, P: np.ndarray):
     X_hat = StateWithCovariance(X, np.zeros((X.dof, X.dof)))
     X_hat.state = X_hat.state.plus(mu)
 
-    J = X.jacobian(mu)
+    J = X.plus_jacobian(mu)
 
     X_hat.covariance = J @ P @ J.T
 
