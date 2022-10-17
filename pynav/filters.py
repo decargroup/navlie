@@ -17,6 +17,7 @@ from math import factorial
 from scipy.special import eval_hermitenorm
 import scipy.linalg as la
 
+
 def check_outlier(error: np.ndarray, covariance: np.ndarray):
     """
     Performs the Normalized-Innovation-Squared (NIS) test to identify
@@ -34,7 +35,7 @@ def check_outlier(error: np.ndarray, covariance: np.ndarray):
 
 def mean_state(x_array: List[State], weights: np.ndarray) -> State:
     """Computes a weighted mean of a list of State instances
-    in an iterated manner, until reaching a maximun number of 
+    in an iterated manner, until reaching a maximun number of
     iterations or a small update.
 
     Parameters
@@ -53,7 +54,7 @@ def mean_state(x_array: List[State], weights: np.ndarray) -> State:
     n = len(x_array)
 
     x_mean = x_0.copy()
-    
+
     iter = 0
     err = 1
     while np.linalg.norm(err) > 1e-6 and iter <= 50:
@@ -411,9 +412,11 @@ class IteratedKalmanFilter(ExtendedKalmanFilter):
         return out
 
 
-def generate_sigmapoints(dof: int, method: str) -> Tuple[np.ndarray, np.ndarray]:
+def generate_sigmapoints(
+    dof: int, method: str
+) -> Tuple[np.ndarray, np.ndarray]:
     """Generates unit sigma points from three available
-    methods. 
+    methods.
 
     Parameters
     ----------
@@ -523,7 +526,6 @@ class SigmaPointKalmanFilter:
         self.iterate_mean = iterate_mean
         self._sigmapoint_cache = {}
 
-
     def predict(
         self,
         x: StateWithCovariance,
@@ -600,21 +602,19 @@ class SigmaPointKalmanFilter:
             sigmapoints = P_sqrt @ unit_sigmapoints
 
             n_sig = w.size
-            x_propagated = []
-
             # Propagate
-            for i in range(n_sig):
-                x_propagated.append(
-                    self.process_model.evaluate(
-                        x.state.plus(sigmapoints[0:n_x, i]),
-                        u.plus(sigmapoints[n_x::, i]),
-                        dt,
-                    )
+            x_propagated = [
+                self.process_model.evaluate(
+                    x.state.plus(sp[0:n_x]),
+                    u.plus(sp[n_x:]),
+                    dt,
                 )
+                for sp in sigmapoints.T
+            ]
 
-            # Compute mean. 
+            # Compute mean.
             if self.iterate_mean:
-                x_mean= mean_state(x_propagated, w)
+                x_mean = mean_state(x_propagated, w)
             else:
                 x_mean = self.process_model.evaluate(x.state, u, dt)
 
@@ -702,13 +702,9 @@ class SigmaPointKalmanFilter:
 
         if y_check is not None:
 
-            y_propagated = np.zeros((n_sig, n_y))
-
-            # Propagate sigma points through measurement model
-            for i in range(n_sig):
-                y_propagated[i] = y.model.evaluate(
-                    x.state.plus(sigmapoints[:, i])
-                )
+            y_propagated = [
+                y.model.evaluate(x.state.plus(sp)) for sp in sigmapoints.T
+            ]
 
             # predicted measurement mean
             y_mean = np.zeros(n_y)
@@ -722,7 +718,7 @@ class SigmaPointKalmanFilter:
                 err = y_propagated[i].reshape((-1, 1)) - y_mean.reshape((-1, 1))
 
                 Pyy += w[i] * err @ err.T
-                Pxy += w[i] * sigmapoints[0:n_x, i].reshape((-1, 1)) @ err.T
+                Pxy += w[i] * sigmapoints[:, i].reshape((-1, 1)) @ err.T
 
             Pyy += R
 
