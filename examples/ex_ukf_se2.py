@@ -48,7 +48,7 @@ x = StateWithCovariance(x0, P0)
 
 # Try an EKF or an IterEKF
 # ekf = ExtendedKalmanFilter(process_model)
-ukf = SigmaPointKalmanFilter(process_model, method = 'cubature')
+ukf = SigmaPointKalmanFilter(process_model, method = 'cubature', iterate_mean=True)
 
 meas_idx = 0
 start_time = time.time()
