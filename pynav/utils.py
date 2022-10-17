@@ -454,7 +454,11 @@ def plot_error(
 
     dim = results.error.shape[1]
 
-    n_rows = 3
+    if dim < 3:
+        n_rows = dim
+    else:
+        n_rows = 3
+
     n_cols = int(np.ceil(dim / 3))
 
     if axs is None:
@@ -758,3 +762,78 @@ def state_interp(
         out = out[0]
 
     return out
+
+def associate_stamps(
+    first_stamps: List[float],
+    second_stamps: List[float],
+    offset: float = 0.0,
+    max_difference: float = 0.02,
+) -> List[Tuple[int, int]]:
+    """Associate timestamps.
+
+    Returns a sorted list of matches, of length of the smallest of 
+    first_stamps and second_stamps.
+    
+    Function taken from rpg_trajectory_evaluation toolbox.
+
+    Parameters
+    ----------
+    first_stamps : List[float]
+        List of first timestamps
+    second_stamps : List[float]
+        List of second timestamps
+    offset : float, optional
+        Offset between the two lists, by default 0.0.
+    max_difference : float, optional
+        Maximum difference between stamps in the two list
+        to be considered a match, by default 0.02.
+
+    Returns
+    -------
+    List[Tuple[int, int]]
+        Sorted list of matches in the form (match_first_idx, match_second_idx).
+    """
+    potential_matches = [
+        (abs(a - (b + offset)), idx_a, idx_b)
+        for idx_a, a in enumerate(first_stamps)
+        for idx_b, b in enumerate(second_stamps)
+        if abs(a - (b + offset)) < max_difference
+    ]
+    potential_matches.sort()  # prefer the closest
+    matches = []
+    first_idxes = list(range(len(first_stamps)))
+    second_idxes = list(range(len(second_stamps)))
+    for diff, idx_a, idx_b in potential_matches:
+        if idx_a in first_idxes and idx_b in second_idxes:
+            first_idxes.remove(idx_a)
+            second_idxes.remove(idx_b)
+            matches.append((int(idx_a), int(idx_b)))
+
+    matches.sort()
+    return matches
+
+
+def find_nearest_stamp_idx(stamps_list: List[float], stamp: float) -> int:
+    """Uses interp1d to find the index of the nearest timestamp.
+
+    Parameters
+    ----------
+    stamps_list : List[float]
+        List of timestamps
+    stamp : float
+        Query stamp.
+
+    Returns
+    -------
+    int
+        Index of nearest stamp.
+    """
+    nearest_state = interp1d(
+        stamps_list,
+        np.array(range(len(stamps_list))),
+        "nearest",
+        bounds_error=False,
+        fill_value="extrapolate",
+    )
+
+    return int(nearest_state(stamp))

@@ -237,6 +237,10 @@ class MeasurementModel(ABC):
 
         return jac_fd
 
+    def sqrt_information(self, x: State):
+        R = np.atleast_2d(self.covariance(x))
+        return np.linalg.cholesky(np.linalg.inv(R))
+
 
 class ProcessModel(ABC):
     """
@@ -352,6 +356,10 @@ class ProcessModel(ABC):
             jac_fd[:, i] = Y.minus(Y_bar).flatten() / step_size
 
         return jac_fd
+
+    def sqrt_information(self, x: State, u: Input, dt: float) -> np.ndarray:
+        Q = np.atleast_2d(self.covariance(x, u, dt))
+        return np.linalg.cholesky(np.linalg.inv(Q))
 
 
 class Measurement:
