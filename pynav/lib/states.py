@@ -1,7 +1,7 @@
 from pylie import SO2, SO3, SE2, SE3, SE23, SL3
 from pylie.numpy.base import MatrixLieGroup
 import numpy as np
-from ..types import State
+from ..types import State, StateWithCovariance
 from typing import Any, List
 
 try:
@@ -28,7 +28,7 @@ class VectorState(State):
             stamp=stamp,
             state_id=state_id,
         )
-        self.value :np.ndarray = self.value # just for type hinting
+        self.value: np.ndarray = self.value  # just for type hinting
 
     def plus(self, dx: np.ndarray) -> "VectorState":
         new = self.copy()
@@ -63,8 +63,8 @@ class MatrixLieGroupState(State):
         super(MatrixLieGroupState, self).__init__(
             value, self.group.dof, stamp, state_id
         )
-        self.value :np.ndarray = self.value # just for type hinting
-        
+        self.value: np.ndarray = self.value  # just for type hinting
+
     def plus(self, dx: np.ndarray) -> "MatrixLieGroupState":
         new = self.copy()
         if self.direction == "right":
@@ -99,7 +99,7 @@ class MatrixLieGroupState(State):
             jac = self.group.left_jacobian(dx)
         else:
             raise ValueError("direction must either be 'left' or 'right'.")
-        return jac       
+        return jac
 
     def minus_jacobian(self, x: "MatrixLieGroupState") -> np.ndarray:
         dx = self.minus(x)
@@ -109,7 +109,7 @@ class MatrixLieGroupState(State):
             jac = self.group.left_jacobian_inv(dx)
         else:
             raise ValueError("direction must either be 'left' or 'right'.")
-        return jac     
+        return jac
 
     @property
     def attitude(self) -> np.ndarray:
@@ -388,7 +388,6 @@ class SE23State(MatrixLieGroupState):
     ):
         super().__init__(value, SE23, stamp, state_id, direction)
 
-    
     @property
     def pose(self):
         return self.value[0:5, 0:5]
@@ -443,11 +442,11 @@ class SE23State(MatrixLieGroupState):
 
 class SL3State(MatrixLieGroupState):
     def __init__(
-        self, 
-        value: np.ndarray, 
-        stamp: float = None, 
-        state_id=None, 
-        direction="right"
+        self,
+        value: np.ndarray,
+        stamp: float = None,
+        state_id=None,
+        direction="right",
     ):
         super().__init__(value, SL3, stamp, state_id, direction)
 
@@ -485,15 +484,30 @@ class CompositeState(State):
         self.state_id = state_id
 
         # Compute the slices for each individual state.
-        # TODO: ideally, we need to find away for the slices to 
-        # adapt to possible `.value[i].dof` changes of the substates, but we 
+        # TODO: ideally, we need to find away for the slices to
+        # adapt to possible `.value[i].dof` changes of the substates, but we
         # dont want to do this on EVERY plus()/minus() call since this will
-        # be slow. 
+        # be slow.
+        self.compute_slices()
+
+    def compute_slices(self):
+        """Computes the state slices given for all states in list."""
         self.slices = []
         counter = 0
-        for state in state_list:
+        for state in self.value:
             self.slices.append(slice(counter, counter + state.dof))
             counter += state.dof
+
+    def add_state(self, state: State, stamp: float = None, state_id=None):
+        """Adds a state and it's corresponding slice to the composite state."""
+        self.slices.append(slice(self.dof, self.dof + state.dof))
+        self.value.append(state)
+
+    def remove_state_by_id(self, state_id):
+        """Removes a given state by ID."""
+        idx = self.get_index_by_id(state_id)
+        self.value.pop(idx)
+        self.compute_slices()
 
     def __getstate__(self):
         """
@@ -630,11 +644,13 @@ class CompositeState(State):
     def minus(self, x: "CompositeState") -> np.ndarray:
         dx = []
         for i, v in enumerate(x.value):
-            dx.append(self.value[i].minus(x.value[i]).reshape((-1,1)))
+            dx.append(self.value[i].minus(x.value[i]).reshape((-1, 1)))
 
         return np.vstack(dx)
 
-    def plus_by_id(self, dx, state_id: int, new_stamp: float = None) -> "CompositeState":
+    def plus_by_id(
+        self, dx, state_id: int, new_stamp: float = None
+    ) -> "CompositeState":
         """
         Updates a specific sub-state.
         """
@@ -678,3 +694,36 @@ class CompositeState(State):
             jac[slc, slc] = self.value[i].minus_jacobian(x.value[i])
 
         return jac
+
+
+class CompositeStateWithCovariance(StateWithCovariance):
+    """
+    A data container for a composite state with covariance.
+
+    Has helper methods to help extract specific subportions of
+    the covariance matrix.
+    """
+
+    def __init__(self, state: CompositeState, covariance: np.ndarray):
+        super().__init__(state, covariance)
+        self.state = state  # For type hinting
+
+    def get_state_by_id(self, state_id):
+        """Returns a new composite state with covariance
+        with
+        """
+        state = self.state.get_state_by_id(state_id)
+        covariance = self.get_covariance_of_state(state_id)
+
+        return CompositeStateWithCovariance(state, covariance)
+
+    def get_covariance_block_by_ids(self, state_id_1, state_id_2=None):
+        """Gets the portion of covariance block corresponding to two states."""
+
+        if state_id_2 is None:
+            state_id_2 = state_id_1
+
+        slice_1 = self.state.get_slice_by_id(state_id_1)
+        slice_2 = self.state.get_slice_by_id(state_id_2)
+
+        return self.covariance[slice_1, slice_2]
