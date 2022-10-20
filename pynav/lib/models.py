@@ -331,25 +331,43 @@ class PointRelativePositionSLAM(MeasurementModel):
         """Evaluates the measurement model for the landmark state."""
 
         # The pose is always assumed to be the first element
-        pose = x.value[0]
-        landmark = x.get_value_by_id(self._landmark_id)
-        pass
+        # TODO: is there a better way to do this? The
+        # Measurement class already hold on to the IDs of these two
+        # states
+        pose: MatrixLieGroupState = x.value[0]
+        landmark: VectorState = x.value[1]
+
+        r_zw_a = pose.position.reshape((-1, 1))
+        C_ab = pose.attitude
+        r_pw_a = landmark.value.reshape((-1, 1))
+        return C_ab.T @ (r_pw_a - r_zw_a)
 
     def jacobian(self, x: CompositeState) -> np.ndarray:
-        r_zw_a = x.position.reshape((-1, 1))
-        C_ab = x.attitude
-        r_pw_a = self._landmark_position.reshape((-1, 1))
+        pose: MatrixLieGroupState = x.value[0]
+        landmark: VectorState = x.value[1]
+
+        r_zw_a = pose.position.reshape((-1, 1))
+        C_ab = pose.attitude
+        r_pw_a = landmark.value.reshape((-1, 1))
         y = C_ab.T @ (r_pw_a - r_zw_a)
 
-        if x.direction == "right":
+        if pose.direction == "right":
             return x.jacobian_from_blocks(
                 attitude=-SO3.odot(y), position=-np.identity(r_zw_a.shape[0])
             )
 
-        elif x.direction == "left":
-            return x.jacobian_from_blocks(
+        elif pose.direction == "left":
+            pose_jacobian = pose.jacobian_from_blocks(
                 attitude=-C_ab.T @ SO3.odot(r_pw_a), position=-C_ab.T
             )
+            landmark_jacobian = pose.attitude.T
+
+            state_ids = [state.state_id for state in x.value]
+            jac_dict = {}
+            jac_dict[state_ids[0]] = pose_jacobian
+            jac_dict[state_ids[1]] = landmark_jacobian
+
+            return x.jacobian_from_blocks(jac_dict)
 
     def covariance(self, x: CompositeState) -> np.ndarray:
         return self._R

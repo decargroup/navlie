@@ -528,7 +528,7 @@ class CompositeState(State):
 
     def set_matrix_block_by_ids(
         self,
-        mat_block: np.ndarray,
+        new_mat_block: np.ndarray,
         mat: np.ndarray,
         state_id_1: Any,
         state_id_2: Any = None,
@@ -541,7 +541,7 @@ class CompositeState(State):
         slice_1 = self.get_slice_by_id(state_id_1)
         slice_2 = self.get_slice_by_id(state_id_2)
 
-        mat[slice_1, slice_2] = mat_block
+        mat[slice_1, slice_2] = new_mat_block
         return mat
 
     def __getstate__(self):
@@ -703,7 +703,7 @@ class CompositeState(State):
         associated with some of the substates. These are provided as a dictionary
         with the the keys being the substate IDs.
         """
-        block: np.ndarray = block_dict.values()[0]
+        block: np.ndarray = list(block_dict.values())[0]
         m = block.shape[0]  # Dimension of "y" value
         jac = np.zeros((m, self.dof))
         for state_id, block in block_dict.items():

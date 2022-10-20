@@ -321,7 +321,7 @@ class Measurement:
     and corresponding model.
     """
 
-    __slots__ = ["value", "stamp", "model", "state_ids"]
+    __slots__ = ["value", "stamp", "model", "state_id"]
 
     def __init__(
         self,
