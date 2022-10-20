@@ -343,6 +343,7 @@ class InteractingModelFilter:
             x_hat.append(x)
             z = details_dict["z"]
             S = details_dict["S"]
+            z = z.ravel()
             model_likelihood = multivariate_normal.pdf(z, mean=np.zeros(z.shape), cov=S)
             mu_k[lv1] = model_likelihood * c_bar[lv1]
 
