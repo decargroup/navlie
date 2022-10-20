@@ -285,9 +285,11 @@ class PointRelativePosition(MeasurementModel):
         self,
         landmark_position: np.ndarray,
         R: np.ndarray,
+        landmark_id: str = None,
     ):
         self._landmark_position = np.array(landmark_position).ravel()
         self._R = R
+        self.landmark_id = landmark_id
 
     def evaluate(self, x: MatrixLieGroupState) -> np.ndarray:
         """Evaluates the measurement model of a landmark from a given pose."""
@@ -313,6 +315,43 @@ class PointRelativePosition(MeasurementModel):
             )
 
     def covariance(self, x: MatrixLieGroupState) -> np.ndarray:
+        return self._R
+
+
+class PointRelativePositionSLAM(MeasurementModel):
+    def __init__(
+        self,
+        landmark_id: str,
+        R: np.ndarray,
+    ):
+        self._landmark_id = landmark_id
+        self._R = R
+
+    def evaluate(self, x: CompositeState) -> np.ndarray:
+        """Evaluates the measurement model for the landmark state."""
+
+        # The pose is always assumed to be the first element
+        pose = x.value[0]
+        landmark = x.get_value_by_id(self._landmark_id)
+        pass
+
+    def jacobian(self, x: CompositeState) -> np.ndarray:
+        r_zw_a = x.position.reshape((-1, 1))
+        C_ab = x.attitude
+        r_pw_a = self._landmark_position.reshape((-1, 1))
+        y = C_ab.T @ (r_pw_a - r_zw_a)
+
+        if x.direction == "right":
+            return x.jacobian_from_blocks(
+                attitude=-SO3.odot(y), position=-np.identity(r_zw_a.shape[0])
+            )
+
+        elif x.direction == "left":
+            return x.jacobian_from_blocks(
+                attitude=-C_ab.T @ SO3.odot(r_pw_a), position=-C_ab.T
+            )
+
+    def covariance(self, x: CompositeState) -> np.ndarray:
         return self._R
 
 
