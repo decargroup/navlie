@@ -24,7 +24,7 @@ from .models import (
     CompositeProcessModel,
     Altitude,
     Gravitometer,
-    Magnetometer, 
+    Magnetometer,
     GlobalPosition,
-    InvariantMeasurement    
+    InvariantMeasurement,
 )

@@ -46,7 +46,6 @@ class DataGenerator:
         meas_freq_list: Union[float, List[float]] = None,
     ):
 
-
         # Make input covariance a callable if it isnt
         if callable(input_covariance):
             self.input_covariance = input_covariance
@@ -70,7 +69,6 @@ class DataGenerator:
         self.input_func = input_func
         self.input_freq = input_freq
         self._meas_model_and_freq = list(zip(meas_model_list, meas_freq_list))
-
 
     def add_measurement_model(self, model: MeasurementModel, freq: float):
         self._meas_model_and_freq.append((model, freq))
@@ -163,8 +161,8 @@ class DataGenerator:
             # Propagate forward
             dt = times[k + 1] - x.stamp
             x = self.process_model.evaluate(x.copy(), u, dt)
-            x.stamp = times[k+1]
-            
+            x.stamp = times[k + 1]
+
             # Add noise to input if requested.
             if noise:
                 Q = np.atleast_2d(self.input_covariance(times[k]))

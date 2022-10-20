@@ -509,6 +509,41 @@ class CompositeState(State):
         self.value.pop(idx)
         self.compute_slices()
 
+    def get_matrix_block_by_ids(
+        self, mat: np.ndarray, state_id_1, state_id_2=None
+    ) -> np.ndarray:
+        """Gets the portion of a matrix corresponding to two states.
+
+        This function is useful when extract specific blocks of a covariance
+        matrix, for example.
+        """
+
+        if state_id_2 is None:
+            state_id_2 = state_id_1
+
+        slice_1 = self.get_slice_by_id(state_id_1)
+        slice_2 = self.get_slice_by_id(state_id_2)
+
+        return mat[slice_1, slice_2]
+
+    def set_matrix_block_by_ids(
+        self,
+        mat_block: np.ndarray,
+        mat: np.ndarray,
+        state_id_1: Any,
+        state_id_2: Any = None,
+    ) -> np.ndarray:
+        """Sets the portion of the covariance block corresponding to two states."""
+
+        if state_id_2 is None:
+            state_id_2 = state_id_1
+
+        slice_1 = self.get_slice_by_id(state_id_1)
+        slice_2 = self.get_slice_by_id(state_id_2)
+
+        mat[slice_1, slice_2] = mat_block
+        return mat
+
     def __getstate__(self):
         """
         Get the state of the object for pickling.
@@ -694,36 +729,3 @@ class CompositeState(State):
             jac[slc, slc] = self.value[i].minus_jacobian(x.value[i])
 
         return jac
-
-
-class CompositeStateWithCovariance(StateWithCovariance):
-    """
-    A data container for a composite state with covariance.
-
-    Has helper methods to help extract specific subportions of
-    the covariance matrix.
-    """
-
-    def __init__(self, state: CompositeState, covariance: np.ndarray):
-        super().__init__(state, covariance)
-        self.state = state  # For type hinting
-
-    def get_state_by_id(self, state_id):
-        """Returns a new composite state with covariance
-        with
-        """
-        state = self.state.get_state_by_id(state_id)
-        covariance = self.get_covariance_of_state(state_id)
-
-        return CompositeStateWithCovariance(state, covariance)
-
-    def get_covariance_block_by_ids(self, state_id_1, state_id_2=None):
-        """Gets the portion of covariance block corresponding to two states."""
-
-        if state_id_2 is None:
-            state_id_2 = state_id_1
-
-        slice_1 = self.state.get_slice_by_id(state_id_1)
-        slice_2 = self.state.get_slice_by_id(state_id_2)
-
-        return self.covariance[slice_1, slice_2]

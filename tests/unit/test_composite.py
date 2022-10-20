@@ -1,5 +1,4 @@
 from pynav.lib.states import (
-    CompositeStateWithCovariance,
     SE2State,
     VectorState,
     CompositeState,
@@ -96,7 +95,7 @@ def test_composite_add_and_remove_state():
     assert state.value[1].state_id == "l2"
 
 
-def test_composite_state_with_covariance():
+def test_matrix_blocks_composite():
     state_list = [
         SE2State(SE2.Exp([0.1, 0.2, 0.3]), stamp=0.0, state_id="p0"),
         VectorState(np.array([0.1, 0.2, 0.3]), stamp=0.0, state_id="l1"),
@@ -105,10 +104,9 @@ def test_composite_state_with_covariance():
     state = CompositeState(state_list, stamp=0.0)
     cov = np.random.rand(6, 6)
 
-    x = CompositeStateWithCovariance(state, cov.copy())
-    cov_block_1 = x.get_covariance_block_by_ids("p0")
-    cov_block_2 = x.get_covariance_block_by_ids("p0", "l1")
-    cov_block_3 = x.get_covariance_block_by_ids("l1")
+    cov_block_1 = state.get_matrix_block_by_ids(cov, "p0")
+    cov_block_2 = state.get_matrix_block_by_ids(cov, "p0", "l1")
+    cov_block_3 = state.get_matrix_block_by_ids(cov, "l1")
 
     assert np.allclose(cov_block_1, cov[0:3, 0:3])
     assert np.allclose(cov_block_2, cov[0:3, 3:6])
@@ -116,4 +114,4 @@ def test_composite_state_with_covariance():
 
 
 if __name__ == "__main__":
-    test_composite_state_with_covariance()
+    test_matrix_blocks_composite()

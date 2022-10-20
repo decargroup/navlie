@@ -6,6 +6,7 @@ from .types import (
     Measurement,
     StateWithCovariance,
 )
+from pynav.lib.states import CompositeState
 import numpy as np
 from scipy.stats.distributions import chi2
 
@@ -50,6 +51,7 @@ class ExtendedKalmanFilter:
         u: Input,
         dt: float = None,
         x_jac: State = None,
+        output_jac: bool = False,
     ) -> StateWithCovariance:
         """
         Propagates the state forward in time using a process model. The user
@@ -104,7 +106,10 @@ class ExtendedKalmanFilter:
             x.symmetrize()
             x.state.stamp += dt
 
-        return x
+        if output_jac:
+            return x, A
+        else:
+            return x
 
     def correct(
         self,
@@ -193,6 +198,98 @@ class ExtendedKalmanFilter:
             return x, details_dict
         else:
             return x
+
+
+class ExtendedKalmanFilterSLAM(ExtendedKalmanFilter):
+    """A Kalman filter specifically when working with
+    SLAM problems.
+    """
+
+    def predict(
+        self,
+        x: StateWithCovariance,
+        u: Input,
+        dt: float = None,
+        x_jac: State = None,
+    ):
+        """The prediction step for EKF-SLAM.
+
+        The particular partitioning of the covariance matrix is utilized
+        and only the full EKF prediction step is used for the robot state.
+        """
+        x = x.copy()
+
+        # Extract robot state and covariance
+        robot_state_id = x.state.value[0].state_id
+        robot_cov = x.get_covariance_block_by_ids(robot_state_id)
+        robot_state = StateWithCovariance(x.state.value[0], robot_cov)
+
+        # Execute standard EKF prediction step for robot state
+        robot_state, A = super().predict(
+            robot_state, u, dt, x_jac, output_jac=True
+        )
+        r_dof = x.state.value[0].dof
+        x.state.set_state_by_id(robot_state.state, robot_state_id)
+        x.covariance[0:r_dof, 0:r_dof] = robot_state.covariance
+
+        # Set cross-covariances between robot and map
+        P_rm = x.covariance[:r_dof, r_dof:]
+        x.covariance[:r_dof, r_dof:] = A @ P_rm
+        x.covariance[r_dof:, :r_dof] = P_rm.T
+        x.symmetrize()
+
+        return x
+
+    def correct(
+        self,
+        x: CompositeState,
+        y: Measurement,
+        u: Input,
+        x_jac: State = None,
+        reject_outlier: bool = None,
+        output_details: bool = False,
+    ):
+        if y.state_ids is None:
+            return super().correct(
+                x, y, u, x_jac, reject_outlier, output_details
+            )
+
+        # If we've assigned state IDs to this measurement,
+        # it is a SLAM-type measurement that links a pose to a landmark.
+
+        # TODO: All of this is copy-pasted from the superclass.
+        #  Make copy to avoid modifying the input
+        x = x.copy()
+
+        if x.state.stamp is None:
+            x.state.stamp = y.stamp
+
+        # Load default outlier rejection option
+        if reject_outlier is None:
+            reject_outlier = self.reject_outliers
+
+        # If measurement stamp is later than state stamp, do prediction step
+        # until current time.
+        if y.stamp is not None:
+            dt = y.stamp - x.state.stamp
+            if dt < 0:
+                raise RuntimeError(
+                    "Measurement stamp is earlier than state stamp"
+                )
+            elif u is not None:
+                x = self.predict(x, u, dt)
+
+        if x_jac is None:
+            x_jac = x.state
+
+        # Create a new composite state that contains
+        # just the state IDs of the measurement
+        state_ids = y.state_ids
+
+        P = x.covariance
+        R = np.atleast_2d(y.model.covariance(x_jac))
+        G = np.atleast_2d(y.model.jacobian(x_jac))
+        y_check = y.model.evaluate(x.state)
 
 
 class IteratedKalmanFilter(ExtendedKalmanFilter):
