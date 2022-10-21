@@ -50,6 +50,7 @@ class ExtendedKalmanFilter:
         u: Input,
         dt: float = None,
         x_jac: State = None,
+        output_details=False,
     ) -> StateWithCovariance:
         """
         Propagates the state forward in time using a process model. The user
@@ -103,8 +104,11 @@ class ExtendedKalmanFilter:
             x.covariance = A @ x.covariance @ A.T + Q
             x.symmetrize()
             x.state.stamp += dt
-
-        return x
+        if output_details == False:
+            return x
+        else:
+            output_dict = {"A": A}
+            return x, output_dict
 
     def correct(
         self,
@@ -156,9 +160,7 @@ class ExtendedKalmanFilter:
         if y.stamp is not None:
             dt = y.stamp - x.state.stamp
             if dt < 0:
-                raise RuntimeError(
-                    "Measurement stamp is earlier than state stamp"
-                )
+                raise RuntimeError("Measurement stamp is earlier than state stamp")
             elif u is not None:
                 x = self.predict(x, u, dt)
 
@@ -188,7 +190,7 @@ class ExtendedKalmanFilter:
                 x.covariance = (np.identity(x.state.dof) - K @ G) @ P
                 x.symmetrize()
 
-        details_dict = {"z": z, "S": S}
+        details_dict = {"z": z, "S": S, "dt": dt}
         if output_details:
             return x, details_dict
         else:
@@ -271,9 +273,7 @@ class IteratedKalmanFilter(ExtendedKalmanFilter):
         if y.stamp is not None:
             dt = y.stamp - x.state.stamp
             if dt < 0:
-                raise RuntimeError(
-                    "Measurement stamp is earlier than state stamp"
-                )
+                raise RuntimeError("Measurement stamp is earlier than state stamp")
             elif dt > 0 and u is not None:
                 x = self.predict(x, u, dt)
 
@@ -321,9 +321,7 @@ class IteratedKalmanFilter(ExtendedKalmanFilter):
                 step_accepted = False
                 while not step_accepted and alpha > self.step_tol:
                     x_new = x_op.plus(alpha * dx)
-                    cost_new = self._get_cost_and_info(x_new, x, y, x_jac)[
-                        "cost"
-                    ]
+                    cost_new = self._get_cost_and_info(x_new, x, y, x_jac)["cost"]
                     if cost_new < cost_old:
                         step_accepted = True
                     else:
@@ -437,9 +435,7 @@ def run_filter(
 
         # Fuse any measurements that have occurred.
         if len(meas_data) > 0:
-            while y.stamp < input_data[k + 1].stamp and meas_idx < len(
-                meas_data
-            ):
+            while y.stamp < input_data[k + 1].stamp and meas_idx < len(meas_data):
 
                 x = filter.correct(x, y, u)
                 meas_idx += 1
