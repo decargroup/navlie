@@ -79,7 +79,7 @@ class ExtendedKalmanFilter:
         """
 
         # Make a copy so we dont modify the input
-        x = x.copy()
+        x_new = x.copy()
 
         # If state has no time stamp, load from measurement.
         # usually only happens on estimator start-up
@@ -99,12 +99,12 @@ class ExtendedKalmanFilter:
         if u is not None:
             A = self.process_model.jacobian(x_jac, u, dt)
             Q = self.process_model.covariance(x_jac, u, dt)
-            x.state = self.process_model.evaluate(x.state, u, dt)
-            x.covariance = A @ x.covariance @ A.T + Q
-            x.symmetrize()
-            x.state.stamp += dt
+            x_new.state = self.process_model.evaluate(x.state, u, dt)
+            x_new.covariance = A @ x.covariance @ A.T + Q
+            x_new.symmetrize()
+            x_new.state.stamp = x.state.stamp + dt
 
-        return x
+        return x_new
 
     def correct(
         self,
@@ -116,7 +116,9 @@ class ExtendedKalmanFilter:
         output_details: bool = False,
     ) -> StateWithCovariance:
         """
-        Fuses an arbitrary measurement to produce a corrected state estimate.
+        Fuses an arbitrary measurement to produce a corrected state estimate. 
+        If a measurement model returns `None` from its `evaluate()` method,
+        the measurement will not be fused.
 
         Parameters
         ----------
@@ -155,20 +157,20 @@ class ExtendedKalmanFilter:
         # until current time.
         if y.stamp is not None:
             dt = y.stamp - x.state.stamp
-            if dt < 0:
+            if dt < -1e-8:
                 raise RuntimeError("Measurement stamp is earlier than state stamp")
             elif u is not None:
                 x = self.predict(x, u, dt)
 
         if x_jac is None:
             x_jac = x.state
-        P = x.covariance
-        R = np.atleast_2d(y.model.covariance(x_jac))
-        G = np.atleast_2d(y.model.jacobian(x_jac))
         y_check = y.model.evaluate(x.state)
 
         details_dict = {}
         if y_check is not None:
+            P = x.covariance
+            R = np.atleast_2d(y.model.covariance(x_jac))
+            G = np.atleast_2d(y.model.jacobian(x_jac))
             z = y.value.reshape((-1, 1)) - y_check.reshape((-1, 1))
             S = G @ P @ G.T + R
 

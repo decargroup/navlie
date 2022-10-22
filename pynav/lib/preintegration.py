@@ -166,12 +166,14 @@ class IMUIncrement(RelativeMotionIncrement):
         self, new_gyro_bias: np.ndarray, new_accel_bias: np.ndarray
     ):
         """
-        Updates the RMI given a small bias change
-
+        Updates the RMI given new bias values
+        
         Parameters
         ----------
-        db : np.ndarray with size 6
-            change to bias
+        new_gyro_bias: np.ndarray with size 3
+            new gyro bias value 
+        new_accel_bias: np.ndarray with size 3
+            new accel bias value
         """
         db = np.vstack(
             [
@@ -216,6 +218,7 @@ class IMUIncrement(RelativeMotionIncrement):
             self.gyro_bias,
             self.accel_bias,
             self.gravity,
+            self.state_id
         )
         new.value = self.value.copy()
         new.covariance = self.covariance.copy()
@@ -235,6 +238,7 @@ class IMUIncrement(RelativeMotionIncrement):
             self.gyro_bias,
             self.accel_bias,
             self.gravity,
+            self.state_id
         )
         return new
 

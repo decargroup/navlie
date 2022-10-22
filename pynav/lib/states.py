@@ -512,7 +512,7 @@ class CompositeState(State):
         """
         return [x.state_id for x in self.value].index(state_id)
 
-    def get_slices(self):
+    def get_slices(self) -> List[slice]:
         """
         Get slices for each state in the list of states.
         """
@@ -535,28 +535,28 @@ class CompositeState(State):
         idx = self.get_index_by_id(state_id)
         return slices[idx]
 
-    def get_value_by_id(self, state_id):
+    def get_value_by_id(self, state_id) -> Any:
         """
         Get state value by id.
         """
         idx = self.get_index_by_id(state_id)
         return self.value[idx].value
 
-    def get_state_by_id(self, state_id):
+    def get_state_by_id(self, state_id) -> State:
         """
         Get state object by id.
         """
         idx = self.get_index_by_id(state_id)
         return self.value[idx]
 
-    def get_dof_by_id(self, state_id):
+    def get_dof_by_id(self, state_id) -> int:
         """
         Get degrees of freedom of sub-state by id.
         """
         idx = self.get_index_by_id(state_id)
         return self.value[idx].dof
 
-    def get_stamp_by_id(self, state_id):
+    def get_stamp_by_id(self, state_id) -> float:
         """
         Get timestamp of sub-state by id.
         """
