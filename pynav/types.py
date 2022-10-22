@@ -267,18 +267,33 @@ class ProcessModel(ABC):
         """
         pass
 
-    def jacobian_fd(self, x: State, u: Input, dt: float) -> np.ndarray:
+    def jacobian_fd(self, x: State, u: Input, dt: float, *args, **kwargs) -> np.ndarray:
         """
         Calculates the model jacobian with finite difference.
         """
-        Y_bar = self.evaluate(x.copy(), u, dt)
+        Y_bar = self.evaluate(x.copy(), u, dt, *args, **kwargs)
         jac_fd = np.zeros((x.dof, x.dof))
         h = 1e-6
         for i in range(x.dof):
             dx = np.zeros((x.dof, 1))
             dx[i, 0] = h
             x_pert = x.plus(dx)
-            Y: State = self.evaluate(x_pert, u, dt)
+            Y: State = self.evaluate(x_pert, u, dt, *args, **kwargs)
+            jac_fd[:, i] = Y.minus(Y_bar).flatten() / h
+
+        return jac_fd
+
+    def input_jacobian_fd(self, x: State, u: Input, dt: float, *args, **kwargs) -> np.ndarray:
+        """
+        Calculates the input jacobian with finite difference.
+        """
+        Y_bar = self.evaluate(x.copy(), u.copy(), dt, *args, **kwargs)
+        jac_fd = np.zeros((x.dof, u.dof))
+        h = 1e-6
+        for i in range(u.dof):
+            du = np.zeros((u.dof,))
+            du[i] = h
+            Y: State = self.evaluate(x.copy(), u.plus(du), dt, *args, **kwargs)
             jac_fd[:, i] = Y.minus(Y_bar).flatten() / h
 
         return jac_fd
