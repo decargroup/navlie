@@ -161,10 +161,8 @@ class ExtendedKalmanFilter:
         if y.stamp is not None:
             dt = y.stamp - x.state.stamp
             if dt < 0:
-                raise RuntimeError(
-                    "Measurement stamp is earlier than state stamp"
-                )
-            elif u is not None:
+                raise RuntimeError("Measurement stamp is earlier than state stamp")
+            elif u is not None and dt > 0:
                 x = self.predict(x, u, dt)
 
         if x_jac is None:

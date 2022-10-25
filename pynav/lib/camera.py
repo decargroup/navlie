@@ -231,3 +231,11 @@ class Camera:
         y_n = (v - self.cv) / self.fv
 
         return np.array([x_n, y_n, 1])
+
+    def to_pixel_coors(self, meas: np.ndarray) -> np.ndarray:
+        x_n, y_n = meas.ravel()
+
+        u = x_n * self.fu + self.cu
+        v = y_n * self.fv + self.cv
+
+        return np.array([u, v])
