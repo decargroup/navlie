@@ -158,9 +158,7 @@ init_cov = 1e-8 * np.identity(slam_state.dof)
 ekf_slam = ExtendedKalmanFilterSLAM(process_model)
 
 # Run the filter on the data
-estimate_list = run_filter(
-    ekf_slam, slam_state, init_cov, input_list, meas_list
-)
+estimate_list = run_filter(ekf_slam, slam_state, init_cov, input_list, meas_list)
 
 # Extract all IMU states
 imu_estimates = []
@@ -186,9 +184,7 @@ landmarks = np.array(landmarks)
 ax.scatter(landmarks[:, 0], landmarks[:, 1], landmarks[:, 2])
 states_list = [x.state for x in imu_estimates]
 plot_poses(states_list, ax, line_color="tab:blue", step=500, label="Estimate")
-plot_poses(
-    true_imu_states, ax, line_color="tab:red", step=500, label="Groundtruth"
-)
+plot_poses(true_imu_states, ax, line_color="tab:red", step=500, label="Groundtruth")
 ax.legend()
 
 sns.set_theme()
