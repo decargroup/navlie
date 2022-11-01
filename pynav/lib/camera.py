@@ -110,6 +110,19 @@ class Camera:
             ]
         )
 
+    @property
+    def sigma_normalized_image_coords(self) -> np.ndarray:
+        return np.array(
+            [
+                [self.sigma / self.fu, 0],
+                [0, self.sigma / self.fv],
+            ]
+        )
+
+    @property
+    def R_normalized_image_coords(self) -> np.ndarray:
+        return self.sigma_normalized_image_coords**2
+
     def copy(self) -> "Camera":
         """Returns a copy of the camera model."""
         return Camera(
