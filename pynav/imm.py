@@ -79,6 +79,7 @@ def reparametrize_gaussians_about_X_par(
         # TODO: Replace with minus_jacobians
         J = X_par.plus_jacobian(mu)
         Jinv = np.linalg.inv(J)
+
         Sigma = Jinv @ X.covariance @ Jinv.T
         means_reparametrized.append(mu)
         covariances_reparametrized.append(Sigma)
@@ -146,6 +147,9 @@ class IMMState:
     ):
         self.model_states = model_states
         self.model_probabilities = model_probabilities
+
+    def copy(self) -> "IMMState":
+        return IMMState(self.model_states.copy(), self.model_probabilities.copy())
 
 
 class IMMResult(GaussianResult):
@@ -261,7 +265,7 @@ class InteractingModelFilter:
         """
 
         x_km_models = x.model_states.copy()
-        mu_models = x.model_probabilities.copy()
+        mu_models = np.array(x.model_probabilities)
 
         n_modes = self.Pi.shape[0]
         c = self.Pi.T @ mu_models.reshape(-1, 1)
