@@ -36,9 +36,7 @@ class StampedValue(Input):
         if not isinstance(value, np.ndarray):
             value = np.array(value)
 
-        self.value = (
-            value  #:numpy.ndarray:  Variable containing the data values
-        )
+        self.value = value  #:numpy.ndarray:  Variable containing the data values
 
         super().__init__(value.size, stamp)
 
@@ -79,15 +77,11 @@ class State(ABC):
 
     __slots__ = ["value", "dof", "stamp", "state_id"]
 
-    def __init__(
-        self, value: Any, dof: int, stamp: float = None, state_id=None
-    ):
+    def __init__(self, value: Any, dof: int, stamp: float = None, state_id=None):
         self.value = value  #:Any: State value
         self.dof = dof  #:int: Degree of freedom of the state
         self.stamp = stamp  #:float: Timestamp
-        self.state_id = (
-            state_id  #:Any: Some identifier associated with the state
-        )
+        self.state_id = state_id  #:Any: Some identifier associated with the state
 
     @abstractmethod
     def plus(self, dx: np.ndarray) -> "State":
@@ -349,13 +343,11 @@ class StateWithCovariance:
 
     def __init__(self, state: State, covariance: np.ndarray):
 
-        if covariance.shape[0] != covariance.shape[1]:
-            raise ValueError("covariance must be an n x n array.")
+        # if covariance.shape[0] != covariance.shape[1]:
+        #     raise ValueError("covariance must be an n x n array.")
 
-        if covariance.shape[0] != state.dof:
-            raise ValueError(
-                "Covariance matrix does not correspond with state DOF."
-            )
+        # if covariance.shape[0] != state.dof:
+        #     raise ValueError("Covariance matrix does not correspond with state DOF.")
 
         #:pynav.types.State: state object
         self.state = state
