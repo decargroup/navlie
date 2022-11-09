@@ -150,7 +150,7 @@ class IMUIncrement(RelativeMotionIncrement):
 
         A_full = np.zeros((15, 15))
         A_full[0:9, 0:9] = A
-        A_full[0:9, 9:15] = L
+        A_full[0:9, 9:15] = -L
         A_full[9:15, 9:15] = np.identity(6)
 
         L_full = np.zeros((15, 12))
@@ -160,7 +160,7 @@ class IMUIncrement(RelativeMotionIncrement):
         self.covariance = (
             A_full @ Q @ A_full.T + L_full @ self.input_covariance @ L_full.T
         )
-        self.bias_jacobian = A @ self.bias_jacobian + L
+        self.bias_jacobian = A @ self.bias_jacobian - L
 
     def bias_update(
         self, new_gyro_bias: np.ndarray, new_accel_bias: np.ndarray

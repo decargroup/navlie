@@ -380,11 +380,11 @@ def L_matrix(unbiased_gyro, unbiased_accel, dt: float) -> np.ndarray:
     Om = SO3.wedge(om * dt)
     A = SO3.wedge(a)
     # See Barfoot 2nd edition, equation 9.247
-    XI = np.zeros((9, 6))
-    XI[0:3, 0:3] = -dt * np.eye(3)
-    XI[3:6, 3:6] = -dt * np.eye(3)
-    XI[6:9, 0:3] = (
-        0.5
+    Up = np.zeros((9, 6))
+    Up[0:3, 0:3] = dt * np.eye(3)
+    Up[3:6, 3:6] = dt * np.eye(3)
+    Up[6:9, 0:3] = (
+        -0.5
         * (dt**2 / 2)
         * (
             (1 / 360)
@@ -393,9 +393,9 @@ def L_matrix(unbiased_gyro, unbiased_accel, dt: float) -> np.ndarray:
             - (1 / 6) * dt * A
         )
     )
-    XI[6:9, 3:6] = -(dt**2 / 2) * J_att_inv @ N
+    Up[6:9, 3:6] = (dt**2 / 2) * J_att_inv @ N
 
-    L = J @ XI
+    L = J @ Up
     return L
 
 
@@ -465,6 +465,7 @@ class IMUKinematics(ProcessModel):
         IMUState
             Propagated IMUState.
         """
+        x = x.copy()
 
         # Get unbiased inputs
         u_no_bias = get_unbiased_imu(x, u)
@@ -504,7 +505,7 @@ class IMUKinematics(ProcessModel):
         jac_kwargs = {}
 
         if hasattr(x, "bias_gyro"):
-            jac_bias = self._get_input_jacobian(x, u, dt)
+            jac_bias = -self._get_input_jacobian(x, u, dt)
 
             # Jacobian of bias random walk wrt to pose
             jac_pose = np.vstack([jac_pose, np.zeros((6, jac_pose.shape[1]))])
