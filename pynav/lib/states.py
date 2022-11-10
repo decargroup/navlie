@@ -92,14 +92,24 @@ class MatrixLieGroupState(State):
             self.direction,
         )
 
-    def jacobian(self, dx: np.ndarray) -> np.ndarray:
+    def plus_jacobian(self, dx: np.ndarray) -> np.ndarray:
         if self.direction == "right":
             jac = self.group.right_jacobian(dx)
         elif self.direction == "left":
             jac = self.group.left_jacobian(dx)
         else:
             raise ValueError("direction must either be 'left' or 'right'.")
-        return jac
+        return jac       
+
+    def minus_jacobian(self, x: "MatrixLieGroupState") -> np.ndarray:
+        dx = self.minus(x)
+        if self.direction == "right":
+            jac = self.group.right_jacobian_inv(dx)
+        elif self.direction == "left":
+            jac = self.group.left_jacobian_inv(dx)
+        else:
+            raise ValueError("direction must either be 'left' or 'right'.")
+        return jac     
 
     @property
     def attitude(self) -> np.ndarray:
@@ -658,17 +668,31 @@ class CompositeState(State):
 
         return jac
 
-    def jacobian(self, dx: np.ndarray) -> np.ndarray:
+    def plus_jacobian(self, dx: np.ndarray) -> np.ndarray:
         dof = self.dof
         jac = np.zeros((dof, dof))
-
         counter = 0
         for state in self.value:
             jac[
                 counter : counter + state.dof,
                 counter : counter + state.dof,
-            ] = state.jacobian(dx)
+            ] = state.plus_jacobian(dx)
             dx = dx[state.dof :]
+            counter += state.dof
+
+        return jac
+
+
+    def minus_jacobian(self, x: "CompositeState") -> np.ndarray:
+        
+        dof = self.dof
+        jac = np.zeros((dof, dof))
+        counter = 0
+        for i, state in enumerate(self.value):
+            jac[
+                counter : counter + state.dof,
+                counter : counter + state.dof,
+            ] = state.minus_jacobian(x.value[i])
             counter += state.dof
 
         return jac

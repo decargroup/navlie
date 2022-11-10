@@ -595,6 +595,9 @@ class RelativeIMUKinematics(ProcessModel):
         self, x: SE23State, u: IMU, dt: float, new_stamp=None
     ) -> SE23State:
 
+
+        x = x.copy()
+
         # If an optional new_stamp argument is provided, it will be used
         # to determine the amount of "self-propagation" that occurs.
         # This is useful for when the IMU measurements are not received

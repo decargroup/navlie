@@ -34,6 +34,7 @@ class SingleIntegrator(ProcessModel):
     def evaluate(
         self, x: VectorState, u: StampedValue, dt: float
     ) -> np.ndarray:
+        x = x.copy()
         x.value = x.value + dt * u.value
         return x
 
@@ -51,47 +52,49 @@ class DoubleIntegrator(ProcessModel):
     """
 
     def __init__(self, Q: np.ndarray):
-        '''
+        """
         inputs:
-            Q: Discrete time covariance on the input u. 
-        '''
+            Q: Discrete time covariance on the input u.
+        """
         if Q.shape[0] != Q.shape[1]:
             raise ValueError("Q must be an n x n matrix.")
 
         self._Q = Q
         self.dim = 2
 
-    def evaluate(self, x: VectorState, u: StampedValue, dt: float) -> np.ndarray:
-        '''
+    def evaluate(
+        self, x: VectorState, u: StampedValue, dt: float
+    ) -> np.ndarray:
+        """
         Evaluate discrete-time process model
-        '''
-        Ad = np.array([[1, dt],
-                      [0, 1]])
-        Ld = np.array([0.5*dt**2, dt]).reshape((-1,1))
-        x.value = (Ad @ x.value.reshape((-1,1)) + Ld * u.value).ravel()
+        """
+        x = x.copy()
+        Ad = np.array([[1, dt], [0, 1]])
+        Ld = np.array([0.5 * dt**2, dt]).reshape((-1, 1))
+        x.value = (Ad @ x.value.reshape((-1, 1)) + Ld * u.value).ravel()
         return x
 
     def jacobian(self, x, u, dt) -> np.ndarray:
-        '''
+        """
         Discrete-time state Jacobian
-        '''
-        Ad = np.array([[1, dt],
-                [0, 1]])
+        """
+        Ad = np.array([[1, dt], [0, 1]])
         return Ad
 
     def covariance(self, x, u, dt) -> np.ndarray:
-        '''
+        """
         Discrete-time covariance on process model
-        '''
-        Ld = np.array([0.5*dt**2, dt]).reshape((-1,1))
-        fudge_factor = np.array([[1e-8, 0],
-                                [0, 0]])
-        return  Ld @ self._Q @ Ld.T + fudge_factor
+        """
+        Ld = np.array([0.5 * dt**2, dt]).reshape((-1, 1))
+        fudge_factor = np.array([[1e-8, 0], [0, 0]])
+        return Ld @ self._Q @ Ld.T + fudge_factor
+
 
 class OneDimensionalPositionVelocityRange(MeasurementModel):
-    '''
+    """
     A 1D range measurement for a state consisting of position and velocity
-    '''
+    """
+
     def __init__(self, R: float):
         self._R = np.array(R)
 
@@ -99,11 +102,12 @@ class OneDimensionalPositionVelocityRange(MeasurementModel):
         return x.value[0]
 
     def jacobian(self, x: VectorState) -> np.ndarray:
-        return np.array([1, 0]).reshape(1,-1)
+        return np.array([1, 0]).reshape(1, -1)
 
     def covariance(self, x: VectorState) -> np.ndarray:
         return self._R
-        
+
+
 class BodyFrameVelocity(ProcessModel):
     """
     The body-frame velocity process model assumes that the input contains
@@ -119,6 +123,7 @@ class BodyFrameVelocity(ProcessModel):
     def evaluate(
         self, x: MatrixLieGroupState, u: StampedValue, dt: float
     ) -> MatrixLieGroupState:
+        x = x.copy()
         x.value = x.value @ x.group.Exp(u.value * dt)
         return x
 
@@ -141,6 +146,7 @@ class BodyFrameVelocity(ProcessModel):
 
         return L @ self._Q @ L.T
 
+
 class RelativeBodyFrameVelocity(ProcessModel):
     def __init__(self, Q1: np.ndarray, Q2: np.ndarray):
         self._Q1 = Q1
@@ -149,6 +155,7 @@ class RelativeBodyFrameVelocity(ProcessModel):
     def evaluate(
         self, x: MatrixLieGroupState, u: StampedValue, dt: float
     ) -> MatrixLieGroupState:
+        x = x.copy()
         u = u.value.reshape((2, round(u.value.size / 2)))
         x.value = x.group.Exp(-u[0] * dt) @ x.value @ x.group.Exp(u[1] * dt)
         return x
@@ -217,6 +224,7 @@ class CompositeProcessModel(ProcessModel):
     def evaluate(
         self, x: CompositeState, u: CompositeInput, dt: float
     ) -> CompositeState:
+        x = x.copy()
         for i, x_sub in enumerate(x.value):
             u_sub = u.input_list[i]
             x.value[i] = self._model_list[i].evaluate(x_sub, u_sub, dt)
@@ -324,7 +332,7 @@ class PointRelativePosition(MeasurementModel):
 
         elif x.direction == "left":
             return x.jacobian_from_blocks(
-                attitude= -C_ab.T @ SO3.odot(r_pw_a), position= -C_ab.T
+                attitude=-C_ab.T @ SO3.odot(r_pw_a), position=-C_ab.T
             )
 
     def covariance(self, x: MatrixLieGroupState) -> np.ndarray:
@@ -371,9 +379,7 @@ class InvariantPointRelativePosition(MeasurementModel):
         """
 
         if x.direction == "left":
-            jac_attitude = SO3.cross(
-                self.measurement_model._landmark_position
-            )
+            jac_attitude = SO3.cross(self.measurement_model._landmark_position)
             jac_position = -np.identity(3)
         else:
             raise NotImplementedError("Right jacobian not implemented.")
@@ -778,4 +784,3 @@ class InvariantMeasurement(Measurement):
             stamp=meas.stamp,
             model=model,
         )
-
