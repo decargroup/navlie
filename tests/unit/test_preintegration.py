@@ -108,7 +108,7 @@ def _test_preintegrated_process_imu(direction):
     jac_fd = preint_model.jacobian_fd(x, rmi, dt)
 
     print(jac - jac_fd)
-    assert np.allclose(jac, jac_fd)
+    assert np.allclose(jac, jac_fd, atol=1e-4)
 
 
 def _test_preintegrated_process_body_velocity(direction):

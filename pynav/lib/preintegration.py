@@ -107,8 +107,8 @@ class IMUIncrement(RelativeMotionIncrement):
         input_covariance: np.ndarray,
         gyro_bias: np.ndarray,
         accel_bias: np.ndarray,
-        gravity=None,
         state_id: Any = None,
+        gravity=None,
     ):
         """
         Initializes an "identity" IMU RMI.
@@ -228,8 +228,8 @@ class IMUIncrement(RelativeMotionIncrement):
             self.input_covariance,
             self.gyro_bias,
             self.accel_bias,
+            self.state_id,
             self.gravity,
-            self.state_id
         )
         new.value = self.value.copy()
         new.covariance = self.covariance.copy()
@@ -248,8 +248,8 @@ class IMUIncrement(RelativeMotionIncrement):
             self.input_covariance,
             self.gyro_bias,
             self.accel_bias,
+            self.state_id,
             self.gravity,
-            self.state_id
         )
         return new
 
@@ -262,6 +262,8 @@ class PreintegratedIMUKinematics(ProcessModel):
 
     def evaluate(self, x: IMUState, rmi: IMUIncrement, dt=None) -> IMUState:
         x = x.copy()
+        rmi = rmi.copy()
+        rmi.bias_update(x.bias_gyro, x.bias_accel)
         dt = rmi.stamps[1] - rmi.stamps[0]
         DG = G_matrix(self.gravity, dt)
         DU = rmi.value
