@@ -37,6 +37,18 @@ class RelativeMotionIncrement(Input):
     def stamp(self):
         return self.stamps[1]
 
+    @abstractmethod
+    def increment(self, u, dt):
+        """
+        In-place updating the RMI given an input measurement `u` and a duration `dt`
+        over which to preintegrate.
+        """
+        pass
+
+    @abstractmethod
+    def new(self):
+        pass
+
     def increment_many(
         self, u_list: List[Input], end_stamp: float = None
     ) -> "RelativeMotionIncrement":
@@ -71,18 +83,11 @@ class RelativeMotionIncrement(Input):
 
         return self
 
-    @abstractmethod
-    def increment(self, u, dt):
+    def symmetrize(self):
         """
-        In-place updating the RMI given an input measurement `u` and a duration `dt`
-        over which to preintegrate.
+        Symmetrize the covariance matrix of the RMI.
         """
-        pass
-
-    @abstractmethod
-    def new(self):
-        pass
-
+        self.covariance = 0.5 * (self.covariance + self.covariance.T)
 
 class IMUIncrement(RelativeMotionIncrement):
     __slots__ = [
@@ -162,6 +167,8 @@ class IMUIncrement(RelativeMotionIncrement):
         )
         self.bias_jacobian = A @ self.bias_jacobian - L
 
+        self.symmetrize()
+
     def bias_update(
         self, new_gyro_bias: np.ndarray, new_accel_bias: np.ndarray
     ):
@@ -175,6 +182,8 @@ class IMUIncrement(RelativeMotionIncrement):
         new_accel_bias: np.ndarray with size 3
             new accel bias value
         """
+
+        # bias change
         db = np.vstack(
             [
                 (new_gyro_bias - self.gyro_bias).reshape((-1, 1)),
@@ -203,7 +212,9 @@ class IMUIncrement(RelativeMotionIncrement):
         new = self.copy()
         new.value = new.value @ SE23.Exp(w[0:9])
         if w.size > 9:
-            new.bias_update(w[9:12], w[12:15])
+            new_gyro_bias = new.gyro_bias + w[9:12]
+            new_accel_bias = new.accel_bias + w[12:15]
+            new.bias_update(new_gyro_bias, new_accel_bias)
         return new
 
     def copy(self):
@@ -348,6 +359,7 @@ class BodyVelocityIncrement(RelativeMotionIncrement):
 
         # Increment the bias jacobian
         self.bias_jacobian = A @ self.bias_jacobian + L
+        self.symmetrize()
 
     def bias_update(self, new_bias: np.ndarray):
         """
@@ -380,7 +392,8 @@ class BodyVelocityIncrement(RelativeMotionIncrement):
         new = self.copy()
         new.value = new.value @ new.group.Exp(w)
         if w.size > new.group.dof:
-            new.bias_update(w[new.group.dof :])
+            new_bias = new.bias + w[new.group.dof:]
+            new.bias_update(new_bias)
 
         return new
 
