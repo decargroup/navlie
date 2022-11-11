@@ -12,11 +12,15 @@ from pynav.lib.imu import (
     G_matrix_inv,
     get_unbiased_imu
 )
+from pynav.filters import ExtendedKalmanFilter
+from pynav.types import StateWithCovariance
 from pylie import SE23, SO3
 import numpy as np
 from math import factorial
+import pytest
 
-np.set_printoptions(precision=5, suppress=True, linewidth=200)
+
+np.set_printoptions(precision=10, suppress=True, linewidth=200)
 
 
 def test_N_matrix():
@@ -181,133 +185,6 @@ def test_imu_group_jacobian_left():
     jac_fd = x.plus_jacobian_fd(dx)
     assert np.allclose(jac, jac_fd, atol=1e-6)
 
-
-def test_bias_jacobian_term():
-    dt = 0.1
-    phi = dt * np.array([[1, 1, 1]])
-    a = np.array([4, 5, 6])
-
-    def func(phi):
-        J_inv = SO3.left_jacobian_inv(phi)
-        N = N_matrix(phi)
-        return J_inv @ N @ a.reshape((-1, 1))
-
-    h = 1e-8
-
-    # Finite difference just that term
-    jac_test = np.zeros((3, 3))
-    for i in range(3):
-        dx = np.zeros((3,))
-        dx[i] = h
-        jac_test[:, i] = np.ravel((func(dt * (phi + dx)) - func(dt * phi)) / h)
-
-    # Analytical approximation
-    N = N_matrix(dt * phi)
-    a = a.reshape((-1, 1))
-    Om = SO3.wedge(phi * dt)
-    A = SO3.wedge(a)
-    jac2 = (
-        -(1 / 360)
-        * (dt**3)
-        * (Om @ Om @ A + Om @ (SO3.wedge(Om @ a)) + SO3.wedge(Om @ Om @ a))
-        + (1 / 6) * dt * A
-    )
-    assert np.allclose(jac_test, jac2, atol=1e-3)
-
-
-def test_relative_imu_equivalence_se23():
-    model = IMUKinematics(np.identity(6))
-    dt = 0.1
-    u1 = IMU([1, 2, 3], [2, 3, 1], 0, state_id=1)
-    u2 = IMU([0.4, 0.5, 0.6], [1, 1, 1], 0, state_id=2)
-    x1 = SE23State(SE23.Exp([1, 2, 3, 4, 5, 6, 7, 8, 9]), state_id=1)
-    x2 = SE23State(
-        SE23.Exp(0.1 * np.array([1, 2, 3, 4, 5, 6, 7, 8, 9])), state_id=2
-    )
-    T12 = SE23.inverse(x1.value) @ x2.value
-    x12 = SE23State(T12.copy(), 0, direction="right")
-    relmodel = RelativeIMUKinematics(
-        np.identity(6), np.identity(6), id1=1, id2=2
-    )
-    for i in range(10):
-        x1 = model.evaluate(x1, u1, dt)
-        x2 = model.evaluate(x2, u2, dt)
-        x12 = relmodel.evaluate(x12, u1, dt)
-        x12 = relmodel.evaluate(x12, u2, dt, new_stamp = x12.stamp)
-
-    assert np.allclose(SE23.inverse(x1.value) @ x2.value, x12.value)
-
-
-def test_relative_imu_jacobian():
-
-    dt = 0.1
-    u1 = IMU([1, 2, 3], [2, 3, 1], 0, state_id=1)
-    u2 = IMU([0.4, 0.5, 0.6], [1, 1, 1], 0, state_id=2)
-    x1 = SE23State(SE23.Exp([1, 2, 3, 4, 5, 6, 7, 8, 9]), state_id=1)
-    x2 = SE23State(
-        SE23.Exp(0.1 * np.array([1, 2, 3, 4, 5, 6, 7, 8, 9])), state_id=2
-    )
-    T12 = SE23.inverse(x1.value) @ x2.value
-    x12 = SE23State(T12.copy(), 0, direction="right")
-    relmodel = RelativeIMUKinematics(
-        np.identity(6), np.identity(6), id1=1, id2=2
-    )
-
-    x12.direction = "right"
-    jac = relmodel.jacobian(x12, u1, dt)
-    jac_fd = relmodel.jacobian_fd(x12, u1, dt)
-    assert np.allclose(jac, jac_fd, atol=1e-8)
-
-    jac = relmodel.jacobian(x12, u2, dt, new_stamp = x12.stamp)
-    jac_fd = relmodel.jacobian_fd(x12, u2, dt, new_stamp = x12.stamp)
-    assert np.allclose(jac, jac_fd, atol=1e-5)
-
-    x12.direction = "left"
-    jac = relmodel.jacobian(x12, u1, dt)
-    jac_fd = relmodel.jacobian_fd(x12, u1, dt)
-    assert np.allclose(jac, jac_fd, atol=1e-4)
-
-    jac = relmodel.jacobian(x12, u2, dt)
-    jac_fd = relmodel.jacobian_fd(x12, u2, dt)
-    assert np.allclose(jac, jac_fd, atol=1e-8)
-
-
-def test_relative_imu_equivalence_with_bias():
-    model = IMUKinematics(np.identity(6))
-    dt = 0.1
-    u1 = IMU([1, 2, 3], [2, 3, 1], 0, state_id=1)
-    u2 = IMU([0.4, 0.5, 0.6], [1, 1, 1], 0, state_id=2)
-
-    # Absolute states
-    x1 = IMUState(
-        SE23.Exp([1, 2, 3, 4, 5, 6, 7, 8, 9]),
-        [0, 0, 1],
-        [0, 0, -1],
-        state_id=1,
-    )
-    x2 = IMUState(
-        SE23.Exp(0.1 * np.array([1, 2, 3, 4, 5, 6, 7, 8, 9])),
-        [0, 0, 1],
-        [0, 0, -1],
-        state_id=1,
-    )
-
-    # Relative states
-    T12 = SE23.inverse(x1.pose) @ x2.pose
-    x12 = SE23State(T12.copy(), 0, direction="right")
-
-    relmodel = RelativeIMUKinematics(
-        np.identity(6), np.identity(6), id1=1, id2=2
-    )
-    for i in range(10):
-        x1 = model.evaluate(x1, u1, dt)
-        x2 = model.evaluate(x2, u2, dt)
-        x12 = relmodel.evaluate(x12, get_unbiased_imu(x1, u1), dt)
-        x12 = relmodel.evaluate(x12, get_unbiased_imu(x2, u2), dt, new_stamp = x12.stamp)
-
-    assert np.allclose(SE23.inverse(x1.pose) @ x2.pose, x12.value)
-
-
 if __name__ == "__main__":
-    test_relative_imu_equivalence_with_bias()
+    test_imu_group_jacobian_left("left")
     print("All tests passed!")
