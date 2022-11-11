@@ -47,6 +47,7 @@ def gaussian_mixing_vectorspace(
     return x_bar, P_bar
 
 
+
 def reparametrize_gaussians_about_X_par(
     X_par: State, X_list: List[StateWithCovariance]
 ):
@@ -77,9 +78,10 @@ def reparametrize_gaussians_about_X_par(
     for X in X_list:
         mu = X.state.minus(X_par)
         # TODO: Replace with minus_jacobians
-        J = X_par.plus_jacobian(mu)
-        Jinv = np.linalg.inv(J)
-
+        # J = X_par.plus_jacobian(mu)
+        # Jinv = np.linalg.inv(J)
+        # Jinv = X_par.minus_jacobian(X.state)
+        Jinv = X.state.minus_jacobian(X_par)
         Sigma = Jinv @ X.covariance @ Jinv.T
         means_reparametrized.append(mu)
         covariances_reparametrized.append(Sigma)
