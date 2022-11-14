@@ -163,8 +163,8 @@ def test_imu_group_jacobian_right():
         direction="right",
     )
     dx = np.array([1, 2, 3, 4, 5, 6, 7, 8, 9, 0.1, 0.2, 0.3, 4, 5, 6])
-    jac = x.jacobian(dx)
-    jac_fd = x.jacobian_fd(dx)
+    jac = x.plus_jacobian(dx)
+    jac_fd = x.plus_jacobian_fd(dx)
     assert np.allclose(jac, jac_fd, atol=1e-6)
 
 
@@ -177,8 +177,8 @@ def test_imu_group_jacobian_left():
         direction="left",
     )
     dx = np.array([1, 2, 3, 4, 5, 6, 7, 8, 9, 0.1, 0.2, 0.3, 4, 5, 6])
-    jac = x.jacobian(dx)
-    jac_fd = x.jacobian_fd(dx)
+    jac = x.plus_jacobian(dx)
+    jac_fd = x.plus_jacobian_fd(dx)
     assert np.allclose(jac, jac_fd, atol=1e-6)
 
 def test_bias_jacobian_term():

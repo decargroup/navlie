@@ -33,6 +33,7 @@ class SingleIntegrator(ProcessModel):
     def evaluate(
         self, x: VectorState, u: StampedValue, dt: float
     ) -> np.ndarray:
+        x = x.copy()
         x.value = x.value + dt * u.value
         return x
 
@@ -57,7 +58,7 @@ class DoubleIntegrator(ProcessModel):
     def __init__(self, Q: np.ndarray):
         """
         inputs:
-            Q: Continuous time covariance on the input u.
+            Q: Discrete time covariance on the input u.
         """
         if Q.shape[0] != Q.shape[1]:
             raise ValueError("Q must be an n x n matrix.")
@@ -134,6 +135,7 @@ class BodyFrameVelocity(ProcessModel):
     def evaluate(
         self, x: MatrixLieGroupState, u: StampedValue, dt: float
     ) -> MatrixLieGroupState:
+        x = x.copy()
         x.value = x.value @ x.group.Exp(u.value * dt)
         return x
 
@@ -156,6 +158,7 @@ class BodyFrameVelocity(ProcessModel):
 
         return L @ self._Q @ L.T
 
+
 class RelativeBodyFrameVelocity(ProcessModel):
     def __init__(self, Q1: np.ndarray, Q2: np.ndarray):
         self._Q1 = Q1
@@ -164,6 +167,7 @@ class RelativeBodyFrameVelocity(ProcessModel):
     def evaluate(
         self, x: MatrixLieGroupState, u: StampedValue, dt: float
     ) -> MatrixLieGroupState:
+        x = x.copy()
         u = u.value.reshape((2, round(u.value.size / 2)))
         x.value = x.group.Exp(-u[0] * dt) @ x.value @ x.group.Exp(u[1] * dt)
         return x
@@ -210,6 +214,7 @@ class CompositeProcessModel(ProcessModel):
     def evaluate(
         self, x: CompositeState, u: StampedValue, dt: float
     ) -> CompositeState:
+        x = x.copy()
         for i, x_sub in enumerate(x.value):
             u_sub = StampedValue(u.value[i], u.stamp)
             x.value[i] = self._model_list[i].evaluate(x_sub, u_sub, dt)
@@ -321,7 +326,7 @@ class PointRelativePosition(MeasurementModel):
 
         elif x.direction == "left":
             return x.jacobian_from_blocks(
-                attitude= -C_ab.T @ SO3.odot(r_pw_a), position= -C_ab.T
+                attitude=-C_ab.T @ SO3.odot(r_pw_a), position=-C_ab.T
             )
 
     def covariance(self, x: MatrixLieGroupState) -> np.ndarray:
@@ -368,9 +373,7 @@ class InvariantPointRelativePosition(MeasurementModel):
         """
 
         if x.direction == "left":
-            jac_attitude = SO3.cross(
-                self.measurement_model._landmark_position
-            )
+            jac_attitude = SO3.cross(self.measurement_model._landmark_position)
             jac_position = -np.identity(3)
         else:
             raise NotImplementedError("Right jacobian not implemented.")
@@ -761,4 +764,3 @@ class InvariantMeasurement(Measurement):
             stamp=meas.stamp,
             model=model,
         )
-

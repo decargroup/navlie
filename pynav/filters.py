@@ -156,7 +156,9 @@ class ExtendedKalmanFilter:
         if y.stamp is not None:
             dt = y.stamp - x.state.stamp
             if dt < 0:
-                raise RuntimeError("Measurement stamp is earlier than state stamp")
+                raise RuntimeError(
+                    "Measurement stamp is earlier than state stamp"
+                )
             elif u is not None:
                 x = self.predict(x, u, dt)
 
@@ -198,7 +200,13 @@ class IteratedKalmanFilter(ExtendedKalmanFilter):
     On-manifold iterated extended Kalman filter.
     """
 
-    __slots__ = ["process_model", "reject_outliers", "step_tol", "max_iters"]
+    __slots__ = [
+        "process_model",
+        "reject_outliers",
+        "step_tol",
+        "max_iters",
+        "line_search",
+    ]
 
     def __init__(
         self,
@@ -212,6 +220,7 @@ class IteratedKalmanFilter(ExtendedKalmanFilter):
         self.step_tol = step_tol
         self.max_iters = max_iters
         self.reject_outliers = reject_outliers
+        self.line_search = line_search
 
     def correct(
         self,
@@ -262,7 +271,9 @@ class IteratedKalmanFilter(ExtendedKalmanFilter):
         if y.stamp is not None:
             dt = y.stamp - x.state.stamp
             if dt < 0:
-                raise RuntimeError("Measurement stamp is earlier than state stamp")
+                raise RuntimeError(
+                    "Measurement stamp is earlier than state stamp"
+                )
             elif dt > 0 and u is not None:
                 x = self.predict(x, u, dt)
 
@@ -304,16 +315,22 @@ class IteratedKalmanFilter(ExtendedKalmanFilter):
                 break
 
             # Perform backtracking line search
-            alpha = 1
-            cost_new = cost_old + 9999
-            step_accepted = False
-            while not step_accepted and alpha > self.step_tol:
-                x_new = x_op.plus(alpha * dx)
-                cost_new = self._get_cost_and_info(x_new, x, y, x_jac)["cost"]
-                if cost_new < cost_old:
-                    step_accepted = True
-                else:
-                    alpha *= 0.9
+            if self.line_search:
+                alpha = 1
+                cost_new = cost_old + 9999
+                step_accepted = False
+                while not step_accepted and alpha > self.step_tol:
+                    x_new = x_op.plus(alpha * dx)
+                    cost_new = self._get_cost_and_info(x_new, x, y, x_jac)[
+                        "cost"
+                    ]
+                    if cost_new < cost_old:
+                        step_accepted = True
+                    else:
+                        alpha *= 0.9
+            else:
+                x_new = x_op.plus(dx)
+                cost_new = cost_old
 
             # If step was not accepted, exit loop and do not update step
             if not step_accepted:
@@ -347,7 +364,7 @@ class IteratedKalmanFilter(ExtendedKalmanFilter):
         y_check = y.model.evaluate(x_op)
         z = y.value.reshape((-1, 1)) - y_check.reshape((-1, 1))
         e = x_op.minus(x_check.state).reshape((-1, 1))
-        J = x_op.jacobian(e)
+        J = x_op.plus_jacobian(e)
         P = J @ x_check.covariance @ J.T
         P = 0.5 * (P + P.T)
         cost_prior = np.ndarray.item(0.5 * e.T @ np.linalg.solve(P, e))
@@ -414,19 +431,19 @@ def run_filter(
 
     results_list = []
     for k in range(len(input_data) - 1):
-        results_list.append(x)
-
         u = input_data[k]
-
         # Fuse any measurements that have occurred.
         if len(meas_data) > 0:
-            while y.stamp < input_data[k + 1].stamp and meas_idx < len(meas_data):
+            while y.stamp < input_data[k + 1].stamp and meas_idx < len(
+                meas_data
+            ):
 
                 x = filter.correct(x, y, u)
                 meas_idx += 1
                 if meas_idx < len(meas_data):
                     y = meas_data[meas_idx]
 
+        results_list.append(x)
         dt = input_data[k + 1].stamp - x.stamp
         x = filter.predict(x, u, dt)
 

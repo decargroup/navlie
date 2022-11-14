@@ -18,15 +18,23 @@ def test_composite_process_model():
     jac_fd = process_model.jacobian_fd(x0, u, dt)
     assert np.allclose(jac, jac_fd, atol=1e-6)
 
-def test_composite_jacobian():
+def test_composite_plus_jacobian():
     T12 = SE2State(SE2.Exp([0.5, 1, -1]), stamp=0.0, state_id=2)
     T13 = SE2State(SE2.Exp([-0.5, 1, 1]), stamp=0.0, state_id=3)
     x = CompositeState([T12, T13])
     dx = np.array([i for i in range(x.dof)])
-    jac = x.jacobian(dx)
-    jac_fd = x.jacobian_fd(dx)
+    jac = x.plus_jacobian(dx)
+    jac_fd = x.plus_jacobian_fd(dx)
     assert np.allclose(jac, jac_fd, atol=1e-6)
 
+def test_composite_minus_jacobian():
+    T12 = SE2State(SE2.Exp([0.5, 1, -1]), stamp=0.0, state_id=2)
+    T13 = SE2State(SE2.Exp([-0.5, 1, 1]), stamp=0.0, state_id=3)
+    x1 = CompositeState([T12, T13])
+    x2 = CompositeState([T13, T12])
+    jac = x1.minus_jacobian(x2)
+    jac_fd = x1.minus_jacobian_fd(x2)
+    assert np.allclose(jac, jac_fd, atol=1e-6)
 
 def test_range_relative_pose():
 
@@ -55,4 +63,4 @@ def test_composite_pickling():
 
 
 if __name__ == "__main__":
-    test_composite_pickling()
+    test_composite_minus_jacobian()
