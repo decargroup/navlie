@@ -7,7 +7,6 @@ from pynav.types import (
 from pynav.lib.states import (
     CompositeState,
     MatrixLieGroupState,
-    SE3State,
     VectorState,
 )
 from pylie import SO2, SO3
@@ -46,8 +45,13 @@ class SingleIntegrator(ProcessModel):
 
 class DoubleIntegrator(ProcessModel):
     """
-    A second-order kinematic process model with discretization as in
-    https://ieeexplore.ieee.org/stamp/stamp.jsp?tp=&arnumber=303738
+    The double-integrator process model is a second-order point kinematic model
+    given in continuous time by 
+
+        x_dot = v
+        v_dot = u
+
+    where `u` is the input. 
     """
 
     def __init__(self, Q: np.ndarray):
@@ -121,7 +125,7 @@ class BodyFrameVelocity(ProcessModel):
         if x.direction == "right":
             return x.group.adjoint(x.group.Exp(-u.value * dt))
         elif x.direction == "left":
-            return x.group.identity()
+            return np.identity(x.dof)
 
     def covariance(
         self, x: MatrixLieGroupState, u: StampedValue, dt: float
@@ -133,7 +137,6 @@ class BodyFrameVelocity(ProcessModel):
             L = dt * Ad @ x.group.left_jacobian(-u.value * dt)
 
         return L @ self._Q @ L.T
-
 
 class RelativeBodyFrameVelocity(ProcessModel):
     def __init__(self, Q1: np.ndarray, Q2: np.ndarray):
@@ -269,6 +272,105 @@ class RangePointToAnchor(MeasurementModel):
 
     def covariance(self, x: VectorState) -> np.ndarray:
         return self._R
+
+
+class PointRelativePosition(MeasurementModel):
+    def __init__(
+        self,
+        landmark_position: np.ndarray,
+        R: np.ndarray,
+    ):
+        self._landmark_position = np.array(landmark_position).ravel()
+        self._R = R
+
+    def evaluate(self, x: MatrixLieGroupState) -> np.ndarray:
+        """Evaluates the measurement model of a landmark from a given pose."""
+        r_zw_a = x.position.reshape((-1, 1))
+        C_ab = x.attitude
+        r_pw_a = self._landmark_position.reshape((-1, 1))
+        return C_ab.T @ (r_pw_a - r_zw_a)
+
+    def jacobian(self, x: MatrixLieGroupState) -> np.ndarray:
+        r_zw_a = x.position.reshape((-1, 1))
+        C_ab = x.attitude
+        r_pw_a = self._landmark_position.reshape((-1, 1))
+        y = C_ab.T @ (r_pw_a - r_zw_a)
+
+        if x.direction == "right":
+            return x.jacobian_from_blocks(
+                attitude=-SO3.odot(y), position=-np.identity(r_zw_a.shape[0])
+            )
+
+        elif x.direction == "left":
+            return x.jacobian_from_blocks(
+                attitude= -C_ab.T @ SO3.odot(r_pw_a), position= -C_ab.T
+            )
+
+    def covariance(self, x: MatrixLieGroupState) -> np.ndarray:
+        return self._R
+
+
+class InvariantPointRelativePosition(MeasurementModel):
+    def __init__(self, y: np.ndarray, model: PointRelativePosition):
+        self.y = y.ravel()
+        self.measurement_model = model
+
+    def evaluate(self, x: MatrixLieGroupState) -> np.ndarray:
+        """Computes the right-invariant innovation.
+
+
+        Parameters
+        ----------
+        x : MatrixLieGroupState
+            Evaluation point of the innovation.
+
+        Returns
+        -------
+        np.ndarray
+            Residual.
+        """
+        y_hat = self.measurement_model.evaluate(x)
+        e: np.ndarray = y_hat.ravel() - self.y.ravel()
+        z = x.attitude @ e
+
+        return z
+
+    def jacobian(self, x: MatrixLieGroupState) -> np.ndarray:
+        """Compute the Jacobian of the innovation directly.
+
+        Parameters
+        ----------
+        x : MatrixLieGroupState
+            Matrix Lie group state containing attitude and position
+
+        Returns
+        -------
+        np.ndarray
+            Jacobian of the innovation w.r.t the state
+        """
+
+        if x.direction == "left":
+            jac_attitude = SO3.cross(
+                self.measurement_model._landmark_position
+            )
+            jac_position = -np.identity(3)
+        else:
+            raise NotImplementedError("Right jacobian not implemented.")
+
+        jac = x.jacobian_from_blocks(
+            attitude=jac_attitude,
+            position=jac_position,
+        )
+
+        return jac
+
+    def covariance(self, x: MatrixLieGroupState) -> np.ndarray:
+
+        R = np.atleast_2d(self.measurement_model.covariance(x))
+        M = x.attitude
+        cov = M @ R @ M.T
+
+        return cov
 
 
 class RangePoseToAnchor(MeasurementModel):
@@ -618,22 +720,27 @@ class InvariantMeasurement(Measurement):
     :math:`\mathbf{z}`.
     """
 
-    def __init__(
-        self,
-        meas: Measurement,
-        direction="right",
-    ):
+    def __init__(self, meas: Measurement, direction, model=None):
         """
-
         Parameters
         ----------
         meas : Measurement
             Measurement value
         direction : "left" or "right", optional
             whether to form a left- or right-invariant innovation, by default "right"
+        model : MeasurementModel, optional
+            a measurement model that directly returns the innovation and
+            Jacobian and covariance of the innovation. If none is supplied,
+            the default InvariantInnovation will be used, which computes the
+            Jacobian of the innovation indirectly via chain rule.
         """
+
+        if model is None:
+            model = _InvariantInnovation(meas.value, meas.model, direction)
+
         super(InvariantMeasurement, self).__init__(
             value=np.zeros((meas.value.size,)),
             stamp=meas.stamp,
-            model=_InvariantInnovation(meas.value, meas.model, direction),
+            model=model,
         )
+

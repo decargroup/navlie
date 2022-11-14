@@ -1,4 +1,4 @@
-from pylie import SO2, SO3, SE2, SE3, SE23
+from pylie import SO2, SO3, SE2, SE3, SE23, SL3
 from pylie.numpy.base import MatrixLieGroup
 import numpy as np
 from ..types import State
@@ -28,12 +28,16 @@ class VectorState(State):
             stamp=stamp,
             state_id=state_id,
         )
+        self.value :np.ndarray = self.value # just for type hinting
 
-    def plus(self, dx: np.ndarray):
-        self.value: np.ndarray = self.value.flatten() + dx.flatten()
+    def plus(self, dx: np.ndarray) -> "VectorState":
+        new = self.copy()
+        new.value: np.ndarray = new.value.ravel() + dx.ravel()
+        return new
 
     def minus(self, x: "VectorState") -> np.ndarray:
-        return self.value - x.value
+        og_shape = self.value.shape
+        return (self.value.ravel() - x.value.ravel()).reshape(og_shape)
 
     def copy(self) -> "VectorState":
         return VectorState(self.value.copy(), self.stamp, self.state_id)
@@ -44,7 +48,7 @@ class MatrixLieGroupState(State):
     The MatrixLieGroupState class.
     """
 
-    __slots__ = ["direction"]
+    __slots__ = ["group", "direction"]
 
     def __init__(
         self,
@@ -59,22 +63,26 @@ class MatrixLieGroupState(State):
         super(MatrixLieGroupState, self).__init__(
             value, self.group.dof, stamp, state_id
         )
-
-    def plus(self, dx: np.ndarray):
+        self.value :np.ndarray = self.value # just for type hinting
+        
+    def plus(self, dx: np.ndarray) -> "MatrixLieGroupState":
+        new = self.copy()
         if self.direction == "right":
-            self.value: np.ndarray = self.value @ self.group.Exp(dx)
+            new.value = new.value @ new.group.Exp(dx)
         elif self.direction == "left":
-            self.value: np.ndarray = self.group.Exp(dx) @ self.value
+            new.value = new.group.Exp(dx) @ new.value
         else:
             raise ValueError("direction must either be 'left' or 'right'.")
+        return new
 
     def minus(self, x: "MatrixLieGroupState") -> np.ndarray:
         if self.direction == "right":
-            return self.group.Log(self.group.inverse(x.value) @ self.value)
+            diff = self.group.Log(self.group.inverse(x.value) @ self.value)
         elif self.direction == "left":
-            return self.group.Log(self.value @ self.group.inverse(x.value))
+            diff = self.group.Log(self.value @ self.group.inverse(x.value))
         else:
             raise ValueError("direction must either be 'left' or 'right'.")
+        return diff.ravel()
 
     def copy(self) -> "MatrixLieGroupState":
         return self.__class__(
@@ -83,6 +91,15 @@ class MatrixLieGroupState(State):
             self.state_id,
             self.direction,
         )
+
+    def jacobian(self, dx: np.ndarray) -> np.ndarray:
+        if self.direction == "right":
+            jac = self.group.right_jacobian(dx)
+        elif self.direction == "left":
+            jac = self.group.left_jacobian(dx)
+        else:
+            raise ValueError("direction must either be 'left' or 'right'.")
+        return jac          
 
     @property
     def attitude(self) -> np.ndarray:
@@ -154,7 +171,9 @@ class SO3State(MatrixLieGroupState):
         return attitude
 
     @staticmethod
-    def from_ros(msg: QuaternionStamped, state_id=None, direction="right") -> "SO3State":
+    def from_ros(
+        msg: "QuaternionStamped", state_id=None, direction="right"
+    ) -> "SO3State":
         """
         Create a SO3State from a ROS QuaternionStamped message.
 
@@ -182,7 +201,7 @@ class SO3State(MatrixLieGroupState):
             direction,
         )
 
-    def to_ros(self) -> QuaternionStamped:
+    def to_ros(self) -> "QuaternionStamped":
         """
         Convert to ROS QuaternionStamped message.
 
@@ -194,12 +213,9 @@ class SO3State(MatrixLieGroupState):
         msg = QuaternionStamped()
         msg.header.stamp = rospy.Time.from_sec(self.stamp)
         msg.header.frame_id = self.state_id
-        q = SO3.to_quat(self.attitude, order="wxyz")
-        msg.quaternion.w = q[0]
-        msg.quaternion.x = q[1]
-        msg.quaternion.y = q[2]
-        msg.quaternion.z = q[3]
+        msg.quaternion = SO3.to_ros(self.attitude)
         return msg
+
 
 class SE2State(MatrixLieGroupState):
     def __init__(
@@ -287,7 +303,9 @@ class SE3State(MatrixLieGroupState):
         return np.block([attitude, position])
 
     @staticmethod
-    def from_ros(msg: PoseStamped, state_id: Any=None, direction="right") -> "SE3State":
+    def from_ros(
+        msg: "PoseStamped", state_id: Any = None, direction="right"
+    ) -> "SE3State":
         """
         Convert a ROS PoseStamped message to a SE3State.
 
@@ -319,11 +337,11 @@ class SE3State(MatrixLieGroupState):
         return SE3State(
             SE3.from_components(C, r),
             msg.header.stamp.to_sec(),
-            state_id = state_id,
-            direction=direction
+            state_id=state_id,
+            direction=direction,
         )
 
-    def to_ros(self, frame_id: str = None) -> PoseStamped:
+    def to_ros(self, frame_id: str = None) -> "PoseStamped":
         """
         Convert a SE3State to a ROS PoseStamped message.
 
@@ -345,14 +363,7 @@ class SE3State(MatrixLieGroupState):
         if frame_id is not None:
             msg.header.frame_id = frame_id
 
-        q = SO3.to_quat(self.attitude, order="wxyz")
-        msg.pose.position.x = self.position[0]
-        msg.pose.position.y = self.position[1]
-        msg.pose.position.z = self.position[2]
-        msg.pose.orientation.w = q[0]
-        msg.pose.orientation.x = q[1]
-        msg.pose.orientation.y = q[2]
-        msg.pose.orientation.z = q[3] 
+        msg.pose = SE3.to_ros(self.value)
 
         return msg
 
@@ -366,6 +377,15 @@ class SE23State(MatrixLieGroupState):
         direction="right",
     ):
         super().__init__(value, SE23, stamp, state_id, direction)
+
+    
+    @property
+    def pose(self):
+        return self.value[0:5, 0:5]
+
+    @pose.setter
+    def pose(self, T):
+        self.value[0:5, 0:5] = T
 
     @property
     def attitude(self):
@@ -381,15 +401,15 @@ class SE23State(MatrixLieGroupState):
 
     @position.setter
     def position(self, r):
-        self.value[0:3, 4] = r
+        self.value[0:3, 4] = r.ravel()
 
     @property
     def velocity(self):
         return self.value[0:3, 3]
 
     @velocity.setter
-    def velocity(self, r):
-        self.value[0:3, 3] = r
+    def velocity(self, v):
+        self.value[0:3, 3] = v.ravel()
 
     @staticmethod
     def jacobian_from_blocks(
@@ -409,6 +429,17 @@ class SE23State(MatrixLieGroupState):
             velocity = np.zeros((dim, 3))
 
         return np.block([attitude, velocity, position])
+
+
+class SL3State(MatrixLieGroupState):
+    def __init__(
+        self, 
+        value: np.ndarray, 
+        stamp: float = None, 
+        state_id=None, 
+        direction="right"
+    ):
+        super().__init__(value, SL3, stamp, state_id, direction)
 
 
 class CompositeState(State):
@@ -431,24 +462,57 @@ class CompositeState(State):
     and by ID.
     """
 
-    __slots__ = ["substates", "_slices"]
+    __slots__ = ["slices"]
 
     def __init__(
         self, state_list: List[State], stamp: float = None, state_id=None
     ):
 
-        #:List[State]: The substates are the CompositeState 's value.
+        #:List[State]: The substates are the CompositeState's value.
         self.value = state_list
 
         self.stamp = stamp
         self.state_id = state_id
 
         # Compute the slices for each individual state.
-        self._slices = []
+        # TODO: ideally, we need to find away for the slices to 
+        # adapt to possible `.value[i].dof` changes of the substates, but we 
+        # dont want to do this on EVERY plus()/minus() call since this will
+        # be slow. 
+        self.slices = []
         counter = 0
         for state in state_list:
-            self._slices.append(slice(counter, counter + state.dof))
+            self.slices.append(slice(counter, counter + state.dof))
             counter += state.dof
+
+    def __getstate__(self):
+        """
+        Get the state of the object for pickling.
+        """
+        # When using __slots__ the pickle module expects a tuple from __getstate__.
+        # See https://stackoverflow.com/questions/1939058/simple-example-of-use-of-setstate-and-getstate/41754104#41754104
+        return (
+            None,
+            {
+                "value": self.value,
+                "stamp": self.stamp,
+                "state_id": self.state_id,
+                "slices": self.slices,
+            },
+        )
+
+    def __setstate__(self, attributes):
+        """
+        Set the state of the object for unpickling.
+        """
+        # When using __slots__ the pickle module sends a tuple for __setstate__.
+        # See https://stackoverflow.com/questions/1939058/simple-example-of-use-of-setstate-and-getstate/41754104#41754104
+
+        attributes = attributes[1]
+        self.value = attributes["value"]
+        self.stamp = attributes["stamp"]
+        self.state_id = attributes["state_id"]
+        self.slices = attributes["slices"]
 
     @property
     def dof(self):
@@ -465,7 +529,7 @@ class CompositeState(State):
         Get slice of a particular state_id in the list of states.
         """
         idx = self.get_index_by_id(state_id)
-        return self._slices[idx]
+        return self.slices[idx]
 
     def get_value_by_id(self, state_id):
         """
@@ -502,6 +566,20 @@ class CompositeState(State):
         idx = self.get_index_by_id(state_id)
         self.value[idx].stamp = stamp
 
+    def set_state_by_id(self, state: State, state_id):
+        """
+        Set the whole sub-state by id.
+        """
+        idx = self.get_index_by_id(state_id)
+        self.value[idx] = state
+
+    def set_value_by_id(self, value: Any, state_id: Any):
+        """
+        Set the value of a sub-state by id.
+        """
+        idx = self.get_index_by_id(state_id)
+        self.value[idx].value = value
+
     def set_stamp_for_all(self, stamp: float):
         """
         Set the timestamp of all substates.
@@ -524,33 +602,39 @@ class CompositeState(State):
             [state.copy() for state in self.value], self.stamp, self.state_id
         )
 
-    def plus(self, dx, new_stamp: float = None):
+    def plus(self, dx, new_stamp: float = None) -> "CompositeState":
         """
         Updates the value of each sub-state given a dx. Interally parses
         the dx vector.
         """
-        for i, s in enumerate(self._slices):
+        new = self.copy()
+        for i, s in enumerate(new.slices):
             sub_dx = dx[s]
-            self.value[i].plus(sub_dx)
+            new.value[i] = new.value[i].plus(sub_dx)
 
         if new_stamp is not None:
-            self.set_stamp_for_all(new_stamp)
+            new.set_stamp_for_all(new_stamp)
+
+        return new
 
     def minus(self, x: "CompositeState") -> np.ndarray:
         dx = []
         for i, v in enumerate(x.value):
-            dx.append(self.value[i].minus(x.value[i]))
+            dx.append(self.value[i].minus(x.value[i]).reshape((-1,1)))
 
         return np.vstack(dx)
 
-    def plus_by_id(self, dx, state_id: int, new_stamp: float = None):
+    def plus_by_id(self, dx, state_id: int, new_stamp: float = None) -> "CompositeState":
         """
         Updates a specific sub-state.
         """
-        idx = self.get_index_by_id(state_id)
-        self.value[idx].plus(dx)
+        new = self.copy()
+        idx = new.get_index_by_id(state_id)
+        new.value[idx].plus(dx)
         if new_stamp is not None:
-            self.set_stamp_by_id(new_stamp, state_id)
+            new.set_stamp_by_id(new_stamp, state_id)
+
+        return new
 
     def jacobian_from_blocks(self, block_dict: dict):
         """
@@ -564,5 +648,14 @@ class CompositeState(State):
         for state_id, block in block_dict.items():
             slc = self.get_slice_by_id(state_id)
             jac[:, slc] = block
+
+        return jac
+
+    def jacobian(self, dx: np.ndarray) -> np.ndarray:
+        dof = self.dof
+        jac = np.zeros((dof, dof))
+        for i in range(len(self.value)):
+            slc = self.slices[i]
+            jac[slc, slc] = self.value[i].jacobian(dx[slc])
 
         return jac

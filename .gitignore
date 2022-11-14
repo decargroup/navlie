@@ -15,6 +15,7 @@ dist/
 
 # Log files
 *.log
+*.venv 
 
 # Package files
 *.jar
@@ -49,4 +50,5 @@ Thumbs.db
 *.wmv
 
 .vscode/
+docs/_build/
 *.egg-info

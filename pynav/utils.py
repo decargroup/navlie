@@ -1,10 +1,15 @@
+from multiprocessing.spawn import set_executable
 from typing import Callable, List, Tuple
 from pynav.types import State, Measurement, StateWithCovariance
 import numpy as np
 import matplotlib.pyplot as plt
-import time
 from scipy.stats.distributions import chi2
 from scipy.interpolate import interp1d
+from tqdm import tqdm
+from scipy.linalg import block_diag, expm
+
+from mpl_toolkits.mplot3d import Axes3D
+from pynav.lib.states import SE3State
 
 
 class GaussianResult:
@@ -102,11 +107,15 @@ class GaussianResultList:
         #:numpy.ndarray with shape (N,):  timestamp
         self.stamp = np.array([r.stamp for r in result_list])
         #:numpy.ndarray with shape (N,): numpy array of State objects
-        self.state = np.array([r.state for r in result_list])
+        self.state: List[State] = np.array([r.state for r in result_list])
         #:numpy.ndarray with shape (N,): numpy array of true State objects
-        self.state_true = np.array([r.state_true for r in result_list])
+        self.state_true: List[State] = np.array(
+            [r.state_true for r in result_list]
+        )
         #:numpy.ndarray with shape (N,dof,dof): covariance
-        self.covariance = np.array([r.covariance for r in result_list])
+        self.covariance: np.ndarray = np.array(
+            [r.covariance for r in result_list]
+        )
         #:numpy.ndarray with shape (N, dof): error throughout trajectory
         self.error = np.array([r.error for r in result_list])
         #:numpy.ndarray with shape (N,): EES throughout trajectory
@@ -151,11 +160,11 @@ class MonteCarloResult:
         #:numpy.ndarray with shape (N,): timestamps throughout trajectory
         self.stamp = trial_results[0].stamp
         #:numpy.ndarray with shape (N,): average NEES throughout trajectory
-        self.average_nees = np.average(
+        self.average_nees: np.ndarray = np.average(
             np.array([t.nees for t in trial_results]), axis=0
         )
         #:numpy.ndarray with shape (N,): average EES throughout trajectory
-        self.average_ees = np.average(
+        self.average_ees: np.ndarray = np.average(
             np.array([t.ees for t in trial_results]), axis=0
         )
         #:numpy.ndarray with shape (N,dof): root-mean-squared error of each component
@@ -167,9 +176,9 @@ class MonteCarloResult:
         #:numpy.ndarray with shape (N,): Total RMSE, this can be meaningless if units differ in a state
         self.total_rmse: np.ndarray = np.sqrt(self.average_ees)
         #:numpy.ndarray with shape (N,1): expected NEES value throughout trajectory
-        self.expected_nees = np.array(trial_results[0].dof)
+        self.expected_nees: np.ndarray = np.array(trial_results[0].dof)
         #:numpy.ndarray with shape (N): dof throughout trajectory
-        self.dof = trial_results[0].dof
+        self.dof: np.ndarray = trial_results[0].dof
 
     def nees_lower_bound(self, confidence_interval: float):
         """
@@ -227,7 +236,9 @@ class MonteCarloResult:
         )
 
 
-def monte_carlo(trial: Callable[[int], GaussianResultList], num_trials: int) -> MonteCarloResult:
+def monte_carlo(
+    trial: Callable[[int], GaussianResultList], num_trials: int
+) -> MonteCarloResult:
     """
     Monte-Carlo experiment executor. Give a callable `trial` function that
     executes a trial and returns a `GaussianResultList`, and this function
@@ -236,7 +247,7 @@ def monte_carlo(trial: Callable[[int], GaussianResultList], num_trials: int) -> 
     Parameters
     ----------
     trial : Callable[[int], GaussianResultList]
-        Callable trial function. Must accept a single integer trial number, 
+        Callable trial function. Must accept a single integer trial number,
         and return a GaussianResultList. From trial to trial, the timestamps
         are expected to remain consistent.
     num_trials : int
@@ -247,28 +258,12 @@ def monte_carlo(trial: Callable[[int], GaussianResultList], num_trials: int) -> 
     MonteCarloResult
         Data container object
     """
-
     trial_results = [None] * num_trials
+
     print("Starting Monte Carlo experiment...")
-
-    start_time = time.time()
-    for i in range(num_trials):
-        trial_start_time = time.time()
-        print("Trial {0} of {1}... ".format(i + 1, num_trials))
-
+    for i in tqdm(range(num_trials), unit="trial", ncols=80):
         # Execute the trial
         trial_results[i] = trial(i)
-
-        # Print some info
-        duration = time.time() - trial_start_time
-        avg_duration = (time.time() - start_time)/(i+1)
-        remaining = (num_trials - i - 1) * avg_duration
-        print(
-            (
-                "    Completed in {duration:.1f}s. "
-                + "Estimated time remaining: {remaining:.1f}s"
-            ).format(duration=duration, remaining=remaining)
-        )
 
     return MonteCarloResult(trial_results)
 
@@ -387,7 +382,7 @@ def plot_meas(
     for i in range(len(meas_list)):
         y_meas.append(np.ravel(meas_list[i].value))
         x = state_true_list[int(state_idx[i])]
-        y_true.append(meas_list[i].model.evaluate(x).ravel())
+        y_true.append(np.ravel(meas_list[i].model.evaluate(x)))
 
     y_meas = np.atleast_2d(np.array(y_meas))
     y_true = np.atleast_2d(np.array(y_true))
@@ -414,3 +409,138 @@ def plot_meas(
         )
 
     return fig, axs
+
+
+def van_loans(
+    A_c: np.ndarray,
+    L_c: np.ndarray,
+    Q_c: np.ndarray,
+    dt: float,
+) -> Tuple[np.ndarray, np.ndarray]:
+    """Van Loan's method for computing the discrete-time A and Q matrices.
+
+    Given a continuous-time system of the form
+
+    .. math::
+        \dot{\mathbf{x}} = \mathbf{A}_c \mathbf{x} + \mathbf{L}_c \mathbf{w}, \hspace{5mm}
+        \mathbf{w} \sim \mathcal{N} (\mathbf{0}, \mathbf{Q}_c ),
+
+    where :math:`\mathbf{Q}_c` is a power spectral density,
+    Van Loan's method can be used to find its equivalent discrete-time representation,
+
+    .. math::
+        \mathbf{x}_k = \mathbf{A}_{d} \mathbf{x}_{k-1} + \mathbf{w}_{k-1}, \hspace{5mm}
+        \mathbf{w} \sim \mathcal{N} (\mathbf{0}, \mathbf{Q}_d ).
+
+    These are computed using the matrix exponential, with a sampling period :math:`\Delta t`.
+
+    Parameters
+    ----------
+    A_c : np.ndarray
+        Continuous-time A matrix.
+    L_c : np.ndarray
+        Continuous-time L matrix.
+    Q_c : np.ndarray
+        Continuous-time noise matrix
+    dt : float
+        Discretization timestep.
+
+    Returns
+    -------
+    Tuple[np.ndarray, np.ndarray]
+        A_d and Q_d, discrete-time matrices.
+    """
+    N = A_c.shape[0]
+
+    A_c = np.atleast_2d(A_c)
+    L_c = np.atleast_2d(L_c)
+    Q_c = np.atleast_2d(Q_c)
+
+    # Form Xi matrix and compute Upsilon using matrix exponential
+    Xi = block_diag(A_c, -A_c.T, A_c, np.zeros((N, N)))
+    Xi[:N, N : 2 * N] = L_c @ Q_c @ L_c.T
+    Upsilon = expm(Xi * dt)
+
+    # Extract relevant parts of Upsilon
+    A_d = Upsilon[:N, :N]
+    Q_d = Upsilon[:N, N : 2 * N] @ A_d.T
+
+    return A_d, Q_d
+
+
+def plot_poses(
+    poses: List[SE3State],
+    ax: plt.Axes = None,
+    line_color: str = "tab:blue",
+    triad_color: str = None,
+    arrow_length: float = 1,
+    step: int = 5,
+    label: str = None,
+):
+    """Plots position trajectory in 3D
+    and poses along the trajectory as triads.
+
+    Parameters
+    ----------
+    poses : List[SE3State]
+        A list of SE3State poses
+    ax : plt.Axes, optional
+        Axes to plot on, if none, 3D axes are created.
+    line_color : str, optional
+        Color of the position trajectory.
+    triad_color : str, optional
+        Triad color. If none are specified, defaults to RGB.
+    arrow_length : int, optional
+        Triad arrow length, by default 1.
+    step : int, optional
+        Step size in list of poses, by default 5.
+    label : str, optional
+        Optional label for the triad
+    """
+
+    if ax is None:
+        fig = plt.figure()
+        ax = plt.axes(projection="3d")
+
+    if triad_color is None:
+        colors = ["tab:red", "tab:green", "tab:blue"] # Default to RGB
+    else:
+        colors = [triad_color] * 3
+
+    # Plot a line for the positions
+    r = np.array([pose.position for pose in poses])
+    ax.plot3D(r[:, 0], r[:, 1], r[:, 2], color=line_color, label=label)
+
+    # Plot triads using quiver
+    C = np.array([poses[i].attitude.T for i in range(0, len(poses), step)])
+    r = np.array([poses[i].position for i in range(0, len(poses), step)])
+    x, y, z = r[:, 0], r[:, 1], r[:, 2]
+    ax.quiver(x, y, z, C[:, 0, 0], C[:, 0, 1], C[:, 0, 2], color=colors[0], length=arrow_length)
+    ax.quiver(x, y, z, C[:, 1, 0], C[:, 1, 1], C[:, 1, 2], color=colors[1], length=arrow_length)
+    ax.quiver(x, y, z, C[:, 2, 0], C[:, 2, 1], C[:, 2, 2], color=colors[2], length=arrow_length)
+
+    set_axes_equal(ax)
+
+
+def set_axes_equal(ax: plt.Axes):
+    """Sets the axes of a 3D plot to have equal scale.
+
+
+    Parameters
+    ----------
+    ax : plt.Axes
+        Matplotlib axes.
+    """
+    x_limits = ax.get_xlim3d()
+    y_limits = ax.get_ylim3d()
+    z_limits = ax.get_zlim3d()
+    x_range = abs(x_limits[1] - x_limits[0])
+    x_middle = np.mean(x_limits)
+    y_range = abs(y_limits[1] - y_limits[0])
+    y_middle = np.mean(y_limits)
+    z_range = abs(z_limits[1] - z_limits[0])
+    z_middle = np.mean(z_limits)
+    length = 0.5 * max([x_range, y_range, z_range])
+    ax.set_xlim3d([x_middle - length, x_middle + length])
+    ax.set_ylim3d([y_middle - length, y_middle + length])
+    ax.set_zlim3d([z_middle - length, z_middle + length])

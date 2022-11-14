@@ -2,7 +2,7 @@ from pynav.filters import ExtendedKalmanFilter, IteratedKalmanFilter
 from pynav.lib.states import VectorState
 from pynav.datagen import DataGenerator
 from pynav.types import StateWithCovariance
-from pynav.utils import GaussianResult, GaussianResultList
+from pynav.utils import GaussianResult, GaussianResultList, randvec
 from pynav.lib.models import SingleIntegrator, RangePointToAnchor
 import numpy as np
 from typing import List
@@ -17,7 +17,7 @@ on that data.
 # ##############################################################################
 # Problem Setup
 
-x0 = VectorState(np.array([1, 0]))
+x0 = VectorState(np.array([1, 0]), stamp=0)
 P0 = np.diag([1, 1])
 R = 0.1**2
 Q = 0.1 * np.identity(2)
@@ -28,10 +28,10 @@ range_models = [
 ]
 range_freqs = [50, 50, 50]
 process_model = SingleIntegrator(Q)
-input_profile = lambda t: np.array([np.sin(t), np.cos(t)])
+input_profile = lambda t, x: np.array([np.sin(t), np.cos(t)])
 input_covariance = Q
-input_freq = 200
-
+input_freq = 180
+noise_active = True
 # ##############################################################################
 # Data Generation
 
@@ -44,10 +44,13 @@ dg = DataGenerator(
     range_freqs,
 )
 
-gt_data, input_data, meas_data = dg.generate(x0, 0, 10, noise=True)
+gt_data, input_data, meas_data = dg.generate(x0, 0, 10, noise=noise_active)
 
 # ##############################################################################
 # Run Filter
+if noise_active:
+    x0 = x0.plus(randvec(P0))
+    
 x = StateWithCovariance(x0, P0)
 
 ekf = ExtendedKalmanFilter(process_model)
@@ -58,8 +61,9 @@ start_time = time.time()
 y = meas_data[meas_idx]
 results_list = []
 for k in range(len(input_data) - 1):
-    u = input_data[k]
 
+    u = input_data[k]
+    
     # Fuse any measurements that have occurred.
     while y.stamp < input_data[k + 1].stamp and meas_idx < len(meas_data):
 
@@ -70,8 +74,11 @@ for k in range(len(input_data) - 1):
         if meas_idx < len(meas_data):
             y = meas_data[meas_idx]
 
-    x = ekf.predict(x, u)
-    results_list.append(GaussianResult(x, gt_data[k]))
+
+    dt = input_data[k + 1].stamp - x.state.stamp
+    x = ekf.predict(x, u, dt)
+    
+    results_list.append(GaussianResult(x, gt_data[k+1]))
 
 print("Average filter computation frequency (Hz):")
 print(1 / ((time.time() - start_time) / len(input_data)))
@@ -87,7 +94,9 @@ import seaborn as sns
 sns.set_theme()
 fig, ax = plt.subplots(1, 1)
 ax.plot(results.value[:, 0], results.value[:, 1], label="Estimate")
-ax.plot(results.value_true[:, 0], results.value_true[:, 1], label="Ground truth")
+ax.plot(
+    results.value_true[:, 0], results.value_true[:, 1], label="Ground truth"
+)
 ax.set_title("Trajectory")
 ax.set_xlabel("x (m)")
 ax.set_ylabel("y (m)")

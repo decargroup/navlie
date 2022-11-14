@@ -8,17 +8,59 @@ from typing import List, Any
 from abc import ABC, abstractmethod
 
 
-class StampedValue:
+class Input(ABC):
+
+    __slots__ = ["stamp","dof"]
+
+    def __init__(self, dof:int, stamp: float = None):
+        self.stamp = stamp #:float: Timestamp
+        self.dof = dof #:int: Degrees of freedom of the object
+
+    @abstractmethod
+    def plus(self, w: np.ndarray) -> "Input":
+        pass 
+
+    @abstractmethod
+    def copy(self) -> "Input":
+        pass
+
+class StampedValue(Input):
     """
     Generic data container for timestamped information.
     """
 
-    __slots__ = ["value", "stamp"]
+    __slots__ = ["value"] 
 
-    def __init__(self, value: np.ndarray, stamp: float = 0.0):
-        self.value = value #:numpy.ndarray:  Cariable containing the data values
-        self.stamp = stamp #:float: Timestamp
+    def __init__(self, value: np.ndarray, stamp: float = None):
+        if not isinstance(value, np.ndarray):
+            value = np.array(value)
+            
+        
+        self.value = value #:numpy.ndarray:  Variable containing the data values
+        
+        super().__init__(value.size, stamp)
 
+    def plus(self, w: np.ndarray) -> "StampedValue":
+        """
+        Generic addition operation to modify the internal value.
+        
+        Parameters
+        ----------
+        w : np.ndarray
+            to be added to the instance's .value
+        """
+        new = self.copy()
+        og_shape = new.value.shape 
+        new.value = new.value.ravel() + w.ravel()
+        new.value.reshape(og_shape)
+        return new
+
+    def copy(self) -> "StampedValue":
+        """ 
+        Returns a copy of the instance with fully seperate memory.
+        """
+        return StampedValue(self.value.copy(), self.stamp)
+        
 
 class State(ABC):
     """ 
@@ -42,7 +84,7 @@ class State(ABC):
         self.state_id = state_id #:Any: Some identifier associated with the state 
 
     @abstractmethod
-    def plus(self, dx: np.ndarray):
+    def plus(self, dx: np.ndarray) -> "State":
         """
         A generic "addition" operation given a `dx` numpy array with as many
         elements as the `dof` of this state.
@@ -65,12 +107,30 @@ class State(ABC):
         pass
 
 
-    def jacobian(self, x: np.ndarray) -> np.ndarray:
+    def jacobian(self, dx: np.ndarray) -> np.ndarray:
         """
         Jacobian of the `plus` operator. For Lie groups, this is known as the
         *group Jacobian*.
         """
         return np.identity(self.dof)
+
+    def jacobian_fd(self, dx) -> np.ndarray:
+        """
+        Calculates the model jacobian with finite difference.
+        """
+        dx_bar = dx
+        jac_fd = np.zeros((self.dof, self.dof))
+        h = 1e-8
+        Y_bar = self.plus(dx_bar)
+        for i in range(self.dof):
+            dx = np.zeros((self.dof,))
+            dx[i] = h
+            Y: State = self.plus(dx_bar.ravel() + dx)
+            jac_fd[:, i] = Y.minus(Y_bar).flatten() / h
+
+        return jac_fd
+
+
 
 class MeasurementModel(ABC):
     """
@@ -118,8 +178,7 @@ class MeasurementModel(ABC):
         for i in range(N):
             dx = np.zeros((N, 1))
             dx[i, 0] = h
-            x_temp = x.copy()
-            x_temp.plus(dx)
+            x_temp = x.plus(dx)
             jac_fd[:, i] = (self.evaluate(x_temp) - y).flatten() / h
 
         return jac_fd
@@ -130,25 +189,83 @@ class ProcessModel(ABC):
     Abstract process model base class for process models of the form 
 
     .. math::
-        \mathbf{x}_k = \mathbf{f}(\mathbf{x}_{k-1}, \mathbf{u}_{k-1}, \Delta t) + \mathbf{w}_{k-1}
+        \mathbf{x}_k = \mathbf{f}(\mathbf{x}_{k-1}, \mathbf{u}, \Delta t) + \mathbf{w}_{k}
 
-    where :math:`\mathbf{u}_{k-1}` is the input and :math:`\Delta t` is the time 
-    period between the two states.
-
+    where :math:`\mathbf{u}` is the input, :math:`\Delta t` is the time 
+    period between the two states, and :math:`\mathbf{w}_{k} \sim \mathcal{N}(\mathbf{0}, \mathbf{Q}_k)`
+    is additive Gaussian noise.
     """
     @abstractmethod
-    def evaluate(self, x: State, u: StampedValue, dt: float) -> State:
+    def evaluate(self, x: State, u: Input, dt: float) -> State:
+        """
+        Implementation of :math:`\mathbf{f}(\mathbf{x}_{k-1}, \mathbf{u}, \Delta t)`.
+
+        Parameters
+        ----------
+        x : State
+            State at time :math:`k-1`.
+        u : Input
+            The input value :math:`\mathbf{u}` provided as a Input object.
+            The actual numerical value is accessed via `u.value`.
+        dt : float
+            The time interval :math:`\Delta t` between the two states.
+
+        Returns
+        -------
+        State
+            State at time :math:`k`.
+        """
         pass
 
     @abstractmethod
-    def jacobian(self, x: State, u: StampedValue, dt: float) -> np.ndarray:
+    def jacobian(self, x: State, u: Input, dt: float) -> np.ndarray:
+        """
+        Implementation of the process model Jacobian with respect to the state.
+
+        .. math::
+            \mathbf{F} = \partial \mathbf{f}(\mathbf{x}_{k-1}, \mathbf{u}, \Delta t)
+            / \partial \mathbf{x}_{k-1}
+
+
+        Parameters
+        ----------
+        x : State
+            State at time :math:`k-1`.
+        u : Input
+            The input value :math:`\mathbf{u}` provided as a Input object.
+        dt : float
+            The time interval :math:`\Delta t` between the two states.
+
+        Returns
+        -------
+        np.ndarray
+            Process model Jacobian with respect to the state :math:`\mathbf{F}`.
+        """
         pass
 
     @abstractmethod
-    def covariance(self, x: State, u: StampedValue, dt: float) -> np.ndarray:
+    def covariance(self, x: State, u: Input, dt: float) -> np.ndarray:
+        """
+        Covariance matrix math:`\mathbf{Q}_k` of the additive Gaussian 
+        noise :math:`\mathbf{w}_{k} \sim \mathcal{N}(\mathbf{0}, \mathbf{Q}_k)`.
+
+        Parameters
+        ----------
+        x : State
+            State at time :math:`k-1`.
+        u : Input
+            The input value :math:`\mathbf{u}` provided as a Input object.
+        dt : float
+            The time interval :math:`\Delta t` between the two states.
+
+        Returns
+        -------
+        np.ndarray
+            Covariance matrix :math:`\mathbf{Q}_k`.
+        """
         pass
 
-    def jacobian_fd(self, x: State, u: StampedValue, dt: float) -> np.ndarray:
+    def jacobian_fd(self, x: State, u: Input, dt: float) -> np.ndarray:
         """
         Calculates the model jacobian with finite difference.
         """
@@ -158,8 +275,7 @@ class ProcessModel(ABC):
         for i in range(x.dof):
             dx = np.zeros((x.dof, 1))
             dx[i, 0] = h
-            x_pert = x.copy()  # Perturb current state
-            x_pert.plus(dx)
+            x_pert = x.plus(dx)
             Y: State = self.evaluate(x_pert, u, dt)
             jac_fd[:, i] = Y.minus(Y_bar).flatten() / h
 
@@ -209,6 +325,14 @@ class StateWithCovariance:
         #:numpy.ndarray: covariance associated with state
         self.covariance = covariance
 
+    @property
+    def stamp(self):
+        return self.state.stamp
+
+    @stamp.setter
+    def stamp(self, stamp):
+        self.state.stamp = stamp
+        
     def symmetrize(self):
         """
         Enforces symmetry of the covariance matrix.
