@@ -564,7 +564,31 @@ def set_axes_equal(ax: plt.Axes):
     ax.set_ylim3d([y_middle - length, y_middle + length])
     ax.set_zlim3d([z_middle - length, z_middle + length])
 
-def state_interp(stamps: Union[float, List[float], Any], state_list: List[State]):
+def state_interp(stamps: Union[float, List[float], Any], state_list: List[State]) -> Union[State, List[State]]:
+    """
+    Performs "linear" (geodesic) interpolation between `State` objects. Multiple
+    interpolations can be performed at once in a vectorized fashion. If the 
+    query point is out of bounds, the end points are returned.
+
+    Parameters
+    ----------
+    stamps : Union[float, List[float], Any]
+        Query stamps. Can either be a float, or an object containing a `stamp` 
+        attribute. If a list is provided, it will be treated as multiple query 
+        points and the return value will be a list of `State` objects.
+    state_list : List[State]
+        List of `State` objects to interpolate between.
+
+    Returns
+    -------
+    `State` or List[`State`]
+        The interpolated state(s).
+
+    Raises
+    ------
+    TypeError
+        If query point is not a float or object with a `stamp` attribute.
+    """
     # TODO: add tests
     # Handle input
     if not isinstance(stamps, list):
@@ -592,14 +616,34 @@ def state_interp(stamps: Union[float, List[float], Any], state_list: List[State]
     idx_lower = np.floor(idx_middle).astype(int)
     idx_upper = idx_lower + 1
 
+    # Return endpoint if out of bounds 
+    idx_upper[idx_upper == len(state_list)] = len(state_list) - 1
+
     # Do the interpolation
     stamp_lower = stamp_list[idx_lower]
     stamp_upper = stamp_list[idx_upper]
+
+    # "Fraction" of the way between the two states
     alpha = np.array((stamps - stamp_lower) / (stamp_upper - stamp_lower)).ravel()
+    
+    # The two neighboring states around the query point
     state_lower: List[State] = np.array(state_list[idx_lower]).ravel()
     state_upper: List[State] = np.array(state_list[idx_upper]).ravel()
+
+    # Interpolate between the two states
     dx = np.array([s.minus(state_lower[i]).ravel() for i, s in enumerate(state_upper)])
-    out =  [s.plus( alpha[i]* dx[i]) for i, s in enumerate(state_lower)]
+
+    out = []
+    for i, state in enumerate(state_lower):
+        if np.isnan(alpha[i]) or np.isinf(alpha[i]) or alpha[i] < 0.0:
+            state_interp = state.copy()
+        else:
+            state_interp = state.plus(dx[i] * alpha[i])
+
+        state_interp.stamp = stamps[i]
+        out.append(state_interp)
+
     if single_query:
         out = out[0]
+
     return out

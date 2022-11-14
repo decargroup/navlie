@@ -146,8 +146,8 @@ class IMUState(CompositeState):
     def bias(self, new_bias: np.ndarray) -> np.ndarray:
         bias_gyro = new_bias[0:3]
         bias_accel = new_bias[3:6]
-        self.value[0].value = bias_gyro
-        self.value[1].value = bias_accel
+        self.value[1].value = bias_gyro
+        self.value[2].value = bias_accel
 
     @property
     def bias_gyro(self) -> np.ndarray:
