@@ -100,6 +100,24 @@ class DoubleIntegrator(ProcessModel):
 
         return Ld @ self._Q @ Ld.T
 
+class OneDimensionalPositionVelocityRange(MeasurementModel):
+    """
+    A 1D range measurement for a state consisting of position and velocity
+    """
+    # TODO. We should remove this. Double integrator and RangePointToAnchor should
+    # satisfy these needs
+    def __init__(self, R: float):
+        self._R = np.array(R)
+
+    def evaluate(self, x: VectorState) -> np.ndarray:
+        return x.value[0]
+
+    def jacobian(self, x: VectorState) -> np.ndarray:
+        return np.array([1, 0]).reshape(1, -1)
+
+    def covariance(self, x: VectorState) -> np.ndarray:
+        return self._R
+
 
 class BodyFrameVelocity(ProcessModel):
     """
