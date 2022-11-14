@@ -240,10 +240,6 @@ class IMUIncrement(RelativeMotionIncrement):
         """
         new = self.copy()
         new.value = new.value @ SE23.Exp(w[0:9])
-        if w.size > 9:
-            new_gyro_bias = new.gyro_bias + w[9:12]
-            new_accel_bias = new.accel_bias + w[12:15]
-            new.bias_update(new_gyro_bias, new_accel_bias)
         return new
 
     def copy(self):

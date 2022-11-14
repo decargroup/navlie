@@ -505,6 +505,7 @@ class IMUKinematics(ProcessModel):
         jac_kwargs = {}
 
         if hasattr(x, "bias_gyro"):
+            # Jacobian of pose wrt to bias 
             jac_bias = -self._get_input_jacobian(x, u, dt)
 
             # Jacobian of bias random walk wrt to pose

@@ -4,23 +4,19 @@ from pynav.lib.imu import (
     IMU,
     IMUKinematics,
     N_matrix,
-    RelativeIMUKinematics,
     U_matrix,
     U_matrix_inv,
     adjoint_IE3,
     G_matrix,
     G_matrix_inv,
-    get_unbiased_imu
 )
-from pynav.filters import ExtendedKalmanFilter
-from pynav.types import StateWithCovariance
 from pylie import SE23, SO3
 import numpy as np
 from math import factorial
 import pytest
 
 
-np.set_printoptions(precision=10, suppress=True, linewidth=200)
+np.set_printoptions(precision=5, suppress=True, linewidth=200)
 
 
 def test_N_matrix():
@@ -56,14 +52,6 @@ def test_G_matrix_inverse_se23():
     assert np.allclose(G.dot(G_inv), np.eye(5))
 
 
-def test_left_jacobian_se23():
-    model = IMUKinematics(np.identity(6))
-    dt = 0.1
-    u = IMU([1, 2, 3], [4, 5, 6], 0)
-    x = SE23State(SE23.random(), 0, direction="left")
-    jac = model.jacobian(x, u, dt)
-    jac_fd = model.jacobian_fd(x, u, dt)
-    assert np.allclose(jac, jac_fd, atol=1e-4)
 
 
 def test_U_adjoint_se23():
@@ -116,17 +104,18 @@ def test_G_adjoint_inv_se23():
     assert np.allclose(test1, test2)
 
 
-def test_right_jacobian_se23():
+@pytest.mark.parametrize("direction", ["right", "left"])
+def test_imu_kinematics_jacobian_se23(direction):
     model = IMUKinematics(np.identity(6))
     dt = 0.1
-    u = IMU([1, 2, 3], [2, 3, 1], 0)
-    x = SE23State(SE23.Exp([1, 2, 3, 4, 5, 6, 7, 8, 9]), 0, direction="right")
+    u = IMU([1, 2, 3], [4, 5, 6], 0)
+    x = SE23State(SE23.random(), 0, direction=direction)
     jac = model.jacobian(x, u, dt)
     jac_fd = model.jacobian_fd(x, u, dt)
     assert np.allclose(jac, jac_fd, atol=1e-4)
 
-
-def test_left_jacobian_imu():
+@pytest.mark.parametrize("direction", ["right", "left"])
+def test_imu_kinematics_jacobian_imu(direction):
     model = IMUKinematics(np.identity(6))
     dt = 0.1
     u = IMU([1, 2, 3], [2, 3, 1], 0)
@@ -135,50 +124,20 @@ def test_left_jacobian_imu():
         [0.1, 0.2, 0.3],
         [4, 5, 6],
         0,
-        direction="left",
+        direction=direction,
     )
     jac = model.jacobian(x, u, dt)
     jac_fd = model.jacobian_fd(x, u, dt)
     assert np.allclose(jac, jac_fd, atol=1e-3)
 
-
-def test_right_jacobian_imu():
-    model = IMUKinematics(np.identity(6))
-    dt = 0.1
-    u = IMU([1, 2, 3], [2, 3, 1], 0)
+@pytest.mark.parametrize("direction", ["right", "left"])
+def test_imu_group_jacobian(direction):
     x = IMUState(
         SE23.Exp([1, 2, 3, 4, 5, 6, 7, 8, 9]),
         [0.1, 0.2, 0.3],
         [4, 5, 6],
         0,
-        direction="right",
-    )
-    jac = model.jacobian(x, u, dt)
-    jac_fd = model.jacobian_fd(x, u, dt)
-    assert np.allclose(jac, jac_fd, atol=1e-3)
-
-
-def test_imu_group_jacobian_right():
-    x = IMUState(
-        SE23.Exp([1, 2, 3, 4, 5, 6, 7, 8, 9]),
-        [0.1, 0.2, 0.3],
-        [4, 5, 6],
-        0,
-        direction="right",
-    )
-    dx = np.array([1, 2, 3, 4, 5, 6, 7, 8, 9, 0.1, 0.2, 0.3, 4, 5, 6])
-    jac = x.plus_jacobian(dx)
-    jac_fd = x.plus_jacobian_fd(dx)
-    assert np.allclose(jac, jac_fd, atol=1e-6)
-
-
-def test_imu_group_jacobian_left():
-    x = IMUState(
-        SE23.Exp([1, 2, 3, 4, 5, 6, 7, 8, 9]),
-        [0.1, 0.2, 0.3],
-        [4, 5, 6],
-        0,
-        direction="left",
+        direction=direction,
     )
     dx = np.array([1, 2, 3, 4, 5, 6, 7, 8, 9, 0.1, 0.2, 0.3, 4, 5, 6])
     jac = x.plus_jacobian(dx)
@@ -186,5 +145,5 @@ def test_imu_group_jacobian_left():
     assert np.allclose(jac, jac_fd, atol=1e-6)
 
 if __name__ == "__main__":
-    test_imu_group_jacobian_left("left")
+    test_imu_kinematics_jacobian_imu("left")
     print("All tests passed!")
