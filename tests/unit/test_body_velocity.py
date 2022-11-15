@@ -6,14 +6,14 @@ from pynav.lib.models import (
 )
 from pylie import SO2, SO3, SE3, SE2, SE3, SE23
 import numpy as np
-
+import pytest
 from pynav.types import StampedValue
 
-
-def test_body_velocity_se3():
+@pytest.mark.parametrize("direction", ["left", "right"])
+def test_body_velocity_se3(direction):
     x = SE3State(
         SE3.random(),
-        direction="right",
+        direction=direction,
     )
     u = StampedValue(np.array([1, 2, 3, 4, 5, 6]))
     dt = 0.1
@@ -23,11 +23,11 @@ def test_body_velocity_se3():
     jac_fd = process_model.jacobian_fd(x, u, dt)
     assert np.allclose(jac, jac_fd, atol=1e-4)
 
-
-def test_body_velocity_se2():
+@pytest.mark.parametrize("direction", ["left", "right"])
+def test_body_velocity_se2(direction):
     x = SE2State(
         SE2.random(),
-        direction="right",
+        direction=direction,
     )
     u = StampedValue(np.array([1, 2, 3]))
     dt = 0.1
@@ -38,10 +38,11 @@ def test_body_velocity_se2():
     Q = process_model.covariance(x, u, dt)
     assert np.allclose(jac, jac_fd, atol=1e-4)
 
-def test_body_velocity_se3_left():
+@pytest.mark.parametrize("direction", ["left", "right"])
+def test_body_velocity_se3_left(direction):
     x = SE3State(
         SE3.random(),
-        direction="left",
+        direction=direction,
     )
     u = StampedValue(np.array([1, 2, 3, 4, 5, 6]))
     dt = 0.1
@@ -51,11 +52,11 @@ def test_body_velocity_se3_left():
     jac_fd = process_model.jacobian_fd(x, u, dt)
     assert np.allclose(jac, jac_fd, atol=1e-4)
 
-
-def test_body_velocity_se2_left():
+@pytest.mark.parametrize("direction", ["right", "left"])
+def test_body_velocity_se2_left(direction):
     x = SE2State(
         SE2.random(),
-        direction="left",
+        direction=direction,
     )
     u = StampedValue(np.array([1, 2, 3]))
     dt = 0.1

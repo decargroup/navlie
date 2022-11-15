@@ -28,3 +28,11 @@ Models
     :show-inheritance:
     :inherited-members:
     :undoc-members:
+
+Preintegration
+^^^^^^^^^^^^^^
+.. automodule:: pynav.lib.preintegration
+    :members:
+    :show-inheritance:
+    :inherited-members:
+    :undoc-members:
