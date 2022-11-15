@@ -46,8 +46,13 @@ class SingleIntegrator(ProcessModel):
 
 class DoubleIntegrator(ProcessModel):
     """
-    A second-order kinematic process model with discretization as in
-    https://ieeexplore.ieee.org/stamp/stamp.jsp?tp=&arnumber=303738
+    The double-integrator process model is a second-order point kinematic model
+    given in continuous time by 
+
+        x_dot = v
+        v_dot = u
+
+    where `u` is the input. 
     """
 
     def __init__(self, Q: np.ndarray):
@@ -59,7 +64,7 @@ class DoubleIntegrator(ProcessModel):
             raise ValueError("Q must be an n x n matrix.")
 
         self._Q = Q
-        self.dim = 2
+        self.dim = Q.shape[0]
 
     def evaluate(
         self, x: VectorState, u: StampedValue, dt: float
@@ -67,33 +72,41 @@ class DoubleIntegrator(ProcessModel):
         """
         Evaluate discrete-time process model
         """
-        x = x.copy()
-        Ad = np.array([[1, dt], [0, 1]])
-        Ld = np.array([0.5 * dt**2, dt]).reshape((-1, 1))
-        x.value = (Ad @ x.value.reshape((-1, 1)) + Ld * u.value).ravel()
+        Ad = np.identity(2 * self.dim)
+        Ad[0 : self.dim, self.dim :] = dt * np.identity(self.dim)
+
+        Ld = np.zeros((2*self.dim, self.dim))
+        Ld[0:self.dim,:] = 0.5*dt**2*np.identity(self.dim)
+        Ld[self.dim:,:] = dt*np.identity(self.dim)
+
+        x.value = (Ad @ x.value.reshape((-1,1)) + Ld @ u.value.reshape((-1,1))).ravel()
         return x
 
     def jacobian(self, x, u, dt) -> np.ndarray:
         """
         Discrete-time state Jacobian
         """
-        Ad = np.array([[1, dt], [0, 1]])
+        Ad = np.identity(2 * self.dim)
+        Ad[0 : self.dim, self.dim :] = dt * np.identity(self.dim)
         return Ad
 
     def covariance(self, x, u, dt) -> np.ndarray:
         """
         Discrete-time covariance on process model
         """
-        Ld = np.array([0.5 * dt**2, dt]).reshape((-1, 1))
-        fudge_factor = np.array([[1e-8, 0], [0, 0]])
-        return Ld @ self._Q @ Ld.T + fudge_factor
 
+        Ld = np.zeros((2*self.dim, self.dim))
+        Ld[0:self.dim,:] = 0.5*dt**2*np.identity(self.dim)
+        Ld[self.dim:,:] = dt*np.identity(self.dim)
+
+        return Ld @ self._Q @ Ld.T
 
 class OneDimensionalPositionVelocityRange(MeasurementModel):
     """
     A 1D range measurement for a state consisting of position and velocity
     """
-
+    # TODO. We should remove this. Double integrator and RangePointToAnchor should
+    # satisfy these needs
     def __init__(self, R: float):
         self._R = np.array(R)
 
@@ -264,17 +277,21 @@ class RangePointToAnchor(MeasurementModel):
     def __init__(self, anchor_position: List[float], R: float):
         self._r_cw_a = np.array(anchor_position).flatten()
         self._R = np.array(R)
+        self.dim = self._r_cw_a.size
 
     def evaluate(self, x: VectorState) -> np.ndarray:
-        r_zw_a = x.value.flatten()
+        r_zw_a = x.value.ravel()[0:self.dim]
         y = np.linalg.norm(self._r_cw_a - r_zw_a)
         return y
 
     def jacobian(self, x: VectorState) -> np.ndarray:
-        r_zw_a = x.value.flatten()
+        r_zw_a = x.value.ravel()[0:self.dim]
         r_zc_a: np.ndarray = r_zw_a - self._r_cw_a
         y = np.linalg.norm(r_zc_a)
-        return r_zc_a.reshape((1, -1)) / y
+
+        jac = np.zeros((1, x.dof))
+        jac[0,:self.dim] = r_zc_a.reshape((1, -1)) / y
+        return jac
 
     def covariance(self, x: VectorState) -> np.ndarray:
         return self._R

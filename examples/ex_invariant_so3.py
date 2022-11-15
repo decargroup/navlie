@@ -17,7 +17,7 @@ import matplotlib.pyplot as plt
 
 # Define the initial state
 x0 = SO3State(SO3.random(), 0.0, direction="left")
-P0 = 0.2**2 * np.identity(3)
+P0 = 0.3**2 * np.identity(3)
 Q = 0.1**2 * np.identity(3)
 noise_active = True 
 
@@ -44,7 +44,7 @@ if noise_active:
     x0 = x0.plus(randvec(P0))
 # ##############################################################################
 # Run the regular filter
-x0.direction = "right"
+x0.direction = "left"
 ekf = ExtendedKalmanFilter(process_model=process_model)
 estimate_list = run_filter(ekf, x0, P0, input_list, meas_list)
 results = GaussianResultList(
@@ -54,11 +54,12 @@ results = GaussianResultList(
     ]
 )
 
-plot_error(results)
+fig, axs = plot_error(results)
+fig.suptitle("Regular EKF")
 
 # ##############################################################################
 # Run the invariant filter
-
+# TODO. Why does this give the exact same thing as the regular EKF?
 # **************** Conversion to Invariant Measurements ! *********************
 invariants = [InvariantMeasurement(meas, "right") for meas in meas_list]
 # *****************************************************************************
@@ -74,5 +75,6 @@ results_invariant = GaussianResultList(
     ]
 )
 
-plot_error(results_invariant)
+fig, axs = plot_error(results_invariant)
+fig.suptitle("Invariant EKF")
 plt.show()

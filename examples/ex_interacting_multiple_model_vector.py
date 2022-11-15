@@ -1,26 +1,15 @@
 import pytest
 from pynav.filters import ExtendedKalmanFilter, run_filter
-from pynav.lib.states import VectorState, SO3State, SE3State
+from pynav.lib.states import VectorState
 from pynav.datagen import DataGenerator
-from pynav.types import StampedValue, StateWithCovariance
-from pynav.utils import GaussianResult, GaussianResultList, MonteCarloResult
+from pynav.utils import GaussianResult, GaussianResultList
 from pynav.utils import randvec
 
 from pynav.utils import monte_carlo, plot_error
 from pynav.lib.models import DoubleIntegrator, OneDimensionalPositionVelocityRange
-from pynav.lib.models import SingleIntegrator, RangePointToAnchor
-from pynav.lib.models import (
-    BodyFrameVelocity,
-    InvariantMeasurement,
-    Magnetometer,
-    Gravitometer,
-)
-from pynav.lib.models import RangePoseToAnchor
-from pylie import SO3, SE3
 
 import numpy as np
 from typing import List
-import time
 from matplotlib import pyplot as plt
 from pynav.imm import InteractingModelFilter, run_interacting_multiple_model_filter
 from pynav.imm import IMMResultList, IMMResult
