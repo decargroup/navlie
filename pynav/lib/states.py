@@ -21,7 +21,7 @@ class VectorState(State):
     """
 
     def __init__(self, value: np.ndarray, stamp: float = None, state_id=None):
-        value = np.array(value).ravel()
+        value = np.array(value, dtype=np.float64).ravel()
         super(VectorState, self).__init__(
             value=value,
             dof=value.size,

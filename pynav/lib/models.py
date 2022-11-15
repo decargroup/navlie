@@ -3,7 +3,7 @@ from pynav.types import (
     ProcessModel,
     MeasurementModel,
     StampedValue,
-    Input
+    Input,
 )
 from pynav.lib.states import (
     CompositeState,
@@ -48,12 +48,12 @@ class SingleIntegrator(ProcessModel):
 class DoubleIntegrator(ProcessModel):
     """
     The double-integrator process model is a second-order point kinematic model
-    given in continuous time by 
+    given in continuous time by
 
         x_dot = v
         v_dot = u
 
-    where `u` is the input. 
+    where `u` is the input.
     """
 
     def __init__(self, Q: np.ndarray):
@@ -73,17 +73,29 @@ class DoubleIntegrator(ProcessModel):
         """
         Evaluate discrete-time process model
         """
-        Ad = np.identity(2 * self.dim)
-        Ad[0 : self.dim, self.dim :] = dt * np.identity(self.dim)
+        Ad = self._state_jacobian(dt)
+        Ld = self._input_jacobian(dt)
 
-        Ld = np.zeros((2*self.dim, self.dim))
-        Ld[0:self.dim,:] = 0.5*dt**2*np.identity(self.dim)
-        Ld[self.dim:,:] = dt*np.identity(self.dim)
-
-        x.value = (Ad @ x.value.reshape((-1,1)) + Ld @ u.value.reshape((-1,1))).ravel()
+        x.value = (
+            Ad @ x.value.reshape((-1, 1)) + Ld @ u.value.reshape((-1, 1))
+        ).ravel()
         return x
 
     def jacobian(self, x, u, dt) -> np.ndarray:
+        """
+        Discrete-time state Jacobian
+        """
+        return self._state_jacobian(dt)
+
+    def covariance(self, x, u, dt) -> np.ndarray:
+        """
+        Discrete-time covariance on process model
+        """
+
+        Ld = self._input_jacobian(dt)
+        return Ld @ self._Q @ Ld.T
+
+    def _state_jacobian(self, dt):
         """
         Discrete-time state Jacobian
         """
@@ -91,21 +103,95 @@ class DoubleIntegrator(ProcessModel):
         Ad[0 : self.dim, self.dim :] = dt * np.identity(self.dim)
         return Ad
 
+    def _input_jacobian(self, dt):
+        """
+        Discrete-time input Jacobian
+        """
+        Ld = np.zeros((2 * self.dim, self.dim))
+        Ld[0 : self.dim, :] = 0.5 * dt**2 * np.identity(self.dim)
+        Ld[self.dim :, :] = dt * np.identity(self.dim)
+        return Ld
+
+
+class DoubleIntegratorWithBias(ProcessModel):
+    """
+    The double-integrator process model, but with an additional bias on the input.
+
+        x_dot = v
+        v_dot = u - b
+        b_dot = w (noise)
+
+    """
+
+    def __init__(self, Q: np.ndarray):
+        """
+
+        Parameters
+        ----------
+        Q : np.ndarray
+            Q: Discrete time covariance on the input u.
+
+        Raises
+        ------
+        ValueError
+            if Q is not an n x n matrix.
+        """
+        if Q.shape[0] != Q.shape[1]:
+            raise ValueError("Q must be an n x n matrix.")
+
+        self._Q = Q
+        self.dim = int(Q.shape[0] / 2)
+        self.double_integrator = DoubleIntegrator(Q[0 : self.dim, 0 : self.dim])
+
+    def evaluate(
+        self, x: VectorState, u: StampedValue, dt: float
+    ) -> np.ndarray:
+        """
+        Evaluate discrete-time process model
+        """
+        x = x.copy()
+        Ad = self.double_integrator._state_jacobian(dt)
+        Ld = self.double_integrator._input_jacobian(dt)
+
+        pv = x.value[0 : 2 * self.dim].reshape((-1, 1))
+        bias = x.value[2 * self.dim :].reshape((-1, 1))
+        u_no_bias = u.value.reshape((-1, 1)) - bias
+        pv = (Ad @ pv + Ld @ u_no_bias).ravel()
+        x.value[0 : 2 * self.dim] = pv
+        return x
+
+    def jacobian(self, x, u, dt) -> np.ndarray:
+        """
+        Discrete-time state Jacobian
+        """
+        Ad = self.double_integrator._state_jacobian(dt)
+        Ld = self.double_integrator._input_jacobian(dt)
+
+        A = np.block(
+            [
+                [Ad, -Ld],
+                [np.zeros((self.dim, 2 * self.dim)), np.identity(self.dim)],
+            ]
+        )
+        return A
+
     def covariance(self, x, u, dt) -> np.ndarray:
         """
         Discrete-time covariance on process model
         """
 
-        Ld = np.zeros((2*self.dim, self.dim))
-        Ld[0:self.dim,:] = 0.5*dt**2*np.identity(self.dim)
-        Ld[self.dim:,:] = dt*np.identity(self.dim)
+        Ld = self.double_integrator._input_jacobian(dt)
+        L = np.zeros((3 * self.dim, 2 * self.dim))
+        L[0 : 2 * self.dim, 0 : self.dim] = Ld
+        L[2 * self.dim :, self.dim :] = dt * np.identity(self.dim)
+        return L @ self._Q @ L.T
 
-        return Ld @ self._Q @ Ld.T
 
 class OneDimensionalPositionVelocityRange(MeasurementModel):
     """
     A 1D range measurement for a state consisting of position and velocity
     """
+
     # TODO. We should remove this. Double integrator and RangePointToAnchor should
     # satisfy these needs
     def __init__(self, R: float):
@@ -203,11 +289,12 @@ class RelativeBodyFrameVelocity(ProcessModel):
                 "TODO: left covariance not yet implemented."
             )
 
+
 class CompositeInput(Input):
     def __init__(self, input_list: List[Input]) -> None:
         self.input_list = input_list
 
-    @property 
+    @property
     def dof(self) -> int:
         return sum([input.dof for input in self.input_list])
 
@@ -221,10 +308,11 @@ class CompositeInput(Input):
     def plus(self, w: np.ndarray):
         new = self.copy()
         for i, input in enumerate(self.input_list):
-            new.input_list[i] = input.plus(w[:input.dof])
-            w = w[input.dof:]
-    
+            new.input_list[i] = input.plus(w[: input.dof])
+            w = w[input.dof :]
+
         return new
+
 
 class CompositeProcessModel(ProcessModel):
     """
@@ -303,17 +391,17 @@ class RangePointToAnchor(MeasurementModel):
         self.dim = self._r_cw_a.size
 
     def evaluate(self, x: VectorState) -> np.ndarray:
-        r_zw_a = x.value.ravel()[0:self.dim]
+        r_zw_a = x.value.ravel()[0 : self.dim]
         y = np.linalg.norm(self._r_cw_a - r_zw_a)
         return y
 
     def jacobian(self, x: VectorState) -> np.ndarray:
-        r_zw_a = x.value.ravel()[0:self.dim]
+        r_zw_a = x.value.ravel()[0 : self.dim]
         r_zc_a: np.ndarray = r_zw_a - self._r_cw_a
         y = np.linalg.norm(r_zc_a)
 
         jac = np.zeros((1, x.dof))
-        jac[0,:self.dim] = r_zc_a.reshape((1, -1)) / y
+        jac[0, : self.dim] = r_zc_a.reshape((1, -1)) / y
         return jac
 
     def covariance(self, x: VectorState) -> np.ndarray:
@@ -448,9 +536,7 @@ class RangePoseToAnchor(MeasurementModel):
         elif C_ab.shape == (3, 3):
             att_group = SO3
 
-        r_tw_a = C_ab @ self._r_tz_b.reshape((-1, 1)) + r_zw_a.reshape(
-            (-1, 1)
-        )
+        r_tw_a = C_ab @ self._r_tz_b.reshape((-1, 1)) + r_zw_a.reshape((-1, 1))
         r_tc_a: np.ndarray = r_tw_a - self._r_cw_a.reshape((-1, 1))
         rho = r_tc_a / np.linalg.norm(r_tc_a)
 
@@ -458,7 +544,7 @@ class RangePoseToAnchor(MeasurementModel):
             jac_attitude = rho.T @ C_ab @ att_group.odot(self._r_tz_b)
             jac_position = rho.T @ C_ab
         elif x.direction == "left":
-            jac_attitude = rho.T @ att_group.odot( C_ab @ self._r_tz_b + r_zw_a)
+            jac_attitude = rho.T @ att_group.odot(C_ab @ self._r_tz_b + r_zw_a)
             jac_position = rho.T @ np.identity(r_zw_a.size)
 
         jac = x.jacobian_from_blocks(
@@ -543,7 +629,9 @@ class RangePoseToPose(MeasurementModel):
                 position=-rho.T @ np.identity(r_t2_2.size),
             )
 
-        return x.jacobian_from_blocks({self.state_id1: jac1, self.state_id2: jac2})
+        return x.jacobian_from_blocks(
+            {self.state_id1: jac1, self.state_id2: jac2}
+        )
 
     def covariance(self, x: CompositeState) -> np.ndarray:
         return self._R
@@ -729,6 +817,7 @@ class _InvariantInnovation(MeasurementModel):
             jac = x.attitude.T @ G
         elif self.direction == "right":
             jac = x.attitude @ G
+
         return jac
 
     def covariance(self, x: MatrixLieGroupState) -> np.ndarray:
