@@ -397,7 +397,7 @@ def plot_error(
         kwargs["color"] = color
 
     axs: List[plt.Axes] = axs.ravel("F")
-    for i in range(len(axs)):
+    for i in range(results.three_sigma.shape[1]):
         axs[i].fill_between(
             results.stamp,
             results.three_sigma[:, i],
