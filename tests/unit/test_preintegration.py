@@ -204,8 +204,8 @@ def test_double_integrator_preintegration_with_bias():
     model = DoubleIntegratorWithBias(Q)
     rmi = LinearIncrement(
         input_covariance = Q,
-        state_matrix = lambda u, dt: model.double_integrator._state_jacobian(dt),
-        input_matrix = lambda u, dt: model.double_integrator._input_jacobian(dt),
+        state_matrix = lambda u, dt: model._state_jacobian(dt),
+        input_matrix = lambda u, dt: model._input_jacobian(dt),
         dof = 4,
         bias=bias,
     )

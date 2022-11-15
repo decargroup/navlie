@@ -113,7 +113,7 @@ class DoubleIntegrator(ProcessModel):
         return Ld
 
 
-class DoubleIntegratorWithBias(ProcessModel):
+class DoubleIntegratorWithBias(DoubleIntegrator):
     """
     The double-integrator process model, but with an additional bias on the input.
 
@@ -141,7 +141,6 @@ class DoubleIntegratorWithBias(ProcessModel):
 
         self._Q = Q
         self.dim = int(Q.shape[0] / 2)
-        self.double_integrator = DoubleIntegrator(Q[0 : self.dim, 0 : self.dim])
 
     def evaluate(
         self, x: VectorState, u: StampedValue, dt: float
@@ -150,8 +149,8 @@ class DoubleIntegratorWithBias(ProcessModel):
         Evaluate discrete-time process model
         """
         x = x.copy()
-        Ad = self.double_integrator._state_jacobian(dt)
-        Ld = self.double_integrator._input_jacobian(dt)
+        Ad = super()._state_jacobian(dt)
+        Ld = super()._input_jacobian(dt)
 
         pv = x.value[0 : 2 * self.dim].reshape((-1, 1))
         bias = x.value[2 * self.dim :].reshape((-1, 1))
@@ -164,8 +163,8 @@ class DoubleIntegratorWithBias(ProcessModel):
         """
         Discrete-time state Jacobian
         """
-        Ad = self.double_integrator._state_jacobian(dt)
-        Ld = self.double_integrator._input_jacobian(dt)
+        Ad = super()._state_jacobian(dt)
+        Ld = super()._input_jacobian(dt)
 
         A = np.block(
             [
@@ -180,7 +179,7 @@ class DoubleIntegratorWithBias(ProcessModel):
         Discrete-time covariance on process model
         """
 
-        Ld = self.double_integrator._input_jacobian(dt)
+        Ld = super()._input_jacobian(dt)
         L = np.zeros((3 * self.dim, 2 * self.dim))
         L[0 : 2 * self.dim, 0 : self.dim] = Ld
         L[2 * self.dim :, self.dim :] = dt * np.identity(self.dim)
