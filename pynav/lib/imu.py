@@ -45,10 +45,10 @@ class IMU(Input):
         """
         new = self.copy()
         w = w.ravel()
-        new.gyro += w[0:3]
-        new.accel += w[3:6]
-        new.bias_gyro_walk += w[6:9]
-        new.bias_accel_walk += w[9:12]
+        new.gyro = self.gyro + w[0:3]
+        new.accel = self.accel + w[3:6]
+        new.bias_gyro_walk = self.bias_gyro_walk + w[6:9]
+        new.bias_accel_walk = self.bias_accel_walk + w[9:12]
         return new
 
     def copy(self):
@@ -58,6 +58,17 @@ class IMU(Input):
             self.stamp,
             self.bias_gyro_walk.copy(),
             self.bias_accel_walk.copy(),
+            self.state_id,
+        )
+
+    @staticmethod
+    def random():
+        return IMU(
+            np.random.normal(size=3),
+            np.random.normal(size=3),
+            0.0,
+            np.random.normal(size=3),
+            np.random.normal(size=3),
         )
 
 
@@ -126,6 +137,19 @@ class IMUState(CompositeState):
         self.value[0].position = r
 
     @property
+    def bias(self) -> np.ndarray:
+        return np.hstack(
+            [self.value[1].value.ravel(), self.value[2].value.ravel()]
+        )
+
+    @bias.setter 
+    def bias(self, new_bias: np.ndarray) -> np.ndarray:
+        bias_gyro = new_bias[0:3]
+        bias_accel = new_bias[3:6]
+        self.value[1].value = bias_gyro
+        self.value[2].value = bias_accel
+
+    @property
     def bias_gyro(self) -> np.ndarray:
         return self.value[1].value
 
@@ -191,7 +215,7 @@ class IMUState(CompositeState):
         return np.hstack([nav_jacobian, bias_gyro, bias_accel])
 
 
-def get_unbiased_imu(x: IMUState, u: IMU) -> Tuple[np.ndarray, np.ndarray]:
+def get_unbiased_imu(x: IMUState, u: IMU) -> IMU:
     """
     Removes bias from the measurement.
 
@@ -207,20 +231,14 @@ def get_unbiased_imu(x: IMUState, u: IMU) -> Tuple[np.ndarray, np.ndarray]:
     Tuple[np.ndarray, np.ndarray]
         unbiased gyro and accelerometer measurements
     """
+
+    u = u.copy()
     if hasattr(x, "bias_gyro"):
-        bias_gyro = x.bias_gyro.reshape((-1, 1))
-    else:
-        bias_gyro = 0
-
+        u.gyro = u.gyro.ravel() - x.bias_gyro.ravel()
     if hasattr(x, "bias_accel"):
-        bias_accel = x.bias_accel.reshape((-1, 1))
-    else:
-        bias_accel = 0
+        u.accel = u.accel.ravel() - x.bias_accel.ravel()
 
-    unbiased_gyro = u.gyro.reshape((-1, 1)) - bias_gyro
-    unbiased_accel = u.accel.reshape((-1, 1)) - bias_accel
-
-    return unbiased_gyro, unbiased_accel
+    return u
 
 
 def N_matrix(phi_vec: np.ndarray):
@@ -304,6 +322,25 @@ def U_matrix(omega, accel, dt: float):
     return U
 
 
+def U_tilde_matrix(omega, accel, dt: float):
+    phi = omega * dt
+    O = SO3.Exp(phi)
+    J = SO3.left_jacobian(phi)
+    a = accel.reshape((-1, 1))
+    V = N_matrix(phi)
+    U = np.identity(5)
+    U[:3, :3] = O
+    U[:3, 3] = np.ravel(dt * J @ a)
+    U[:3, 4] = np.ravel(dt**2 / 2 * V @ a)
+    return U
+
+
+def delta_matrix(dt: float):
+    U = np.identity(5)
+    U[3, 4] = dt
+    return U
+
+
 def U_matrix_inv(omega, accel, dt: float):
     return inverse_IE3(U_matrix(omega, accel, dt))
 
@@ -343,11 +380,11 @@ def L_matrix(unbiased_gyro, unbiased_accel, dt: float) -> np.ndarray:
     Om = SO3.wedge(om * dt)
     A = SO3.wedge(a)
     # See Barfoot 2nd edition, equation 9.247
-    XI = np.zeros((9, 6))
-    XI[0:3, 0:3] = -dt * np.eye(3)
-    XI[3:6, 3:6] = -dt * np.eye(3)
-    XI[6:9, 0:3] = (
-        0.5
+    Up = np.zeros((9, 6))
+    Up[0:3, 0:3] = dt * np.eye(3)
+    Up[3:6, 3:6] = dt * np.eye(3)
+    Up[6:9, 0:3] = (
+        -0.5
         * (dt**2 / 2)
         * (
             (1 / 360)
@@ -356,9 +393,9 @@ def L_matrix(unbiased_gyro, unbiased_accel, dt: float) -> np.ndarray:
             - (1 / 6) * dt * A
         )
     )
-    XI[6:9, 3:6] = -(dt**2 / 2) * J_att_inv @ N
+    Up[6:9, 3:6] = (dt**2 / 2) * J_att_inv @ N
 
-    L = J @ XI
+    L = J @ Up
     return L
 
 
@@ -431,10 +468,10 @@ class IMUKinematics(ProcessModel):
         x = x.copy()
 
         # Get unbiased inputs
-        unbiased_gyro, unbiased_accel = get_unbiased_imu(x, u)
+        u_no_bias = get_unbiased_imu(x, u)
 
         G = G_matrix(self._gravity, dt)
-        U = U_matrix(unbiased_gyro, unbiased_accel, dt)
+        U = U_matrix(u_no_bias.gyro, u_no_bias.accel, dt)
 
         x.pose = G @ x.pose @ U
 
@@ -454,10 +491,10 @@ class IMUKinematics(ProcessModel):
         """
 
         # Get unbiased inputs
-        unbiased_gyro, unbiased_accel = get_unbiased_imu(x, u)
+        u_no_bias = get_unbiased_imu(x, u)
 
         G = G_matrix(self._gravity, dt)
-        U_inv = U_matrix_inv(unbiased_gyro, unbiased_accel, dt)
+        U_inv = U_matrix_inv(u_no_bias.gyro, u_no_bias.accel, dt)
 
         # Jacobian of process model wrt to pose
         if x.direction == "right":
@@ -468,7 +505,7 @@ class IMUKinematics(ProcessModel):
         jac_kwargs = {}
 
         if hasattr(x, "bias_gyro"):
-            jac_bias = self._get_input_jacobian(x, u, dt)
+            jac_bias = -self._get_input_jacobian(x, u, dt)
 
             # Jacobian of bias random walk wrt to pose
             jac_pose = np.vstack([jac_pose, np.zeros((6, jac_pose.shape[1]))])
@@ -516,11 +553,11 @@ class IMUKinematics(ProcessModel):
         same jacobians.
         """
         # Get unbiased inputs
-        unbiased_gyro, unbiased_accel = get_unbiased_imu(x, u)
+        u_no_bias = get_unbiased_imu(x, u)
 
         G = G_matrix(self._gravity, dt)
-        U = U_matrix(unbiased_gyro, unbiased_accel, dt)
-        L = L_matrix(unbiased_gyro, unbiased_accel, dt)
+        U = U_matrix(u_no_bias.gyro, u_no_bias.accel, dt)
+        L = L_matrix(u_no_bias.gyro, u_no_bias.accel, dt)
 
         if x.direction == "right":
             jac = L
@@ -534,9 +571,9 @@ class RelativeIMUKinematics(ProcessModel):
     The relative IMU kinematics govern the relative pose between two bodies
     containing IMUs, given the IMU measurements of each body. Let a single
     body's extended pose by given by :math:`\mathbf{T}_1` with kinematics given
-    by :math:`\mathbf{T}_{1_k} = \mathbf{G}_{k-1} \mathbf{T}_{1_{k-1}} \mathbf{U}_{1_{k-1}}`.
-    The relative pose :math:`\mathbf{T}_{12} = \mathbf{T}_{1}^{-1} \mathbf{T}_{2}`
-    has kinematics given by
+    by :math:`\mathbf{T}_{1_k} = \mathbf{G}_{k-1} \mathbf{T}_{1_{k-1}}
+    \mathbf{U}_{1_{k-1}}`. The relative pose :math:`\mathbf{T}_{12} =
+    \mathbf{T}_{1}^{-1} \mathbf{T}_{2}` has kinematics given by
 
     .. math::
         \mathbf{T}_{12_k} = \mathbf{U}_{1_{k-1}}^{-1} \mathbf{T}_{12_{k-1}} \mathbf{U}_{2_{k-1}}
@@ -554,41 +591,69 @@ class RelativeIMUKinematics(ProcessModel):
         self.id1 = id1
         self.id2 = id2
 
-    def evaluate(self, x: SE23State, u: IMU, dt: float) -> SE23State:
+    def evaluate(
+        self, x: SE23State, u: IMU, dt: float, new_stamp=None
+    ) -> SE23State:
+
+
         x = x.copy()
+
+        # If an optional new_stamp argument is provided, it will be used
+        # to determine the amount of "self-propagation" that occurs.
+        # This is useful for when the IMU measurements are not received
+        # at the same time, but the relative pose should still be propagated
+        if new_stamp is not None:
+            dt_self = new_stamp - x.stamp
+        else:
+            dt_self = dt
+
+        # Time machine matrices
+        D = delta_matrix(dt_self)
+        D_inv = delta_matrix(-dt_self)
         if u.state_id == self.id1:
-            U1_inv = inverse_IE3(U_matrix(u.gyro, u.accel, dt))
+            U1_inv = inverse_IE3(U_tilde_matrix(u.gyro, u.accel, dt))
             U2 = np.identity(5)
         elif u.state_id == self.id2:
             U1_inv = np.identity(5)
-            U2 = U_matrix(u.gyro, u.accel, dt)
+            U2 = U_tilde_matrix(u.gyro, u.accel, dt)
         else:
             raise ValueError("IMU object has invalid state_id")
 
-        T_12 = x.value
-        T_12_new = U1_inv @ T_12 @ U2
-        x.value = T_12_new
+        T_12 = x.pose
+        T_12_new = U1_inv @ D_inv @ T_12 @ D @ U2
+        x.pose = T_12_new
         return x
 
-    def jacobian(self, x: SE23State, u: IMU, dt: float) -> np.ndarray:
+    def jacobian(
+        self, x: SE23State, u: IMU, dt: float, new_stamp=None
+    ) -> np.ndarray:
+        if new_stamp is not None:
+            dt_self = new_stamp - x.stamp
+        else:
+            dt_self = dt
+
+        # Time machine matrices
+        D = delta_matrix(dt_self)
         if u.state_id == self.id1:
-            U1 = U_matrix(u.gyro, u.accel, dt)
+            U1 = U_tilde_matrix(u.gyro, u.accel, dt)
             U2 = np.identity(5)
         elif u.state_id == self.id2:
             U1 = np.identity(5)
-            U2 = U_matrix(u.gyro, u.accel, dt)
+            U2 = U_tilde_matrix(u.gyro, u.accel, dt)
         else:
             raise ValueError("IMU object has invalid state_id")
 
         if x.direction == "right":
-            jac = adjoint_IE3(inverse_IE3(U2))
+            jac = adjoint_IE3(inverse_IE3(D @ U2))
         elif x.direction == "left":
-            jac = adjoint_IE3(inverse_IE3(U1))
+            jac = adjoint_IE3(inverse_IE3(D @ U1))
         return jac
 
-    def covariance(self, x: SE23State, u: IMU, dt: float) -> np.ndarray:
+    def covariance(
+        self, x: SE23State, u: IMU, dt: float, new_stamp=None
+    ) -> np.ndarray:
 
-        T_new = self.evaluate(x.copy(), u, dt).value
+        T_new = self.evaluate(x.copy(), u, dt, new_stamp=new_stamp).value
         L = L_matrix(u.gyro, u.accel, dt)
         if u.state_id == self.id1:
 
