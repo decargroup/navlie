@@ -1,4 +1,4 @@
-from pynav.lib.states import SE2State, CompositeState
+from pynav.lib.states import SE2State, CompositeState, VectorState
 from pynav.types import StampedValue
 from pynav.lib.models import (
     BodyFrameVelocity,
@@ -31,6 +31,7 @@ def test_composite_process_model():
     jac_fd = process_model.jacobian_fd(x0, u, dt)
     assert np.allclose(jac, jac_fd, atol=1e-6)
 
+
 def test_composite_plus_jacobian():
     T12 = SE2State(SE2.Exp([0.5, 1, -1]), stamp=0.0, state_id=2)
     T13 = SE2State(SE2.Exp([-0.5, 1, 1]), stamp=0.0, state_id=3)
@@ -40,6 +41,7 @@ def test_composite_plus_jacobian():
     jac_fd = x.plus_jacobian_fd(dx)
     assert np.allclose(jac, jac_fd, atol=1e-6)
 
+
 def test_composite_minus_jacobian():
     T12 = SE2State(SE2.Exp([0.5, 1, -1]), stamp=0.0, state_id=2)
     T13 = SE2State(SE2.Exp([-0.5, 1, 1]), stamp=0.0, state_id=3)
@@ -48,6 +50,7 @@ def test_composite_minus_jacobian():
     jac = x1.minus_jacobian(x2)
     jac_fd = x1.minus_jacobian_fd(x2)
     assert np.allclose(jac, jac_fd, atol=1e-6)
+
 
 def test_range_relative_pose():
 
@@ -73,6 +76,39 @@ def test_composite_pickling():
         y = pickle.load(f)
 
     os.remove("test.pkl")
+
+
+def test_composite_add_and_remove_state():
+    state_list = [
+        SE2State(SE2.Exp([0.1, 0.2, 0.3]), stamp=0.0, state_id="p0"),
+        VectorState(np.array([0.1, 0.2, 0.3]), stamp=0.0, state_id="l1"),
+    ]
+
+    state = CompositeState(state_list, stamp=0.0)
+
+    new_state = VectorState(np.array([0.1, 0.2, 0.3]), stamp=0.0, state_id="l2")
+    state.add_state(new_state)
+    state.remove_state_by_id("l1")
+
+    assert state.value[1].state_id == "l2"
+
+
+def test_matrix_blocks_composite():
+    state_list = [
+        SE2State(SE2.Exp([0.1, 0.2, 0.3]), stamp=0.0, state_id="p0"),
+        VectorState(np.array([0.1, 0.2, 0.3]), stamp=0.0, state_id="l1"),
+    ]
+
+    state = CompositeState(state_list, stamp=0.0)
+    cov = np.random.rand(6, 6)
+
+    cov_block_1 = state.get_matrix_block_by_ids(cov, "p0")
+    cov_block_2 = state.get_matrix_block_by_ids(cov, "p0", "l1")
+    cov_block_3 = state.get_matrix_block_by_ids(cov, "l1")
+
+    assert np.allclose(cov_block_1, cov[0:3, 0:3])
+    assert np.allclose(cov_block_2, cov[0:3, 3:6])
+    assert np.allclose(cov_block_3, cov[3:6, 3:6])
 
 
 if __name__ == "__main__":

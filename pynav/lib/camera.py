@@ -110,6 +110,19 @@ class Camera:
             ]
         )
 
+    @property
+    def sigma_normalized_image_coords(self) -> np.ndarray:
+        return np.array(
+            [
+                [self.sigma / self.fu, 0],
+                [0, self.sigma / self.fv],
+            ]
+        )
+
+    @property
+    def R_normalized_image_coords(self) -> np.ndarray:
+        return self.sigma_normalized_image_coords**2
+
     def copy(self) -> "Camera":
         """Returns a copy of the camera model."""
         return Camera(
@@ -147,7 +160,9 @@ class Camera:
             and (uv[0] < self.image_width)
         )
 
-    def is_landmark_in_front_of_cam(self, pose: SE3State, r_pw_a: np.ndarray) -> bool:
+    def is_landmark_in_front_of_cam(
+        self, pose: SE3State, r_pw_a: np.ndarray
+    ) -> bool:
         """Checks if a given landmark is in front of the camera."""
         r_pc_c: np.ndarray = self.resolve_landmark_in_cam_frame(pose, r_pw_a)
         r_pc_c = r_pc_c.ravel()
@@ -231,3 +246,11 @@ class Camera:
         y_n = (v - self.cv) / self.fv
 
         return np.array([x_n, y_n, 1])
+
+    def to_pixel_coors(self, meas: np.ndarray) -> np.ndarray:
+        x_n, y_n = meas.ravel()
+
+        u = x_n * self.fu + self.cu
+        v = y_n * self.fv + self.cv
+
+        return np.array([u, v])
