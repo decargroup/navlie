@@ -131,6 +131,55 @@ class GaussianResultList:
         #:numpy.ndarray with shape (N,): true state value. type depends on implementation
         self.value_true = np.array([r.state_true.value for r in result_list])
 
+    def nees_lower_bound(self, confidence_interval: float):
+        """
+        Calculates the NEES lower bound throughout the trajectory.
+
+        Parameters
+        ----------
+        confidence_interval : float
+            Single-sided cumulative probability threshold that defines the bound.
+            Must be between 0 and 1
+
+        Returns
+        -------
+        numpy.ndarray with shape (N,)
+            NEES value corresponding to confidence interval
+        """
+        if confidence_interval >= 1 or confidence_interval <= 0:
+            raise ValueError("Confidence interval must lie in (0, 1)")
+
+        lower_bound_threshold = (1 - confidence_interval) / 2
+        return chi2.ppf(lower_bound_threshold, df=self.dof)
+
+    def nees_upper_bound(self, confidence_interval: float, double_sided=True):
+        """
+        Calculates the NEES upper bound throughout the trajectory
+
+        Parameters
+        ----------
+        confidence_interval : float
+            Cumulative probability threshold that defines the bound. Must be
+            between 0 and 1.
+        double_sided : bool, optional
+            Whether the provided threshold is single-sided or double sided,
+            by default True
+
+        Returns
+        -------
+        numpy.ndarray with shape (N,)
+            NEES value corresponding to confidence interval
+
+        """
+        if confidence_interval >= 1 or confidence_interval <= 0:
+            raise ValueError("Confidence interval must lie in (0, 1)")
+
+        upper_bound_threshold = confidence_interval
+        if double_sided:
+            upper_bound_threshold += (1 - confidence_interval) / 2
+
+        return chi2.ppf(upper_bound_threshold, df=self.dof)
+
 
 class MonteCarloResult:
     """
@@ -268,7 +317,7 @@ def monte_carlo(
 
 def randvec(cov: np.ndarray, num_samples: int = 1) -> np.ndarray:
     """
-    
+
     Produces a random zero-mean column vector with covariance given by `cov`
 
     Parameters
@@ -276,8 +325,8 @@ def randvec(cov: np.ndarray, num_samples: int = 1) -> np.ndarray:
     cov : np.ndarray
         square numpy array with shape (n,n)
     num_samples : int, optional
-        If not None, will make `num_samples` independent random vectors and
-        stack them horizontally, by default None. It can be faster to generate
+        Will make `num_samples` independent random vectors and
+        stack them horizontally, by default 1. It can be faster to generate
         many samples this way to avoid recomputing the Cholesky decomposition
         every time.
 
@@ -285,13 +334,10 @@ def randvec(cov: np.ndarray, num_samples: int = 1) -> np.ndarray:
     -------
     np.ndarray with shape (n, num_samples)
         Random column vector(s) with covariance `cov`
-       
+
     """
     L = np.linalg.cholesky(cov)
     return L @ np.random.normal(0, 1, (cov.shape[0], num_samples))
-
-
-
 
 
 def van_loans(
@@ -349,6 +395,7 @@ def van_loans(
     Q_d = Upsilon[:N, N : 2 * N] @ A_d.T
 
     return A_d, Q_d
+
 
 def plot_error(
     results: GaussianResultList,
@@ -485,6 +532,7 @@ def plot_meas(
 
     return fig, axs
 
+
 def plot_poses(
     poses: List[SE3State],
     ax: plt.Axes = None,
@@ -522,7 +570,7 @@ def plot_poses(
         fig = ax.get_figure()
 
     if triad_color is None:
-        colors = ["tab:red", "tab:green", "tab:blue"] # Default to RGB
+        colors = ["tab:red", "tab:green", "tab:blue"]  # Default to RGB
     else:
         colors = [triad_color] * 3
 
@@ -534,12 +582,43 @@ def plot_poses(
     C = np.array([poses[i].attitude.T for i in range(0, len(poses), step)])
     r = np.array([poses[i].position for i in range(0, len(poses), step)])
     x, y, z = r[:, 0], r[:, 1], r[:, 2]
-    ax.quiver(x, y, z, C[:, 0, 0], C[:, 0, 1], C[:, 0, 2], color=colors[0], length=arrow_length, arrow_length_ratio=0.1)
-    ax.quiver(x, y, z, C[:, 1, 0], C[:, 1, 1], C[:, 1, 2], color=colors[1], length=arrow_length, arrow_length_ratio=0.1)
-    ax.quiver(x, y, z, C[:, 2, 0], C[:, 2, 1], C[:, 2, 2], color=colors[2], length=arrow_length, arrow_length_ratio=0.1)
+    ax.quiver(
+        x,
+        y,
+        z,
+        C[:, 0, 0],
+        C[:, 0, 1],
+        C[:, 0, 2],
+        color=colors[0],
+        length=arrow_length,
+        arrow_length_ratio=0.1,
+    )
+    ax.quiver(
+        x,
+        y,
+        z,
+        C[:, 1, 0],
+        C[:, 1, 1],
+        C[:, 1, 2],
+        color=colors[1],
+        length=arrow_length,
+        arrow_length_ratio=0.1,
+    )
+    ax.quiver(
+        x,
+        y,
+        z,
+        C[:, 2, 0],
+        C[:, 2, 1],
+        C[:, 2, 2],
+        color=colors[2],
+        length=arrow_length,
+        arrow_length_ratio=0.1,
+    )
 
     set_axes_equal(ax)
     return fig, ax
+
 
 def set_axes_equal(ax: plt.Axes):
     """Sets the axes of a 3D plot to have equal scale.
@@ -564,17 +643,20 @@ def set_axes_equal(ax: plt.Axes):
     ax.set_ylim3d([y_middle - length, y_middle + length])
     ax.set_zlim3d([z_middle - length, z_middle + length])
 
-def state_interp(stamps: Union[float, List[float], Any], state_list: List[State]) -> Union[State, List[State]]:
+
+def state_interp(
+    stamps: Union[float, List[float], Any], state_list: List[State]
+) -> Union[State, List[State]]:
     """
     Performs "linear" (geodesic) interpolation between `State` objects. Multiple
-    interpolations can be performed at once in a vectorized fashion. If the 
+    interpolations can be performed at once in a vectorized fashion. If the
     query point is out of bounds, the end points are returned.
 
     Parameters
     ----------
     stamps : Union[float, List[float], Any]
-        Query stamps. Can either be a float, or an object containing a `stamp` 
-        attribute. If a list is provided, it will be treated as multiple query 
+        Query stamps. Can either be a float, or an object containing a `stamp`
+        attribute. If a list is provided, it will be treated as multiple query
         points and the return value will be a list of `State` objects.
     state_list : List[State]
         List of `State` objects to interpolate between.
@@ -604,8 +686,9 @@ def state_interp(stamps: Union[float, List[float], Any], state_list: List[State]
                 stamp = stamp.stamp
                 stamps[i] = stamp
             else:
-                raise TypeError("Stamps must be of type float or have a stamp attribute")
-        
+                raise TypeError(
+                    "Stamps must be of type float or have a stamp attribute"
+                )
 
     # Get the indices of the states just before and just after.
     state_list = np.array(state_list)
@@ -616,7 +699,7 @@ def state_interp(stamps: Union[float, List[float], Any], state_list: List[State]
     idx_lower = np.floor(idx_middle).astype(int)
     idx_upper = idx_lower + 1
 
-    # Return endpoint if out of bounds 
+    # Return endpoint if out of bounds
     idx_upper[idx_upper == len(state_list)] = len(state_list) - 1
 
     # Do the interpolation
@@ -624,14 +707,18 @@ def state_interp(stamps: Union[float, List[float], Any], state_list: List[State]
     stamp_upper = stamp_list[idx_upper]
 
     # "Fraction" of the way between the two states
-    alpha = np.array((stamps - stamp_lower) / (stamp_upper - stamp_lower)).ravel()
-    
+    alpha = np.array(
+        (stamps - stamp_lower) / (stamp_upper - stamp_lower)
+    ).ravel()
+
     # The two neighboring states around the query point
     state_lower: List[State] = np.array(state_list[idx_lower]).ravel()
     state_upper: List[State] = np.array(state_list[idx_upper]).ravel()
 
     # Interpolate between the two states
-    dx = np.array([s.minus(state_lower[i]).ravel() for i, s in enumerate(state_upper)])
+    dx = np.array(
+        [s.minus(state_lower[i]).ravel() for i, s in enumerate(state_upper)]
+    )
 
     out = []
     for i, state in enumerate(state_lower):
