@@ -77,8 +77,10 @@ def reparametrize_gaussians_about_X_par(
     for X in X_list:
         mu = X.state.minus(X_par)
         # TODO: Replace with minus_jacobians
-        J = X_par.plus_jacobian(mu)
-        Jinv = np.linalg.inv(J)
+        # J = X_par.plus_jacobian(mu)
+        # Jinv = np.linalg.inv(J)
+        # Jinv = X_par.minus_jacobian(X.state)
+        Jinv = X.state.minus_jacobian(X_par)
         Sigma = Jinv @ X.covariance @ Jinv.T
         means_reparametrized.append(mu)
         covariances_reparametrized.append(Sigma)
@@ -142,10 +144,17 @@ class IMMState:
     __slots__ = ["model_states", "model_probabilities"]
 
     def __init__(
-        self, model_states: List[StateWithCovariance], model_probabilities: List[float]
+        self,
+        model_states: List[StateWithCovariance],
+        model_probabilities: List[float],
     ):
         self.model_states = model_states
         self.model_probabilities = model_probabilities
+
+    def copy(self) -> "IMMState":
+        return IMMState(
+            self.model_states.copy(), self.model_probabilities.copy()
+        )
 
 
 class IMMResult(GaussianResult):
@@ -261,7 +270,7 @@ class InteractingModelFilter:
         """
 
         x_km_models = x.model_states.copy()
-        mu_models = x.model_probabilities.copy()
+        mu_models = np.array(x.model_probabilities)
 
         n_modes = self.Pi.shape[0]
         c = self.Pi.T @ mu_models.reshape(-1, 1)
@@ -339,12 +348,16 @@ class InteractingModelFilter:
         # Correct and update model probabilities
         x_hat = []
         for lv1, kf in enumerate(self.kf_list):
-            x, details_dict = kf.correct(x_models_check[lv1], y, u, output_details=True)
+            x, details_dict = kf.correct(
+                x_models_check[lv1], y, u, output_details=True
+            )
             x_hat.append(x)
             z = details_dict["z"]
             S = details_dict["S"]
             z = z.ravel()
-            model_likelihood = multivariate_normal.pdf(z, mean=np.zeros(z.shape), cov=S)
+            model_likelihood = multivariate_normal.pdf(
+                z, mean=np.zeros(z.shape), cov=S
+            )
             mu_k[lv1] = model_likelihood * c_bar[lv1]
 
         # If all model likelihoods are zero to machine tolerance, np.sum(mu_k)=0 and it fails
@@ -419,7 +432,9 @@ def run_interacting_multiple_model_filter(
         u = input_data[k]
         # Fuse any measurements that have occurred.
         if len(meas_data) > 0:
-            while y.stamp < input_data[k + 1].stamp and meas_idx < len(meas_data):
+            while y.stamp < input_data[k + 1].stamp and meas_idx < len(
+                meas_data
+            ):
 
                 x = filter.interaction(x)
                 x = filter.correct(x, y, u)
