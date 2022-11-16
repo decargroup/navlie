@@ -45,10 +45,10 @@ class IMU(Input):
         """
         new = self.copy()
         w = w.ravel()
-        new.gyro = self.gyro + w[0:3]
-        new.accel = self.accel + w[3:6]
-        new.bias_gyro_walk = self.bias_gyro_walk + w[6:9]
-        new.bias_accel_walk = self.bias_accel_walk + w[9:12]
+        new.gyro = new.gyro + w[0:3]
+        new.accel = new.accel + w[3:6]
+        new.bias_gyro_walk = new.bias_gyro_walk + w[6:9]
+        new.bias_accel_walk = new.bias_accel_walk + w[9:12]
         return new
 
     def copy(self):
@@ -505,6 +505,7 @@ class IMUKinematics(ProcessModel):
         jac_kwargs = {}
 
         if hasattr(x, "bias_gyro"):
+            # Jacobian of pose wrt to bias 
             jac_bias = -self._get_input_jacobian(x, u, dt)
 
             # Jacobian of bias random walk wrt to pose
@@ -564,114 +565,3 @@ class IMUKinematics(ProcessModel):
         elif x.direction == "left":
             jac = SE23.adjoint(G @ x.pose @ U) @ L
         return jac
-
-
-class RelativeIMUKinematics(ProcessModel):
-    """
-    The relative IMU kinematics govern the relative pose between two bodies
-    containing IMUs, given the IMU measurements of each body. Let a single
-    body's extended pose by given by :math:`\mathbf{T}_1` with kinematics given
-    by :math:`\mathbf{T}_{1_k} = \mathbf{G}_{k-1} \mathbf{T}_{1_{k-1}}
-    \mathbf{U}_{1_{k-1}}`. The relative pose :math:`\mathbf{T}_{12} =
-    \mathbf{T}_{1}^{-1} \mathbf{T}_{2}` has kinematics given by
-
-    .. math::
-        \mathbf{T}_{12_k} = \mathbf{U}_{1_{k-1}}^{-1} \mathbf{T}_{12_{k-1}} \mathbf{U}_{2_{k-1}}
-
-    One benefit of this form is that the IMU measurements can be incorporated
-    one at a time, thus allowing for fully asynchronous reception of the IMU
-    measurements on each body.
-    """
-
-    def __init__(self, Q1: np.ndarray, Q2: np.ndarray, id1: Any, id2: Any):
-
-        super().__init__()
-        self.Q1 = Q1
-        self.Q2 = Q2
-        self.id1 = id1
-        self.id2 = id2
-
-    def evaluate(
-        self, x: SE23State, u: IMU, dt: float, new_stamp=None
-    ) -> SE23State:
-
-
-        x = x.copy()
-
-        # If an optional new_stamp argument is provided, it will be used
-        # to determine the amount of "self-propagation" that occurs.
-        # This is useful for when the IMU measurements are not received
-        # at the same time, but the relative pose should still be propagated
-        if new_stamp is not None:
-            dt_self = new_stamp - x.stamp
-        else:
-            dt_self = dt
-
-        # Time machine matrices
-        D = delta_matrix(dt_self)
-        D_inv = delta_matrix(-dt_self)
-        if u.state_id == self.id1:
-            U1_inv = inverse_IE3(U_tilde_matrix(u.gyro, u.accel, dt))
-            U2 = np.identity(5)
-        elif u.state_id == self.id2:
-            U1_inv = np.identity(5)
-            U2 = U_tilde_matrix(u.gyro, u.accel, dt)
-        else:
-            raise ValueError("IMU object has invalid state_id")
-
-        T_12 = x.pose
-        T_12_new = U1_inv @ D_inv @ T_12 @ D @ U2
-        x.pose = T_12_new
-        return x
-
-    def jacobian(
-        self, x: SE23State, u: IMU, dt: float, new_stamp=None
-    ) -> np.ndarray:
-        if new_stamp is not None:
-            dt_self = new_stamp - x.stamp
-        else:
-            dt_self = dt
-
-        # Time machine matrices
-        D = delta_matrix(dt_self)
-        if u.state_id == self.id1:
-            U1 = U_tilde_matrix(u.gyro, u.accel, dt)
-            U2 = np.identity(5)
-        elif u.state_id == self.id2:
-            U1 = np.identity(5)
-            U2 = U_tilde_matrix(u.gyro, u.accel, dt)
-        else:
-            raise ValueError("IMU object has invalid state_id")
-
-        if x.direction == "right":
-            jac = adjoint_IE3(inverse_IE3(D @ U2))
-        elif x.direction == "left":
-            jac = adjoint_IE3(inverse_IE3(D @ U1))
-        return jac
-
-    def covariance(
-        self, x: SE23State, u: IMU, dt: float, new_stamp=None
-    ) -> np.ndarray:
-
-        T_new = self.evaluate(x.copy(), u, dt, new_stamp=new_stamp).value
-        L = L_matrix(u.gyro, u.accel, dt)
-        if u.state_id == self.id1:
-
-            if x.direction == "right":
-                jac = -x.group.adjoint(x.group.inverse(T_new)) @ L
-            elif x.direction == "left":
-                jac = -L
-
-            Q = jac @ self.Q1 @ jac.T
-        elif u.state_id == self.id2:
-
-            if x.direction == "right":
-                jac = L
-            elif x.direction == "left":
-                jac = x.group.adjoint(x.group.inverse(T_new)) @ L
-
-            Q = jac @ self.Q2 @ jac.T
-        else:
-            raise ValueError("IMU object has invalid state_id")
-
-        return Q
