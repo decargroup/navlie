@@ -288,6 +288,21 @@ class RelativeBodyFrameVelocity(ProcessModel):
                 "TODO: left covariance not yet implemented."
             )
 
+class LinearMeasurement(MeasurementModel):
+    def __init__(self, R: np.ndarray, C: np.ndarray):
+        # TODO. add tests
+        self._C = C
+        self._R = R
+
+    def evaluate(self, x: VectorState) -> np.ndarray:
+        return self._C @ x.value.reshape((-1,1))
+    
+    def jacobian(self, x: VectorState) -> np.ndarray:
+        return self._C
+    
+    def covariance(self, x: VectorState) -> np.ndarray:
+        return self._R
+
 
 class CompositeInput(Input):
     def __init__(self, input_list: List[Input]) -> None:
