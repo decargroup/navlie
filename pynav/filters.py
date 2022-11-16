@@ -50,7 +50,7 @@ class ExtendedKalmanFilter:
         u: Input,
         dt: float = None,
         x_jac: State = None,
-        output_jac: bool = False,
+        output_details: bool = False,
     ) -> StateWithCovariance:
         """
         Propagates the state forward in time using a process model. The user
@@ -105,8 +105,9 @@ class ExtendedKalmanFilter:
             x_new.symmetrize()
             x_new.state.stamp = x.state.stamp + dt
 
-        if output_jac:
-            return x_new, A
+        details_dict = {"A": A, "Q": Q}
+        if output_details:
+            return x_new, details_dict
         else:
             return x_new
 
