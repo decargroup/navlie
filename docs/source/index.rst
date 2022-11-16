@@ -12,11 +12,7 @@
 
    Introduction <self>
 
-   filters
-   types
-   utils
-   datagen
-   lib
+   API <api>
 
 Indices and tables
 ==================
