@@ -138,6 +138,7 @@ class IMUState(CompositeState):
 
     @property
     def bias(self) -> np.ndarray:
+        """ Bias vector with in order [gyro_bias, accel_bias] """
         return np.hstack(
             [self.value[1].value.ravel(), self.value[2].value.ravel()]
         )

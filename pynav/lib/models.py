@@ -154,9 +154,18 @@ class DoubleIntegratorWithBias(DoubleIntegrator):
 
         pv = x.value[0 : 2 * self.dim].reshape((-1, 1))
         bias = x.value[2 * self.dim :].reshape((-1, 1))
-        u_no_bias = u.value.reshape((-1, 1)) - bias
-        pv = (Ad @ pv + Ld @ u_no_bias).ravel()
+        accel = u.value[:self.dim].reshape((-1, 1)) - bias
+
+        # If the input contains extra dimensions, we assume that they are the
+        # random walk input being used for data generation.
+        if u.value.size > self.dim:
+            walk = u.value[self.dim:]
+        else:
+            walk = np.zeros((self.dim, 1))
+
+        pv = (Ad @ pv + Ld @ accel).ravel()
         x.value[0 : 2 * self.dim] = pv
+        x.value[2*self.dim:] = (bias + walk * dt).ravel()
         return x
 
     def jacobian(self, x, u, dt) -> np.ndarray:
@@ -332,6 +341,23 @@ class CompositeProcessModel(ProcessModel):
     """
     Should this be called a StackedProcessModel?
     """
+    # TODO: This needs to be expanded and/or changed. We have come across the
+    # following use cases:
+    # 1. Applying a completely seperate process model to each sub-state.
+    # 2. Applying a single process model to each sub-state (seperately).
+    # 3. Applying a single process model to one sub-state, and leaving the rest
+    #    unchanged.
+    # 4. Applying process model A to some sub-states, and process model B to 
+    #    other sub-states
+    # 5. Receiving a CompositeInput, which is a list of synchronously-received 
+    #    inputs, and applying each input to the corresponding sub-state.
+    # 6. Receiving the state-specific input asynchronously, applying to the
+    #    corresponding sub-state, and leaving the rest unchanged. Typically happens 
+    #    with case 3.
+
+    # What they all have in common: list of decoupled process models, one per
+    # substate. For coupled process models, the user will have to define their
+    # own process model from scratch.
 
     def __init__(self, model_list: List[ProcessModel]):
         self._model_list = model_list

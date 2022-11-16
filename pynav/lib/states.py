@@ -612,7 +612,7 @@ class CompositeState(State):
         Returns a new composite state object where the state values have also
         been copied.
         """
-        return CompositeState(
+        return self.__class__(
             [state.copy() for state in self.value], self.stamp, self.state_id
         )
 
