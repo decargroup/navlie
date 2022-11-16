@@ -52,7 +52,7 @@ def _test_imu_preintegration(direction):
 
 def _test_odometry_preintegration_se3(direction):
     """
-    Tests to make sure IMU preintegration and regular dead reckoning
+    Tests to make sure preintegration and regular dead reckoning
     are equivalent.
     """
     Q = np.identity(6)
@@ -108,6 +108,7 @@ def _test_preintegrated_process_imu(direction):
     jac_fd = preint_model.jacobian_fd(x, rmi, dt)
 
     print(jac - jac_fd)
+    assert np.allclose(jac, jac_fd, atol=1e-4)
 
 
 def _test_preintegrated_process_body_velocity(direction):
@@ -127,6 +128,7 @@ def _test_preintegrated_process_body_velocity(direction):
     jac_fd = preint_model.jacobian_fd(x, rmi, dt)
 
     print(jac - jac_fd)
+    assert np.allclose(jac, jac_fd, atol=1e-4)
 
 def test_imu_preintegration_right():
     _test_imu_preintegration("right")
@@ -153,4 +155,4 @@ def test_preintegrated_process_body_velocity_left():
     _test_preintegrated_process_body_velocity("left")
 
 if __name__ == "__main__":
-    test_imu_preintegration_right()
+    test_preintegrated_process_imu_right()

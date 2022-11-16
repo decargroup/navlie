@@ -123,12 +123,11 @@ ax.legend()
 
 if N < 15:
 
-    fig, axs = plt.subplots(2, 1)
+    fig, axs = plt.subplots(3, 2)
     axs: List[plt.Axes] = axs
     for result in results.trial_results:
         plot_error(result, axs=axs)
 
-    axs[0].set_title("Estimation error")
-    axs[1].set_xlabel("Time (s)")
-
+    fig.suptitle("Estimation error")
+plt.tight_layout()
 plt.show()

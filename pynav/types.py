@@ -12,9 +12,12 @@ class Input(ABC):
 
     __slots__ = ["stamp","dof"]
 
-    def __init__(self, dof:int, stamp: float = None):
+    def __init__(self, dof:int, stamp: float = None, state_id: Any= None):
         self.stamp = stamp #:float: Timestamp
         self.dof = dof #:int: Degrees of freedom of the object
+
+        #:Any: Arbitrary optional identifier, possible to "assign" to a state.
+        self.state_id = state_id 
 
     @abstractmethod
     def plus(self, w: np.ndarray) -> "Input":
@@ -29,16 +32,15 @@ class StampedValue(Input):
     Generic data container for timestamped information.
     """
 
-    __slots__ = ["value"] 
+    __slots__ = ["value","state_id"] 
 
-    def __init__(self, value: np.ndarray, stamp: float = None):
+    def __init__(self, value: np.ndarray, stamp: float = None, state_id: Any= None):
         if not isinstance(value, np.ndarray):
             value = np.array(value)
             
-        
         self.value = value #:numpy.ndarray:  Variable containing the data values
         
-        super().__init__(value.size, stamp)
+        super().__init__(value.size, stamp, state_id)
 
     def plus(self, w: np.ndarray) -> "StampedValue":
         """
@@ -59,7 +61,7 @@ class StampedValue(Input):
         """ 
         Returns a copy of the instance with fully seperate memory.
         """
-        return StampedValue(self.value.copy(), self.stamp)
+        return StampedValue(self.value.copy(), self.stamp, self.state_id)
         
 
 class State(ABC):
@@ -107,14 +109,14 @@ class State(ABC):
         pass
 
 
-    def jacobian(self, dx: np.ndarray) -> np.ndarray:
+    def plus_jacobian(self, dx: np.ndarray) -> np.ndarray:
         """
         Jacobian of the `plus` operator. For Lie groups, this is known as the
         *group Jacobian*.
         """
         return np.identity(self.dof)
 
-    def jacobian_fd(self, dx) -> np.ndarray:
+    def plus_jacobian_fd(self, dx) -> np.ndarray:
         """
         Calculates the model jacobian with finite difference.
         """
@@ -130,6 +132,33 @@ class State(ABC):
 
         return jac_fd
 
+    def minus_jacobian(self, x: "State") -> np.ndarray:
+        """
+        Jacobian of the `minus` operator with respect to self. That is, if
+
+            y = x1.minus(x2)
+
+        then this is the Jacobian of `y` with respect to `x1`.        
+        For Lie groups, this is the inverse of the *group Jacobian* evaluated at
+        `dx = x1.minus(x2)`.
+        """
+        return np.identity(self.dof)
+
+    def minus_jacobian_fd(self, x: "State") -> np.ndarray:
+        """
+        Calculates the model jacobian with finite difference.
+        """
+        x_bar = x
+        jac_fd = np.zeros((self.dof, self.dof))
+        h = 1e-8
+        y_bar = self.minus(x_bar)
+        for i in range(self.dof):
+            dx = np.zeros((self.dof,))
+            dx[i] = h
+            y: State = self.plus(dx).minus(x_bar)
+            jac_fd[:, i] = (y - y_bar).flatten() / h
+
+        return jac_fd
 
 
 class MeasurementModel(ABC):
@@ -265,18 +294,33 @@ class ProcessModel(ABC):
         """
         pass
 
-    def jacobian_fd(self, x: State, u: Input, dt: float) -> np.ndarray:
+    def jacobian_fd(self, x: State, u: Input, dt: float, *args, **kwargs) -> np.ndarray:
         """
         Calculates the model jacobian with finite difference.
         """
-        Y_bar = self.evaluate(x.copy(), u, dt)
+        Y_bar = self.evaluate(x.copy(), u, dt, *args, **kwargs)
         jac_fd = np.zeros((x.dof, x.dof))
         h = 1e-6
         for i in range(x.dof):
             dx = np.zeros((x.dof, 1))
             dx[i, 0] = h
             x_pert = x.plus(dx)
-            Y: State = self.evaluate(x_pert, u, dt)
+            Y: State = self.evaluate(x_pert, u, dt, *args, **kwargs)
+            jac_fd[:, i] = Y.minus(Y_bar).flatten() / h
+
+        return jac_fd
+
+    def input_jacobian_fd(self, x: State, u: Input, dt: float, *args, **kwargs) -> np.ndarray:
+        """
+        Calculates the input jacobian with finite difference.
+        """
+        Y_bar = self.evaluate(x.copy(), u.copy(), dt, *args, **kwargs)
+        jac_fd = np.zeros((x.dof, u.dof))
+        h = 1e-6
+        for i in range(u.dof):
+            du = np.zeros((u.dof,))
+            du[i] = h
+            Y: State = self.evaluate(x.copy(), u.plus(du), dt, *args, **kwargs)
             jac_fd[:, i] = Y.minus(Y_bar).flatten() / h
 
         return jac_fd
@@ -288,13 +332,14 @@ class Measurement:
     and corresponding model.
     """
 
-    __slots__ = ["value", "stamp", "model"]
+    __slots__ = ["value", "stamp", "model", "state_id"]
 
     def __init__(
         self,
         value: np.ndarray,
         stamp: float = None,
         model: MeasurementModel = None,
+        state_id: Any = None
     ):
         #:numpy.ndarray: Container for the measurement value
         self.value = np.array(value) if np.isscalar(value) else value
@@ -302,6 +347,8 @@ class Measurement:
         self.stamp = stamp
         #:pynav.types.MeasurementModel: measurement model associated with this measurement.
         self.model = model
+        #:Any: Optional, ID of the state this measurement is associated.
+        self.state_id = state_id
 
 
 class StateWithCovariance:

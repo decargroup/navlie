@@ -48,7 +48,7 @@ def gaussian_mixing_vectorspace(
 
 
 def reparametrize_gaussians_about_X_par(
-    X_par: StateWithCovariance, X_list: List[StateWithCovariance]
+    X_par: State, X_list: List[StateWithCovariance]
 ):
     """Reparametrize each Lie group Gaussian in X_list about X_par.
     A Lie group Gaussian is only relevant in the tangent space of its own mean.
@@ -58,7 +58,7 @@ def reparametrize_gaussians_about_X_par(
 
     Parameters
     ----------
-    X_par : StateWithCovariance
+    X_par : State
         Each member of X_list will be reparametrized as a Gaussian
             in the tangent space of X_par.
     X_list : List[StateWithCovariance]
@@ -75,9 +75,11 @@ def reparametrize_gaussians_about_X_par(
     covariances_reparametrized = []
 
     for X in X_list:
-        mu = X_par.minus(X.state)
-        J = X_par.jacobian(mu)
-        Sigma = J @ X.covariance @ J.T
+        mu = X.state.minus(X_par)
+        # TODO: Replace with minus_jacobians
+        J = X_par.plus_jacobian(mu)
+        Jinv = np.linalg.inv(J)
+        Sigma = Jinv @ X.covariance @ Jinv.T
         means_reparametrized.append(mu)
         covariances_reparametrized.append(Sigma)
 
@@ -106,7 +108,8 @@ def update_X(X: State, mu: np.ndarray, P: np.ndarray):
     X_hat = StateWithCovariance(X, np.zeros((X.dof, X.dof)))
     X_hat.state = X_hat.state.plus(mu)
 
-    J = X.jacobian(mu)
+    J = X.plus_jacobian(mu)
+
     X_hat.covariance = J @ P @ J.T
 
     return X_hat
@@ -166,6 +169,7 @@ class IMMResult(GaussianResult):
             ),
             state_true,
         )
+
         self.model_probabilities = imm_estimate.model_probabilities
 
 
@@ -198,7 +202,6 @@ class IMMResultList(GaussianResultList):
             )
 
 
-# TODO: Update docs
 class InteractingModelFilter:
     """On-manifold Interacting Multiple Model Filter (IMM).
     References for the IMM:
@@ -260,16 +263,16 @@ class InteractingModelFilter:
         x_km_models = x.model_states.copy()
         mu_models = x.model_probabilities.copy()
 
-        N_MODES = self.Pi.shape[0]
+        n_modes = self.Pi.shape[0]
         c = self.Pi.T @ mu_models.reshape(-1, 1)
 
-        mu_mix = np.zeros((N_MODES, N_MODES))
-        for i in range(N_MODES):
-            for j in range(N_MODES):
+        mu_mix = np.zeros((n_modes, n_modes))
+        for i in range(n_modes):
+            for j in range(n_modes):
                 mu_mix[i, j] = 1.0 / c[j] * self.Pi[i, j] * mu_models[i]
         x_mix = []
 
-        for j in range(N_MODES):
+        for j in range(n_modes):
             weights = list(mu_mix[:, j])
             x_mix.append(gaussian_mixing(weights, x_km_models))
 
@@ -324,13 +327,13 @@ class InteractingModelFilter:
         """
         x_models_check = x_check.model_states.copy()
         mu_km_models = x_check.model_probabilities.copy()
-        N_MODES = len(x_models_check)
-        mu_k = np.zeros(N_MODES)
+        n_modes = len(x_models_check)
+        mu_k = np.zeros(n_modes)
 
         # Compute each model's normalization constant
-        c_bar = np.zeros(N_MODES)
-        for i in range(N_MODES):
-            for j in range(N_MODES):
+        c_bar = np.zeros(n_modes)
+        for i in range(n_modes):
+            for j in range(n_modes):
                 c_bar[j] = c_bar[j] + self.Pi[i, j] * mu_km_models[i]
 
         # Correct and update model probabilities
@@ -340,6 +343,7 @@ class InteractingModelFilter:
             x_hat.append(x)
             z = details_dict["z"]
             S = details_dict["S"]
+            z = z.ravel()
             model_likelihood = multivariate_normal.pdf(z, mean=np.zeros(z.shape), cov=S)
             mu_k[lv1] = model_likelihood * c_bar[lv1]
 
