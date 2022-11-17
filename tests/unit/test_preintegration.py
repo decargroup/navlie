@@ -7,10 +7,12 @@ from pynav.lib.states import SE3State
 import numpy as np 
 from pylie import SE23, SE2, SE3, SO3
 from pynav.types import StampedValue, StateWithCovariance
+import pytest 
 
-np.set_printoptions(precision=4, suppress=True, linewidth=200)
+np.set_printoptions(precision=4, linewidth=200)
 
-def _test_imu_preintegration(direction):
+@pytest.mark.parametrize("direction", ["left", "right"])
+def test_imu_preintegration(direction):
     """
     Tests to make sure IMU preintegration and regular dead reckoning
     are equivalent.
@@ -48,11 +50,13 @@ def _test_imu_preintegration(direction):
     # Compare the results
     print(x_dr.covariance - x_pre.covariance)
     assert np.allclose(x_dr.state.pose, x_pre.state.pose)
+    assert np.allclose(x_dr.state.bias, x_pre.state.bias)
     assert np.allclose(x_dr.covariance, x_pre.covariance)
 
-def _test_odometry_preintegration_se3(direction):
+@pytest.mark.parametrize("direction", ["left", "right"])
+def test_odometry_preintegration_se3(direction):
     """
-    Tests to make sure IMU preintegration and regular dead reckoning
+    Tests to make sure preintegration and regular dead reckoning
     are equivalent.
     """
     Q = np.identity(6)
@@ -83,7 +87,31 @@ def _test_odometry_preintegration_se3(direction):
     assert np.allclose(x_dr.state.value, x_pre.state.value)
     assert np.allclose(x_dr.covariance, x_pre.covariance)
 
-def _test_preintegrated_process_imu(direction):
+@pytest.mark.parametrize("direction", ["left", "right"])
+def test_preintegrated_process_jacobian_body_velocity(direction):
+    """
+    Numerically checks the jacobian of the RMI-based process model.
+    """
+    Q = np.identity(6)
+    bias = [0,0,0,0,0,0]
+    dt = 0.01
+    u = StampedValue([1, 2, 3, 4, 5, 6], 0)
+    x = SE3State(SE3.random(), stamp = 0.0, direction=direction)
+    rmi = BodyVelocityIncrement(x.group, Q, bias=bias)
+    preint_model = PreintegratedBodyVelocity()
+
+    # Do preintegration
+    for i in range(10):
+        rmi.increment(u, dt)
+
+    jac = preint_model.jacobian(x, rmi, dt)
+    jac_fd = preint_model.jacobian_fd(x, rmi, dt)
+
+    print(jac - jac_fd)
+    assert np.allclose(jac, jac_fd, atol=1e-4)
+
+@pytest.mark.parametrize("direction", ["left", "right"])
+def test_preintegrated_process_jacobian_imu(direction):
     Q = np.identity(12)
     accel_bias = [1,2,3]
     gyro_bias = [0.1,0.2,0.3]
@@ -108,49 +136,7 @@ def _test_preintegrated_process_imu(direction):
     jac_fd = preint_model.jacobian_fd(x, rmi, dt)
 
     print(jac - jac_fd)
-
-
-def _test_preintegrated_process_body_velocity(direction):
-    Q = np.identity(6)
-    bias = [0,0,0,0,0,0]
-    dt = 0.01
-    u = StampedValue([1, 2, 3, 4, 5, 6], 0)
-    x = SE3State(SE3.random(), stamp = 0.0, direction=direction)
-    rmi = BodyVelocityIncrement(x.group, Q, bias=bias)
-    preint_model = PreintegratedBodyVelocity()
-
-    # Do preintegration
-    for i in range(10):
-        rmi.increment(u, dt)
-
-    jac = preint_model.jacobian(x, rmi, dt)
-    jac_fd = preint_model.jacobian_fd(x, rmi, dt)
-
-    print(jac - jac_fd)
-
-def test_imu_preintegration_right():
-    _test_imu_preintegration("right")
-
-def test_imu_preintegration_left():
-    _test_imu_preintegration("left")
-
-def test_preintegrated_process_imu_right():
-    _test_preintegrated_process_imu("right")
-
-def test_preintegrated_process_imu_left():
-    _test_preintegrated_process_imu("left")
-
-def test_odometry_preintegration_se3_right():
-    _test_odometry_preintegration_se3("right")
-
-def test_odometry_preintegration_se3_left():
-    _test_odometry_preintegration_se3("left")
-
-def test_preintegrated_process_body_velocity_right():
-    _test_preintegrated_process_body_velocity("right")
-
-def test_preintegrated_process_body_velocity_left():
-    _test_preintegrated_process_body_velocity("left")
+    assert np.allclose(jac, jac_fd, atol=1e-4)
 
 if __name__ == "__main__":
-    test_imu_preintegration_right()
+    test_preintegrated_process_jacobian_imu("left")

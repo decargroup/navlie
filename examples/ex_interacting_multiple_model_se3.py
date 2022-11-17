@@ -1,30 +1,21 @@
 import pytest
 from pynav.filters import ExtendedKalmanFilter, run_filter
-from pynav.lib.states import VectorState, SO3State, SE3State
+from pynav.lib.states import SE3State
 from pynav.datagen import DataGenerator
-from pynav.types import StampedValue, StateWithCovariance
-from pynav.utils import GaussianResult, GaussianResultList, MonteCarloResult
+from pynav.utils import GaussianResult, GaussianResultList
 from pynav.utils import randvec
 
 from pynav.utils import monte_carlo, plot_error
-from pynav.lib.models import DoubleIntegrator, OneDimensionalPositionVelocityRange
-from pynav.lib.models import SingleIntegrator, RangePointToAnchor
-from pynav.lib.models import (
-    BodyFrameVelocity,
-    InvariantMeasurement,
-    Magnetometer,
-    Gravitometer,
-)
+from pynav.lib.models import BodyFrameVelocity
 from pynav.lib.models import RangePoseToAnchor
-from pylie import SO3, SE3
+from pylie import SE3
 
 import numpy as np
 from typing import List
-import time
 from matplotlib import pyplot as plt
 from pynav.imm import InteractingModelFilter, run_interacting_multiple_model_filter
 from pynav.imm import IMMResultList
-from pynav.imm import IMMState, gaussian_mixing, IMMResult
+from pynav.imm import IMMResult
 
 """This example runs an Interacting Multiple Model filter to estimate the process model noise matrix
 for a state that is on a Lie group. The performance is compared to an EKF that knows the ground
@@ -121,8 +112,7 @@ def imm_trial(trial_number: int) -> List[GaussianResult]:
     np.random.seed(trial_number)
     state_true, input_list, meas_list = dg.generate(x0, 0, t_max, True)
 
-    x0_check = x0.copy()
-    x0_check = x0_check.plus(randvec(P0))
+    x0_check = x0.plus(randvec(P0))
 
     estimate_list = run_interacting_multiple_model_filter(
         imm, x0_check, P0, input_list, meas_list
@@ -150,7 +140,7 @@ def ekf_trial(trial_number: int) -> List[GaussianResult]:
     x0_check = x0.plus(randvec(P0))
     ekf = ExtendedKalmanFilter(VaryingNoiseProcessModel(Q_profile))
 
-    estimate_list = run_filter(ekf, x0, P0, input_list, meas_list)
+    estimate_list = run_filter(ekf, x0_check, P0, input_list, meas_list)
     results = [
         GaussianResult(estimate_list[i], state_true[i])
         for i in range(len(estimate_list))
@@ -193,21 +183,21 @@ ax.legend()
 
 if N < 15:
 
-    fig, axs = plt.subplots(2, 1)
+    fig, axs = plt.subplots(3, 2)
     axs: List[plt.Axes] = axs
     for result in results.trial_results:
         plot_error(result, axs=axs)
 
-    axs[0].set_title("Estimation error IMM")
-    axs[1].set_xlabel("Time (s)")
+    fig.suptitle("Estimation error IMM")
+    axs[1,0].set_xlabel("Time (s)")
 
-    fig, axs = plt.subplots(2, 1)
+    fig, axs = plt.subplots(3, 2)
     axs: List[plt.Axes] = axs
     for result in results_ekf.trial_results:
         plot_error(result, axs=axs)
 
-    axs[0].set_title("Estimation error EKF GT")
-    axs[1].set_xlabel("Time (s)")
+    fig.suptitle("Estimation error EKF GT")
+    axs[1,0].set_xlabel("Time (s)")
 
     average_model_probabilities = np.average(
         np.array([t.model_probabilities for t in results.trial_results]), axis=0

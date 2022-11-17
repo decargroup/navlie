@@ -93,6 +93,7 @@ class ExtendedKalmanFilter:
         u: Input,
         dt: float = None,
         x_jac: State = None,
+        output_details: bool = False,
     ) -> StateWithCovariance:
         """
         Propagates the state forward in time using a process model. The user
@@ -122,7 +123,7 @@ class ExtendedKalmanFilter:
         """
 
         # Make a copy so we dont modify the input
-        x = x.copy()
+        x_new = x.copy()
 
         # If state has no time stamp, load from measurement.
         # usually only happens on estimator start-up
@@ -142,12 +143,16 @@ class ExtendedKalmanFilter:
         if u is not None:
             A = self.process_model.jacobian(x_jac, u, dt)
             Q = self.process_model.covariance(x_jac, u, dt)
-            x.state = self.process_model.evaluate(x.state, u, dt)
-            x.covariance = A @ x.covariance @ A.T + Q
-            x.symmetrize()
-            x.state.stamp += dt
+            x_new.state = self.process_model.evaluate(x.state, u, dt)
+            x_new.covariance = A @ x.covariance @ A.T + Q
+            x_new.symmetrize()
+            x_new.state.stamp = x.state.stamp + dt
 
-        return x
+        details_dict = {"A": A, "Q": Q}
+        if output_details:
+            return x_new, details_dict
+        else:
+            return x_new
 
     def correct(
         self,
@@ -160,6 +165,8 @@ class ExtendedKalmanFilter:
     ) -> StateWithCovariance:
         """
         Fuses an arbitrary measurement to produce a corrected state estimate.
+        If a measurement model returns `None` from its `evaluate()` method,
+        the measurement will not be fused.
 
         Parameters
         ----------
@@ -198,21 +205,20 @@ class ExtendedKalmanFilter:
         # until current time.
         if y.stamp is not None:
             dt = y.stamp - x.state.stamp
-            if dt < 0:
-                raise RuntimeError(
-                    "Measurement stamp is earlier than state stamp"
-                )
+            if dt < -1e10:
+                raise RuntimeError("Measurement stamp is earlier than state stamp")
             elif u is not None:
                 x = self.predict(x, u, dt)
 
         if x_jac is None:
             x_jac = x.state
-        P = x.covariance
-        R = np.atleast_2d(y.model.covariance(x_jac))
-        G = np.atleast_2d(y.model.jacobian(x_jac))
         y_check = y.model.evaluate(x.state)
 
+        details_dict = {}
         if y_check is not None:
+            P = x.covariance
+            R = np.atleast_2d(y.model.covariance(x_jac))
+            G = np.atleast_2d(y.model.jacobian(x_jac))
             z = y.value.reshape((-1, 1)) - y_check.reshape((-1, 1))
             S = G @ P @ G.T + R
 
@@ -231,7 +237,8 @@ class ExtendedKalmanFilter:
                 x.covariance = (np.identity(x.state.dof) - K @ G) @ P
                 x.symmetrize()
 
-        details_dict = {"z": z, "S": S}
+            details_dict = {"z": z, "S": S}
+
         if output_details:
             return x, details_dict
         else:
@@ -243,7 +250,13 @@ class IteratedKalmanFilter(ExtendedKalmanFilter):
     On-manifold iterated extended Kalman filter.
     """
 
-    __slots__ = ["process_model", "reject_outliers", "step_tol", "max_iters"]
+    __slots__ = [
+        "process_model",
+        "reject_outliers",
+        "step_tol",
+        "max_iters",
+        "line_search",
+    ]
 
     def __init__(
         self,
@@ -257,6 +270,7 @@ class IteratedKalmanFilter(ExtendedKalmanFilter):
         self.step_tol = step_tol
         self.max_iters = max_iters
         self.reject_outliers = reject_outliers
+        self.line_search = line_search
 
     def correct(
         self,
@@ -351,16 +365,20 @@ class IteratedKalmanFilter(ExtendedKalmanFilter):
                 break
 
             # Perform backtracking line search
-            alpha = 1
-            cost_new = cost_old + 9999
-            step_accepted = False
-            while not step_accepted and alpha > self.step_tol:
-                x_new = x_op.plus(alpha * dx)
-                cost_new = self._get_cost_and_info(x_new, x, y, x_jac)["cost"]
-                if cost_new < cost_old:
-                    step_accepted = True
-                else:
-                    alpha *= 0.9
+            if self.line_search:
+                alpha = 1
+                cost_new = cost_old + 9999
+                step_accepted = False
+                while not step_accepted and alpha > self.step_tol:
+                    x_new = x_op.plus(alpha * dx)
+                    cost_new = self._get_cost_and_info(x_new, x, y, x_jac)["cost"]
+                    if cost_new < cost_old:
+                        step_accepted = True
+                    else:
+                        alpha *= 0.9
+            else:
+                x_new = x_op.plus(dx)
+                cost_new = cost_old
 
             # If step was not accepted, exit loop and do not update step
             if not step_accepted:
@@ -394,7 +412,7 @@ class IteratedKalmanFilter(ExtendedKalmanFilter):
         y_check = y.model.evaluate(x_op)
         z = y.value.reshape((-1, 1)) - y_check.reshape((-1, 1))
         e = x_op.minus(x_check.state).reshape((-1, 1))
-        J = x_op.jacobian(e)
+        J = x_op.plus_jacobian(e)
         P = J @ x_check.covariance @ J.T
         P = 0.5 * (P + P.T)
         cost_prior = np.ndarray.item(0.5 * e.T @ np.linalg.solve(P, e))
@@ -791,10 +809,7 @@ def run_filter(
 
     results_list = []
     for k in range(len(input_data) - 1):
-        results_list.append(x)
-
         u = input_data[k]
-
         # Fuse any measurements that have occurred.
         if len(meas_data) > 0:
             while y.stamp < input_data[k + 1].stamp and meas_idx < len(
@@ -806,6 +821,7 @@ def run_filter(
                 if meas_idx < len(meas_data):
                     y = meas_data[meas_idx]
 
+        results_list.append(x)
         dt = input_data[k + 1].stamp - x.stamp
         x = filter.predict(x, u, dt)
 

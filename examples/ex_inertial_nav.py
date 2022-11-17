@@ -191,20 +191,17 @@ results = GaussianResultList(
     ]
 )
 
+from pynav.utils import plot_poses
 import seaborn as sns
 
 fig = plt.figure()
 ax = plt.axes(projection="3d")
 landmarks = np.array(landmarks)
-r = np.array([x.position for x in results.state])
-r_gt = np.array([x.position for x in results.state_true])
 ax.scatter(landmarks[:, 0], landmarks[:, 1], landmarks[:, 2])
-ax.plot(r[:, 0], r[:, 1], r[:, 2], label="Estimate")
-ax.plot(r_gt[:, 0], r_gt[:, 1], r_gt[:, 2], label="Ground truth")
+states_list = [x.state for x in estimate_list]
+plot_poses(states_list, ax, line_color="tab:blue", step=500, label="Estimate")
+plot_poses(states_true, ax, line_color="tab:red", step=500, label="Groundtruth")
 ax.legend()
-ax.set_xlim(-6, 6)
-ax.set_ylim(-6, 6)
-ax.set_zlim(-6, 6)
 
 sns.set_theme()
 fig, axs = plot_error(results)
