@@ -1,8 +1,7 @@
-from pynav.lib.states import MatrixLieGroupState, VectorState
+from pynav.lib.states import MatrixLieGroupState, VectorState, SE3State
 import numpy as np
-from pynav.filters import mean_state
-
-
+from pynav.filters import mean_state, generate_sigmapoints
+from pylie import SE3
 np.random.seed(0)
 
 def test_mean_state_vector():
@@ -21,6 +20,36 @@ def test_mean_state_vector():
         x_mean += weights[i] * x_array[i].value
     
     assert np.allclose(x_mean_function.value, x_mean)
+
+def test_generate_sigmapoints():
+    x = SE3State(SE3.random())
+    sps, w = generate_sigmapoints(x.dof, 'unscented')
+
+    x_propagated = [
+                    x.plus(sp)
+                for sp in sps.T
+            ]
+
+    assert np.allclose(mean_state(x_propagated, w).value, x.value)
+    sps, w = generate_sigmapoints(x.dof, 'cubature')
+
+    x_propagated = [
+                    x.plus(sp)
+                for sp in sps.T
+            ]
+
+    assert np.allclose(mean_state(x_propagated, w).value, x.value)
+    sps, w = generate_sigmapoints(x.dof, 'gh')
+
+    x_propagated = [
+                    x.plus(sp)
+                for sp in sps.T
+            ]
+
+    assert np.allclose(mean_state(x_propagated, w).value, x.value)
+
+
+
 
 if __name__ == "__main__":
     test_mean_state_vector()
