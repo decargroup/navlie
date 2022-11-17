@@ -1,4 +1,8 @@
-from typing import List
+from ipaddress import v4_int_to_packed
+from operator import length_hint
+from typing import List, Tuple
+
+from pynav.lib.states import MatrixLieGroupState, VectorState
 from .types import (
     Input,
     State,
@@ -8,6 +12,10 @@ from .types import (
 )
 import numpy as np
 from scipy.stats.distributions import chi2
+from numpy.polynomial.hermite_e import hermeroots
+from math import factorial
+from scipy.special import eval_hermitenorm
+import scipy.linalg as la
 
 
 def check_outlier(error: np.ndarray, covariance: np.ndarray):
@@ -23,6 +31,41 @@ def check_outlier(error: np.ndarray, covariance: np.ndarray):
         is_outlier = False
 
     return is_outlier
+
+
+def mean_state(x_array: List[State], weights: np.ndarray) -> State:
+    """Computes a weighted mean of a list of State instances
+    in an iterated manner, until reaching a maximun number of
+    iterations or a small update.
+
+    Parameters
+    ----------
+    x_array : List[State]
+        List of states to be averaged. They should be of the same type
+    weights : np.ndarray
+        weights associated to each state
+
+    Returns
+    -------
+    State
+        Returns the mean state.
+    """
+    x_0 = x_array[0]
+    n = len(x_array)
+
+    x_mean = x_0.copy()
+
+    iter = 0
+    err = 1
+    while np.linalg.norm(err) > 1e-6 and iter <= 50:
+        err = np.zeros(x_0.dof)
+        for i in range(n):
+            err += weights[i] * x_array[i].minus(x_mean)
+
+        x_mean = x_mean.plus(err)
+        iter += 1
+
+    return x_mean
 
 
 class ExtendedKalmanFilter:
@@ -50,6 +93,7 @@ class ExtendedKalmanFilter:
         u: Input,
         dt: float = None,
         x_jac: State = None,
+        output_details: bool = False,
     ) -> StateWithCovariance:
         """
         Propagates the state forward in time using a process model. The user
@@ -104,7 +148,11 @@ class ExtendedKalmanFilter:
             x_new.symmetrize()
             x_new.state.stamp = x.state.stamp + dt
 
-        return x_new
+        details_dict = {"A": A, "Q": Q}
+        if output_details:
+            return x_new, details_dict
+        else:
+            return x_new
 
     def correct(
         self,
@@ -116,7 +164,7 @@ class ExtendedKalmanFilter:
         output_details: bool = False,
     ) -> StateWithCovariance:
         """
-        Fuses an arbitrary measurement to produce a corrected state estimate. 
+        Fuses an arbitrary measurement to produce a corrected state estimate.
         If a measurement model returns `None` from its `evaluate()` method,
         the measurement will not be fused.
 
@@ -158,9 +206,7 @@ class ExtendedKalmanFilter:
         if y.stamp is not None:
             dt = y.stamp - x.state.stamp
             if dt < -1e10:
-                raise RuntimeError(
-                    "Measurement stamp is earlier than state stamp"
-                )
+                raise RuntimeError("Measurement stamp is earlier than state stamp")
             elif u is not None:
                 x = self.predict(x, u, dt)
 
@@ -325,9 +371,7 @@ class IteratedKalmanFilter(ExtendedKalmanFilter):
                 step_accepted = False
                 while not step_accepted and alpha > self.step_tol:
                     x_new = x_op.plus(alpha * dx)
-                    cost_new = self._get_cost_and_info(x_new, x, y, x_jac)[
-                        "cost"
-                    ]
+                    cost_new = self._get_cost_and_info(x_new, x, y, x_jac)["cost"]
                     if cost_new < cost_old:
                         step_accepted = True
                     else:
@@ -384,6 +428,336 @@ class IteratedKalmanFilter(ExtendedKalmanFilter):
             "R": R,
         }
         return out
+
+
+def generate_sigmapoints(
+    dof: int, method: str
+) -> Tuple[np.ndarray, np.ndarray]:
+    """Generates unit sigma points from three available
+    methods.
+
+    Parameters
+    ----------
+    dof : int
+        dof of the state involved
+    method : str
+        Method for generating sigma points
+        'unscented': Unscented method
+        'cubature': cubature method
+        'gh': Gauss-Hermite method
+
+
+    Returns
+    -------
+    Tuple[np.ndarray, np.ndarray]
+        returns the unit sigma points and the weights
+    """
+    if method == "unscented":
+        kappa = 2
+        sigma_points = np.sqrt(dof + kappa) * np.block(
+            [[np.zeros((dof, 1)), np.eye(dof), -np.eye(dof)]]
+        )
+
+        w = 1 / (2 * (dof + kappa)) * np.ones((2 * dof + 1))
+        w[0] = kappa / (dof + kappa)
+
+    elif method == "cubature":
+
+        sigma_points = np.sqrt(dof) * np.block([[np.eye(dof), -np.eye(dof)]])
+
+        w = 1 / (2 * dof) * np.ones((2 * dof))
+
+    elif method == "gh":
+        p = 3
+
+        c = np.zeros(p + 1)
+        c[-1] = 1
+        sigma_points_scalar = hermeroots(c)
+        weights_scalar = np.zeros(p)
+        for i in range(p):
+            weights_scalar[i] = factorial(p) / (
+                (p * eval_hermitenorm(p - 1, sigma_points_scalar[i])) ** 2
+            )
+
+        # Generate all p^dof collections of indexes by
+        # transforming numbers 0...p^dof-1) into p-base system
+        # and by adding 1 to each digit
+        num = np.linspace(0, p ** (dof) - 1, p ** (dof))
+        ind = np.zeros((dof, p**dof))
+        for i in range(dof):
+            ind[i, :] = num % p
+            num = num // p
+
+        sigma_points = np.zeros((dof, p**dof))
+        w = np.zeros(p**dof)
+        for i in range(p**dof):
+
+            w[i] = 1
+            sigma_point = []
+            for j in range(dof):
+                w[i] *= weights_scalar[int(ind[j, i])]
+                sigma_point.append(sigma_points_scalar[int(ind[j, i])])
+            sigma_points[:, i] = np.vstack(sigma_point).ravel()
+
+    return sigma_points, w
+
+
+class SigmaPointKalmanFilter:
+    """
+    On-manifold nonlinear Sigma Point Kalman filter.
+    """
+
+    __slots__ = [
+        "process_model",
+        "method",
+        "reject_outliers",
+        "iterate_mean",
+        "_sigmapoint_cache",
+    ]
+
+    def __init__(
+        self,
+        process_model: ProcessModel,
+        method: str,
+        reject_outliers=False,
+        iterate_mean=True,
+    ):
+        """
+        Parameters
+        ----------
+        process_model : ProcessModel
+            process model to be used in the prediction step
+        method : str
+            method to generate the sigma points. Options are
+                'unscented': unscented sigma points
+                'cubature': cubature sigma points
+                'gh': Gauss-hermite sigma points
+        reject_outliers : bool, optional
+            whether to apply the NIS test to measurements, by default False
+        iterate_mean : bool, optional
+            whether to compute the mean state with sigma points or
+            by propagating \check {x_{k-1}} on the process model
+        """
+        self.process_model = process_model
+        self.method = method
+        self.reject_outliers = reject_outliers
+        self.iterate_mean = iterate_mean
+        self._sigmapoint_cache = {}
+
+    def predict(
+        self,
+        x: StateWithCovariance,
+        u: Input,
+        dt: float = None,
+        input_covariance: np.ndarray = None,
+    ) -> StateWithCovariance:
+        """
+        Propagates the state forward in time using a process model. The user
+        must provide the current state, input, and time interval
+
+        .. note::
+            If the time interval `dt` is not provided in the arguments, it will
+            be taken as the difference between the input stamp and the state stamp.
+
+        Parameters
+        ----------
+        x : StateWithCovariance
+            The current state estimate.
+        u : Input
+            Input measurement to be given to process model
+        dt : float, optional
+            Duration to next time step. If not provided, dt will be calculated
+            with `dt = u.stamp - x.state.stamp`.
+        input_covariance: np.ndarray, optional
+            Covariance associated to the inpu measurement. If not provided,
+            it will be grabbed from u.covariance
+        Returns
+        -------
+        StateWithCovariance
+            New predicted state
+        """
+
+        # Make a copy so we dont modify the input
+        x = x.copy()
+
+        # If state has no time stamp, load from measurement.
+        # usually only happens on estimator start-up
+        if x.state.stamp is None:
+            x.state.stamp = u.stamp
+
+        if input_covariance is None:
+            if u.covariance is not None:
+
+                input_covariance = u.covariance
+            else:
+                raise ValueError(
+                    "Input covariance information must be provided."
+                )
+
+        if dt is None:
+            dt = u.stamp - x.state.stamp
+
+        if dt < 0:
+            raise RuntimeError("dt is negative!")
+
+        if u is not None:
+
+            n_x = x.state.dof
+            n_u = u.dof
+
+            P = la.block_diag(x.covariance, input_covariance)
+
+            P_sqrt = np.linalg.cholesky(P)
+
+            n = n_x + n_u
+
+            if (n, self.method) in self._sigmapoint_cache:
+                unit_sigmapoints, w = self._sigmapoint_cache[(n, self.method)]
+            else:
+                unit_sigmapoints, w = generate_sigmapoints(n, self.method)
+                self._sigmapoint_cache[(n, self.method)] = (unit_sigmapoints, w)
+
+            sigmapoints = P_sqrt @ unit_sigmapoints
+
+            n_sig = w.size
+            # Propagate
+            x_propagated = [
+                self.process_model.evaluate(
+                    x.state.plus(sp[0:n_x]),
+                    u.plus(sp[n_x:]),
+                    dt,
+                )
+                for sp in sigmapoints.T
+            ]
+
+            # Compute mean.
+            if self.iterate_mean:
+                x_mean = mean_state(x_propagated, w)
+            else:
+                x_mean = self.process_model.evaluate(x.state, u, dt)
+
+            # Compute covariance
+            P_new = np.zeros(x.covariance.shape)
+            for i in range(n_sig):
+                err = x_mean.minus(x_propagated[i])
+                err = err.reshape((-1, 1))
+                P_new += w[i] * err @ err.T
+
+            x.state = x_mean
+            x.covariance = P_new
+            x.symmetrize()
+            x.state.stamp += dt
+
+        return x
+
+    def correct(
+        self,
+        x: StateWithCovariance,
+        y: Measurement,
+        u: Input,
+        reject_outlier: bool = None,
+    ) -> StateWithCovariance:
+        """
+        Fuses an arbitrary measurement to produce a corrected state estimate.
+
+        Parameters
+        ----------
+        x : StateWithCovariance
+            The current state estimate.
+        u: StampedValue
+            Most recent input, to be used to predict the state forward
+            if the measurement stamp is larger than the state stamp.
+        y : Measurement
+            Measurement to be fused into the current state estimate.
+        reject_outlier : bool, optional
+            Whether to apply the NIS test to this measurement, by default None,
+            in which case the value of `self.reject_outliers` will be used.
+
+        Returns
+        -------
+        StateWithCovariance
+            The corrected state estimate
+        """
+        # Make copy to avoid modifying the input
+        x = x.copy()
+
+        if x.state.stamp is None:
+            x.state.stamp = y.stamp
+
+        # Load default outlier rejection option
+        if reject_outlier is None:
+            reject_outlier = self.reject_outliers
+
+        # If measurement stamp is later than state stamp, do prediction step
+        # until current time.
+        if y.stamp is not None:
+            dt = y.stamp - x.state.stamp
+            if dt < 0:
+                raise RuntimeError(
+                    "Measurement stamp is earlier than state stamp"
+                )
+            elif u is not None:
+                x = self.predict(x, u, dt)
+
+        P_xx = x.covariance
+        R = y.model.covariance(x.state)
+
+        n_x = x.state.dof
+        n_y = y.value.size
+
+        if (n_x, self.method) in self._sigmapoint_cache:
+            unit_sigmapoints, w = self._sigmapoint_cache[(n_x, self.method)]
+        else:
+            unit_sigmapoints, w = generate_sigmapoints(n_x, self.method)
+            self._sigmapoint_cache[(n_x, self.method)] = (unit_sigmapoints, w)
+
+        P_sqrt = np.linalg.cholesky(P_xx)
+        sigmapoints = P_sqrt @ unit_sigmapoints
+
+        n_sig = w.size
+
+        y_check = y.model.evaluate(x.state)
+
+        if y_check is not None:
+
+            y_propagated = [
+                y.model.evaluate(x.state.plus(sp)) for sp in sigmapoints.T
+            ]
+
+            # predicted measurement mean
+            y_mean = np.zeros(n_y)
+            for i in range(n_sig):
+                y_mean += w[i] * y_propagated[i]
+
+            # compute covariance of innovation and cross covariance
+            Pyy = np.zeros((n_y, n_y))
+            Pxy = np.zeros((n_x, n_y))
+            for i in range(n_sig):
+                err = y_propagated[i].reshape((-1, 1)) - y_mean.reshape((-1, 1))
+
+                Pyy += w[i] * err @ err.T
+                Pxy += w[i] * sigmapoints[:, i].reshape((-1, 1)) @ err.T
+
+            Pyy += R
+
+            z = y.value.reshape((-1, 1)) - y_mean.reshape((-1, 1))
+
+            outlier = False
+
+            # Test for outlier if requested.
+            if reject_outlier:
+                outlier = check_outlier(z, Pyy)
+
+            if not outlier:
+
+                # Do the correction
+                K = np.linalg.solve(Pyy.T, Pxy.T).T
+                dx = K @ z
+                x.state = x.state.plus(dx)
+                x.covariance = P_xx - K @ Pxy.T
+                x.symmetrize()
+
+        return x
 
 
 def run_filter(

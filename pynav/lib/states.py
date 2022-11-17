@@ -99,7 +99,7 @@ class MatrixLieGroupState(State):
             jac = self.group.left_jacobian(dx)
         else:
             raise ValueError("direction must either be 'left' or 'right'.")
-        return jac       
+        return jac
 
     def minus_jacobian(self, x: "MatrixLieGroupState") -> np.ndarray:
         dx = self.minus(x)
@@ -109,7 +109,7 @@ class MatrixLieGroupState(State):
             jac = self.group.left_jacobian_inv(dx)
         else:
             raise ValueError("direction must either be 'left' or 'right'.")
-        return jac     
+        return jac
 
     @property
     def attitude(self) -> np.ndarray:
@@ -238,7 +238,7 @@ class SE2State(MatrixLieGroupState):
         super().__init__(value, SE2, stamp, state_id, direction)
 
     @property
-    def attitude(self)-> np.ndarray:
+    def attitude(self) -> np.ndarray:
         return self.value[0:2, 0:2]
 
     @attitude.setter
@@ -246,7 +246,7 @@ class SE2State(MatrixLieGroupState):
         self.value[0:2, 0:2] = C
 
     @property
-    def position(self)-> np.ndarray:
+    def position(self) -> np.ndarray:
         return self.value[0:2, 2]
 
     @position.setter
@@ -289,7 +289,7 @@ class SE3State(MatrixLieGroupState):
         self.value[0:3, 0:3] = C
 
     @property
-    def position(self)-> np.ndarray:
+    def position(self) -> np.ndarray:
         return self.value[0:3, 3]
 
     @position.setter
@@ -386,7 +386,7 @@ class SE23State(MatrixLieGroupState):
         state_id=None,
         direction="right",
     ):
-        if value.shape != (5,5):
+        if value.shape != (5, 5):
             raise ValueError("Value must be a 5x5 matrix")
 
         super().__init__(value, SE23, stamp, state_id, direction)
@@ -445,11 +445,11 @@ class SE23State(MatrixLieGroupState):
 
 class SL3State(MatrixLieGroupState):
     def __init__(
-        self, 
-        value: np.ndarray, 
-        stamp: float = None, 
-        state_id=None, 
-        direction="right"
+        self,
+        value: np.ndarray,
+        stamp: float = None,
+        state_id=None,
+        direction="right",
     ):
         super().__init__(value, SL3, stamp, state_id, direction)
 
@@ -473,6 +473,7 @@ class CompositeState(State):
     It is possible to access sub-states in the composite states both by index
     and by ID.
     """
+
     __slots__ = ["state_id"]
 
     def __init__(
@@ -481,7 +482,7 @@ class CompositeState(State):
 
         #:List[State]: The substates are the CompositeState's value.
         self.value = state_list
-    
+
         self.stamp = stamp
         self.state_id = state_id
 
@@ -534,16 +535,92 @@ class CompositeState(State):
 
         return slices
 
+    def add_state(self, state: State, stamp: float = None, state_id=None):
+        """Adds a state and it's corresponding slice to the composite state."""
+        self.value.append(state)
+
+    def remove_state_by_id(self, state_id):
+        """Removes a given state by ID."""
+        idx = self.get_index_by_id(state_id)
+        self.value.pop(idx)
+
     def get_slice_by_id(self, state_id, slices=None):
         """
         Get slice of a particular state_id in the list of states.
         """
 
         if slices is None:
-            slices = self.get_slices() 
-            
+            slices = self.get_slices()
+
         idx = self.get_index_by_id(state_id)
         return slices[idx]
+
+    def get_matrix_block_by_ids(
+        self, mat: np.ndarray, state_id_1: Any, state_id_2: Any = None
+    ) -> np.ndarray:
+        """Gets the portion of a matrix corresponding to two states.
+
+        This function is useful when extract specific blocks of a covariance
+        matrix, for example.
+
+        Parameters
+        ----------
+        mat : np.ndarray
+            N x N matrix
+        state_id_1 : Any
+            State ID of state 1.
+        state_id_2 : Any, optional
+            State ID of state 2. If None, state_id_2 is set to state_id_1.
+
+        Returns
+        -------
+        np.ndarray
+            Subblock of mat corrsponding to
+            slices of state_id_1 and state_id_2.
+        """
+
+        if state_id_2 is None:
+            state_id_2 = state_id_1
+
+        slice_1 = self.get_slice_by_id(state_id_1)
+        slice_2 = self.get_slice_by_id(state_id_2)
+
+        return mat[slice_1, slice_2]
+
+    def set_matrix_block_by_ids(
+        self,
+        new_mat_block: np.ndarray,
+        mat: np.ndarray,
+        state_id_1: Any,
+        state_id_2: Any = None,
+    ) -> np.ndarray:
+        """Sets the portion of the covariance block corresponding to two states.
+
+        Parameters
+        ----------
+        new_mat_block : np.ndarray
+            A subblock to be entered into mat.
+        mat : np.ndarray
+            Full matrix.
+        state_id_1 : Any
+            State ID of state 1.
+        state_id_2 : Any, optional
+            State ID of state 2. If None, state_id_2 is set to state_id_1.
+
+        Returns
+        -------
+        np.ndarray
+            mat with updated subblock.
+        """
+
+        if state_id_2 is None:
+            state_id_2 = state_id_1
+
+        slice_1 = self.get_slice_by_id(state_id_1)
+        slice_2 = self.get_slice_by_id(state_id_2)
+
+        mat[slice_1, slice_2] = new_mat_block
+        return mat
 
     def get_value_by_id(self, state_id) -> Any:
         """
@@ -682,9 +759,8 @@ class CompositeState(State):
 
         return jac
 
-
     def minus_jacobian(self, x: "CompositeState") -> np.ndarray:
-        
+
         dof = self.dof
         jac = np.zeros((dof, dof))
         counter = 0

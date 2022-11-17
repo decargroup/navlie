@@ -364,8 +364,10 @@ class StateWithCovariance:
             raise ValueError("covariance must be an n x n array.")
 
         if covariance.shape[0] != state.dof:
-            raise ValueError("Covariance matrix does not correspond with state DOF.")
-
+            raise ValueError(
+                "Covariance matrix does not correspond with state DOF."
+            )
+                
         #:pynav.types.State: state object
         self.state = state
 
