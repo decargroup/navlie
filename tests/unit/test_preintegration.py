@@ -231,4 +231,4 @@ def test_double_integrator_preintegration_with_bias():
 
 
 if __name__ == "__main__":
-    test_double_integrator_preintegration_with_bias()
+    test_double_integrator_preintegration()

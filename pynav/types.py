@@ -36,7 +36,7 @@ class StampedValue(Input):
 
     def __init__(self, value: np.ndarray, stamp: float = None, state_id: Any= None):
         if not isinstance(value, np.ndarray):
-            value = np.array(value)
+            value = np.array(value, dtype=np.float64)
             
         self.value = value #:numpy.ndarray:  Variable containing the data values
         

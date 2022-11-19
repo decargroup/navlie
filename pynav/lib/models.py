@@ -77,7 +77,7 @@ class DoubleIntegrator(ProcessModel):
         Ld = self._input_jacobian(dt)
 
         x.value = (
-            Ad @ x.value.reshape((-1, 1)) + Ld @ u.value.reshape((-1, 1))
+            Ad @ x.value.reshape((-1, 1)) + Ld @ u.value[:self.dim].reshape((-1, 1))
         ).ravel()
         return x
 
@@ -144,11 +144,12 @@ class DoubleIntegratorWithBias(DoubleIntegrator):
 
     def evaluate(
         self, x: VectorState, u: StampedValue, dt: float
-    ) -> np.ndarray:
+    ) -> VectorState:
         """
         Evaluate discrete-time process model
         """
         x = x.copy()
+        u = u.copy()
         Ad = super()._state_jacobian(dt)
         Ld = super()._input_jacobian(dt)
 
@@ -159,10 +160,11 @@ class DoubleIntegratorWithBias(DoubleIntegrator):
         # If the input contains extra dimensions, we assume that they are the
         # random walk input being used for data generation.
         if u.value.size > self.dim:
-            walk = u.value[self.dim:]
+            walk = u.value[self.dim:].reshape((-1,1))
         else:
             walk = np.zeros((self.dim, 1))
 
+        # TODO. just augment these as matrices
         pv = (Ad @ pv + Ld @ accel).ravel()
         x.value[0 : 2 * self.dim] = pv
         x.value[2*self.dim:] = (bias + walk * dt).ravel()
@@ -298,7 +300,7 @@ class RelativeBodyFrameVelocity(ProcessModel):
             )
 
 class LinearMeasurement(MeasurementModel):
-    def __init__(self, R: np.ndarray, C: np.ndarray):
+    def __init__(self, C: np.ndarray, R: np.ndarray):
         # TODO. add tests
         self._C = C
         self._R = R

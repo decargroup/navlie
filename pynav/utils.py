@@ -56,13 +56,12 @@ class GaussianResult:
         self.covariance = covariance
 
         e = state.minus(state_true).reshape((-1, 1))
-        cov_inv = np.linalg.inv(covariance)
         #:numpy.ndarray: error vector between estimated and true state
         self.error = e.ravel()
         #:float: sum of estimation error squared (EES)
         self.ees = np.ndarray.item(e.T @ e)
         #:float: normalized estimation error squared (NEES)
-        self.nees = np.ndarray.item(e.T @ cov_inv @ e)
+        self.nees = np.ndarray.item(e.T @ np.linalg.solve(covariance, e))
         #:float: Mahalanobis distance
         self.md = np.sqrt(self.nees)
         #:numpy.ndarray: three-sigma bounds on each error component
@@ -145,6 +144,15 @@ class GaussianResultList:
         -------
         numpy.ndarray with shape (N,)
             NEES value corresponding to confidence interval
+
+
+        An example of how to make a NEES plot with both upper and lower bounds:
+
+        .. code-block:: python
+
+            ax.plot(results.stamp, results.nees)
+            ax.plot(results.stamp, results.nees_lower_bound(0.99))
+            ax.plot(results.stamp, results.nees_upper_bound(0.99))
         """
         if confidence_interval >= 1 or confidence_interval <= 0:
             raise ValueError("Confidence interval must lie in (0, 1)")
@@ -169,6 +177,13 @@ class GaussianResultList:
         -------
         numpy.ndarray with shape (N,)
             NEES value corresponding to confidence interval
+
+        An example of how to make a NEES plot with only upper bounds:
+
+        .. code-block:: python
+        
+            ax.plot(results.stamp, results.nees)
+            ax.plot(results.stamp, results.nees_upper_bound(0.99, double_sided=False))
 
         """
         if confidence_interval >= 1 or confidence_interval <= 0:

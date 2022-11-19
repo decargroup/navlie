@@ -617,7 +617,7 @@ class LinearIncrement(RelativeMotionIncrement):
     and :math:`\mathbf{Q}_{ij}` where :math:`\Delta \mathbf{u}_{ij} \sim \mathcal{N}(\Delta \\bar{\mathbf{u}}_{ij}, \mathbf{Q}_{ij})`.
 
     """
-
+    
     def __init__(
         self,
         input_covariance: np.ndarray,
@@ -641,7 +641,7 @@ class LinearIncrement(RelativeMotionIncrement):
             The input matrix, supplied as a function of the input and time
             interval `dt`.
         dof : int
-            the dof of the state
+            the total dof of the state
         bias : np.ndarray, optional
             If provided, this bias will be subtracted from the input values.
             Furthermore, the covariance associated with this RMI will also
@@ -649,7 +649,7 @@ class LinearIncrement(RelativeMotionIncrement):
         state_id : Any, optional
             Optional container for other identifying information, by default None.
         """
-        super().__init__(dof=dof)
+        self.dof = dof
         self.input_covariance = input_covariance
         self.state_matrix = state_matrix
         self.input_matrix = input_matrix
@@ -667,9 +667,12 @@ class LinearIncrement(RelativeMotionIncrement):
 
         self.original_bias = bias
         self.new_bias = self.original_bias
+        self.stamps = [None, None]
 
     def increment(self, u: StampedValue, dt: float):
         u = u.copy()
+
+
         if self.stamps[0] is None:
             self.stamps[0] = u.stamp
             self.stamps[1] = u.stamp + dt
@@ -683,10 +686,6 @@ class LinearIncrement(RelativeMotionIncrement):
         # Get the state and input matrices, increment the RMI value
         A = self.state_matrix(u, dt)
         B = self.input_matrix(u, dt)
-        self.original_value[0] = A @ self.original_value[0]
-        self.original_value[1] = A @ self.original_value[1].reshape(
-            (-1, 1)
-        ) + B @ u.value.reshape((-1, 1))
 
         if self.original_bias is not None:
             bias = self.original_bias
@@ -702,9 +701,16 @@ class LinearIncrement(RelativeMotionIncrement):
             B_full[self.dof :, bias.size :] = dt * np.identity(
                 bias.size
             )
+            if u.value.size == 2*bias.size:
+                u.value = u.value[:bias.size]
         else:
             A_full = A
             B_full = B
+
+        self.original_value[0] = A @ self.original_value[0]
+        self.original_value[1] = A @ self.original_value[1].reshape(
+            (-1, 1)
+        ) + B @ u.value.reshape((-1, 1))
 
         self.covariance = (
             A_full @ self.covariance @ A_full.T
@@ -740,10 +746,13 @@ class LinearIncrement(RelativeMotionIncrement):
         np.ndarray
             The current value of the RMI
         """
-        delta_bias = self.new_bias - self.original_bias
-        out = self.original_value
-        out[1] = self.original_value[1] + self.bias_jacobian @ delta_bias
-        return out         
+        if self.original_bias is None or self.new_bias is None:
+            return self.original_value
+        else:
+            delta_bias = (self.new_bias - self.original_bias).reshape((-1,1))
+            out = self.original_value
+            out[1] = self.original_value[1].reshape((-1,1)) + self.bias_jacobian @ delta_bias
+            return out         
 
     def plus(self, w: np.ndarray) -> "LinearIncrement":
         """
@@ -774,19 +783,22 @@ class LinearIncrement(RelativeMotionIncrement):
         new.stamps = self.stamps.copy()
         return new
 
-    def new(self) -> "LinearIncrement":
+    def new(self, new_bias = None) -> "LinearIncrement":
         """
         Returns
         -------
         LinearIncrement
             A copy of the RMI with reinitialized values
         """
-        new = self.__class__(
+        if new_bias is None:
+            new_bias = self.original_bias
+
+        new = LinearIncrement(
             self.input_covariance,
             self.state_matrix,
             self.input_matrix,
             self.dof,
-            self.bias,
+            new_bias,
             self.state_id,
         )
         return new
@@ -812,15 +824,15 @@ class PreintegratedLinearModel(ProcessModel):
         A_ij = rmi.value[0]
         Du_ij = rmi.value[1]
 
-        if rmi.bias is not None:
-            x_i = x.value[0 : -rmi.bias.size].reshape((-1, 1))
+        if rmi.original_bias is not None:
+            x_i = x.value[0 : -rmi.original_bias.size].reshape((-1, 1))
         else:
             x_i = x.value.reshape((-1, 1))
 
         x_j = A_ij @ x_i + Du_ij
 
-        if rmi.bias is not None:
-            x_j = np.vstack((x_j, x.value[-rmi.bias.size :].reshape((-1, 1))))
+        if rmi.original_bias is not None:
+            x_j = np.vstack((x_j, x.value[-rmi.original_bias.size :].reshape((-1, 1))))
 
         x.value = x_j.ravel()
         return x
@@ -829,13 +841,13 @@ class PreintegratedLinearModel(ProcessModel):
         self, x: VectorState, rmi: LinearIncrement, dt=None
     ) -> np.ndarray:
 
-        if rmi.bias is not None:
+        if rmi.original_bias is not None:
             A_ij = rmi.value[0]
             B_ij = rmi.bias_jacobian
-            state_dof = x.dof - rmi.bias.size
+            state_dof = x.dof - rmi.original_bias.size
             A = np.zeros((x.dof, x.dof))
             A[:state_dof, :state_dof] = A_ij
-            A[state_dof:, state_dof:] = np.identity(rmi.bias.size)
+            A[state_dof:, state_dof:] = np.identity(rmi.original_bias.size)
             A[:state_dof, state_dof:] = B_ij
         else:
             A = rmi.value[0]
