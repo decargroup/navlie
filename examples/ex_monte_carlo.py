@@ -88,7 +88,7 @@ def ekf_trial(trial_number: int) -> List[GaussianResult]:
 
 # %% Run the monte carlo experiment
 
-N = 5
+N = 100
 
 results = monte_carlo(ekf_trial, N)
 
