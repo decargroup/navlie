@@ -73,8 +73,8 @@ class DoubleIntegrator(ProcessModel):
         """
         Evaluate discrete-time process model
         """
-        Ad = self._state_jacobian(dt)
-        Ld = self._input_jacobian(dt)
+        Ad = self.jacobian(None, None, dt)
+        Ld = self.input_jacobian(dt)
 
         x.value = (
             Ad @ x.value.reshape((-1, 1)) + Ld @ u.value[:self.dim].reshape((-1, 1))
@@ -85,28 +85,24 @@ class DoubleIntegrator(ProcessModel):
         """
         Discrete-time state Jacobian
         """
-        return self._state_jacobian(dt)
+        
+        Ad = np.identity(2 * self.dim)
+        Ad[0 : self.dim, self.dim :] = dt * np.identity(self.dim)
+        return Ad
 
     def covariance(self, x, u, dt) -> np.ndarray:
         """
         Discrete-time covariance on process model
         """
 
-        Ld = self._input_jacobian(dt)
+        Ld = self.input_jacobian(dt)
         return Ld @ self._Q @ Ld.T
 
-    def _state_jacobian(self, dt):
-        """
-        Discrete-time state Jacobian
-        """
-        Ad = np.identity(2 * self.dim)
-        Ad[0 : self.dim, self.dim :] = dt * np.identity(self.dim)
-        return Ad
-
-    def _input_jacobian(self, dt):
+    def input_jacobian(self, dt):
         """
         Discrete-time input Jacobian
         """
+        # TODO. make these public
         Ld = np.zeros((2 * self.dim, self.dim))
         Ld[0 : self.dim, :] = 0.5 * dt**2 * np.identity(self.dim)
         Ld[self.dim :, :] = dt * np.identity(self.dim)
@@ -150,8 +146,8 @@ class DoubleIntegratorWithBias(DoubleIntegrator):
         """
         x = x.copy()
         u = u.copy()
-        Ad = super()._state_jacobian(dt)
-        Ld = super()._input_jacobian(dt)
+        Ad = super().jacobian(x, u, dt)
+        Ld = super().input_jacobian(dt)
 
         pv = x.value[0 : 2 * self.dim].reshape((-1, 1))
         bias = x.value[2 * self.dim :].reshape((-1, 1))
@@ -174,8 +170,8 @@ class DoubleIntegratorWithBias(DoubleIntegrator):
         """
         Discrete-time state Jacobian
         """
-        Ad = super()._state_jacobian(dt)
-        Ld = super()._input_jacobian(dt)
+        Ad = super().jacobian(x, u, dt)
+        Ld = super().input_jacobian(dt)
 
         A = np.block(
             [
@@ -190,12 +186,15 @@ class DoubleIntegratorWithBias(DoubleIntegrator):
         Discrete-time covariance on process model
         """
 
-        Ld = super()._input_jacobian(dt)
+        L = self.input_jacobian(dt)
+        return L @ self._Q @ L.T
+
+    def input_jacobian(self, dt):
+        Ld = super().input_jacobian(dt)
         L = np.zeros((3 * self.dim, 2 * self.dim))
         L[0 : 2 * self.dim, 0 : self.dim] = Ld
         L[2 * self.dim :, self.dim :] = dt * np.identity(self.dim)
-        return L @ self._Q @ L.T
-
+        return L
 
 class OneDimensionalPositionVelocityRange(MeasurementModel):
     """

@@ -164,8 +164,8 @@ def test_double_integrator_preintegration():
     model = DoubleIntegrator(Q)
     rmi = LinearIncrement(
         input_covariance = Q,
-        state_matrix = lambda u, dt: model._state_jacobian(dt),
-        input_matrix = lambda u, dt: model._input_jacobian(dt),
+        state_matrix = lambda u, dt: model.jacobian(None, None, dt),
+        input_matrix = lambda u, dt: model.input_jacobian(dt),
         dof = 4,
     )
     preint_model = PreintegratedLinearModel()
@@ -202,10 +202,11 @@ def test_double_integrator_preintegration_with_bias():
     P0 = np.identity(6)
 
     model = DoubleIntegratorWithBias(Q)
+    model_di = DoubleIntegrator(Q[:2,:2])
     rmi = LinearIncrement(
         input_covariance = Q,
-        state_matrix = lambda u, dt: model._state_jacobian(dt),
-        input_matrix = lambda u, dt: model._input_jacobian(dt),
+        state_matrix = lambda u, dt: model_di.jacobian(None, None, dt),
+        input_matrix = lambda u, dt: model_di.input_jacobian(dt),
         dof = 4,
         bias=bias,
     )
@@ -229,6 +230,52 @@ def test_double_integrator_preintegration_with_bias():
     assert np.allclose(x_dr.state.value, x_pre.state.value)
     assert np.allclose(x_dr.covariance, x_pre.covariance)
 
+def test_double_integrator_bias_equivalence():
+    """
+    Tests to make sure preintegration and regular dead reckoning
+    are equivalent.
+    """
+    Q = np.identity(4)
+    bias = [0, 2]
+
+    dt = 0.01
+    u = StampedValue([1, 2], 0)
+    u2 = StampedValue([1, 2, 0, 0], 0)
+    x = VectorState([0, 0, 0, 0] + bias, stamp=0.0)
+    P0 = np.identity(6)
+
+    model = DoubleIntegratorWithBias(Q)
+    model_di = DoubleIntegrator(Q[:2,:2])
+    rmi1 = LinearIncrement(
+        input_covariance = Q,
+        state_matrix = lambda u, dt: model_di.jacobian(None, None, dt),
+        input_matrix = lambda u, dt: model_di.input_jacobian(dt),
+        dof = 4,
+        bias=bias,
+    )
+    rmi2 = LinearIncrement(
+        input_covariance = Q,
+        state_matrix = lambda u, dt: model.jacobian(None, None, dt),
+        input_matrix = lambda u, dt: model.input_jacobian(dt),
+        dof = 6,
+        bias=None,
+    )
+
+    # Do both dead reckoning and preintegration
+    for i in range(100):
+        rmi1.increment(u, dt)
+        rmi2.increment(u2, dt)
+
+    ekf = ExtendedKalmanFilter(PreintegratedLinearModel())
+    x0 = StateWithCovariance(x, P0)
+    x1 = ekf.predict(x0.copy(), rmi1, dt)
+    x2 = ekf.predict(x0.copy(), rmi2, dt)
+
+    # Compare the results
+    assert np.allclose(x1.state.value, x2.state.value)
+    assert np.allclose(x1.covariance, x2.covariance)
+    assert np.allclose(rmi1.covariance, rmi2.covariance)
+
 
 if __name__ == "__main__":
-    test_double_integrator_preintegration()
+    test_double_integrator_bias_equivalence()

@@ -781,6 +781,7 @@ class LinearIncrement(RelativeMotionIncrement):
         new.covariance = self.covariance.copy()
         new.bias_jacobian = self.bias_jacobian.copy()
         new.stamps = self.stamps.copy()
+        new.new_bias = self.new_bias
         return new
 
     def new(self, new_bias = None) -> "LinearIncrement":
