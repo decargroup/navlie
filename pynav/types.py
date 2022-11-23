@@ -10,31 +10,34 @@ from abc import ABC, abstractmethod
 
 class Input(ABC):
 
-    __slots__ = ["stamp","dof"]
+    __slots__ = ["stamp", "dof"]
 
-    def __init__(self, dof:int, stamp: float = None, state_id: Any= None):
-        self.stamp = stamp #:float: Timestamp
-        self.dof = dof #:int: Degrees of freedom of the object
+    def __init__(self, dof: int, stamp: float = None, state_id: Any = None):
+        self.stamp = stamp  #:float: Timestamp
+        self.dof = dof  #:int: Degrees of freedom of the object
 
         #:Any: Arbitrary optional identifier, possible to "assign" to a state.
-        self.state_id = state_id 
+        self.state_id = state_id
 
     @abstractmethod
     def plus(self, w: np.ndarray) -> "Input":
-        pass 
+        pass
 
     @abstractmethod
     def copy(self) -> "Input":
         pass
+
 
 class StampedValue(Input):
     """
     Generic data container for timestamped information.
     """
 
-    __slots__ = ["value","state_id"] 
+    __slots__ = ["value", "state_id"]
 
-    def __init__(self, value: np.ndarray, stamp: float = None, state_id: Any= None):
+    def __init__(
+        self, value: np.ndarray, stamp: float = None, state_id: Any = None
+    ):
         if not isinstance(value, np.ndarray):
             value = np.array(value, dtype=np.float64)
             
@@ -45,27 +48,37 @@ class StampedValue(Input):
     def plus(self, w: np.ndarray) -> "StampedValue":
         """
         Generic addition operation to modify the internal value.
-        
+
         Parameters
         ----------
         w : np.ndarray
             to be added to the instance's .value
         """
         new = self.copy()
-        og_shape = new.value.shape 
+        og_shape = new.value.shape
         new.value = new.value.ravel() + w.ravel()
         new.value.reshape(og_shape)
         return new
 
     def copy(self) -> "StampedValue":
-        """ 
+        """
         Returns a copy of the instance with fully seperate memory.
         """
         return StampedValue(self.value.copy(), self.stamp, self.state_id)
-        
+
+    def __repr__(self):
+
+        value_str = str(self.value).split("\n")
+        value_str = "\n".join(["    " + s for s in value_str])
+        s = [
+            f"{self.__class__.__name__}(stamp={self.stamp}, state_id={self.state_id})",
+            f"{value_str}",
+        ]
+        return "\n".join(s)
+
 
 class State(ABC):
-    """ 
+    """
     An abstract state :math:`\mathbf{x}` is an object containing the following attributes:
 
         - a value of some sort;
@@ -79,11 +92,15 @@ class State(ABC):
 
     __slots__ = ["value", "dof", "stamp", "state_id"]
 
-    def __init__(self, value: Any, dof: int, stamp: float = None, state_id=None):
-        self.value = value #:Any: State value
-        self.dof = dof #:int: Degree of freedom of the state
-        self.stamp = stamp #:float: Timestamp 
-        self.state_id = state_id #:Any: Some identifier associated with the state 
+    def __init__(
+        self, value: Any, dof: int, stamp: float = None, state_id=None
+    ):
+        self.value = value  #:Any: State value
+        self.dof = dof  #:int: Degree of freedom of the state
+        self.stamp = stamp  #:float: Timestamp
+        self.state_id = (
+            state_id  #:Any: Some identifier associated with the state
+        )
 
     @abstractmethod
     def plus(self, dx: np.ndarray) -> "State":
@@ -107,7 +124,6 @@ class State(ABC):
         Returns a copy of this State instance.
         """
         pass
-
 
     def plus_jacobian(self, dx: np.ndarray) -> np.ndarray:
         """
@@ -138,7 +154,7 @@ class State(ABC):
 
             y = x1.minus(x2)
 
-        then this is the Jacobian of `y` with respect to `x1`.        
+        then this is the Jacobian of `y` with respect to `x1`.
         For Lie groups, this is the inverse of the *group Jacobian* evaluated at
         `dx = x1.minus(x2)`.
         """
@@ -160,11 +176,21 @@ class State(ABC):
 
         return jac_fd
 
+    def __repr__(self):
+
+        value_str = str(self.value).split("\n")
+        value_str = "\n".join(["    " + s for s in value_str])
+        s = [
+            f"{self.__class__.__name__}(stamp={self.stamp}, state_id={self.state_id})",
+            f"{value_str}",
+        ]
+        return "\n".join(s)
+
 
 class MeasurementModel(ABC):
     """
     Abstract measurement model base class, used to implement measurement models
-    of the form 
+    of the form
 
     .. math::
         \mathbf{y} = \mathbf{g}(\mathbf{x}) + \mathbf{v}
@@ -175,15 +201,15 @@ class MeasurementModel(ABC):
 
     @abstractmethod
     def evaluate(self, x: State) -> np.ndarray:
-        """ 
+        """
         Evaluates the measurement model :math:`\mathbf{g}(\mathbf{x})`.
         """
         pass
 
     @abstractmethod
     def jacobian(self, x: State) -> np.ndarray:
-        """ 
-        Evaluates the measurement model Jacobian 
+        """
+        Evaluates the measurement model Jacobian
         :math:`\mathbf{G} = \partial \mathbf{g}(\mathbf{x})/ \partial \mathbf{x}`.
         """
         pass
@@ -215,15 +241,16 @@ class MeasurementModel(ABC):
 
 class ProcessModel(ABC):
     """
-    Abstract process model base class for process models of the form 
+    Abstract process model base class for process models of the form
 
     .. math::
         \mathbf{x}_k = \mathbf{f}(\mathbf{x}_{k-1}, \mathbf{u}, \Delta t) + \mathbf{w}_{k}
 
-    where :math:`\mathbf{u}` is the input, :math:`\Delta t` is the time 
+    where :math:`\mathbf{u}` is the input, :math:`\Delta t` is the time
     period between the two states, and :math:`\mathbf{w}_{k} \sim \mathcal{N}(\mathbf{0}, \mathbf{Q}_k)`
     is additive Gaussian noise.
     """
+
     @abstractmethod
     def evaluate(self, x: State, u: Input, dt: float) -> State:
         """
@@ -275,7 +302,7 @@ class ProcessModel(ABC):
     @abstractmethod
     def covariance(self, x: State, u: Input, dt: float) -> np.ndarray:
         """
-        Covariance matrix math:`\mathbf{Q}_k` of the additive Gaussian 
+        Covariance matrix math:`\mathbf{Q}_k` of the additive Gaussian
         noise :math:`\mathbf{w}_{k} \sim \mathcal{N}(\mathbf{0}, \mathbf{Q}_k)`.
 
         Parameters
@@ -294,7 +321,9 @@ class ProcessModel(ABC):
         """
         pass
 
-    def jacobian_fd(self, x: State, u: Input, dt: float, *args, **kwargs) -> np.ndarray:
+    def jacobian_fd(
+        self, x: State, u: Input, dt: float, *args, **kwargs
+    ) -> np.ndarray:
         """
         Calculates the model jacobian with finite difference.
         """
@@ -310,7 +339,9 @@ class ProcessModel(ABC):
 
         return jac_fd
 
-    def input_jacobian_fd(self, x: State, u: Input, dt: float, *args, **kwargs) -> np.ndarray:
+    def input_jacobian_fd(
+        self, x: State, u: Input, dt: float, *args, **kwargs
+    ) -> np.ndarray:
         """
         Calculates the input jacobian with finite difference.
         """
@@ -339,7 +370,7 @@ class Measurement:
         value: np.ndarray,
         stamp: float = None,
         model: MeasurementModel = None,
-        state_id: Any = None
+        state_id: Any = None,
     ):
         #:numpy.ndarray: Container for the measurement value
         self.value = np.array(value) if np.isscalar(value) else value
@@ -349,6 +380,18 @@ class Measurement:
         self.model = model
         #:Any: Optional, ID of the state this measurement is associated.
         self.state_id = state_id
+
+    def __repr__(self):
+
+        value_str = str(self.value).split("\n")
+        value_str = "\n".join(["    " + s for s in value_str])
+
+        s = [
+            f"Measurement(stamp={self.stamp}, state_id={self.state_id})"
+            + f" of {self.model.__class__.__name__}",
+            value_str,
+        ]
+        return "\n".join(s)
 
 
 class StateWithCovariance:
@@ -367,7 +410,7 @@ class StateWithCovariance:
             raise ValueError(
                 "Covariance matrix does not correspond with state DOF."
             )
-                
+
         #:pynav.types.State: state object
         self.state = state
 
@@ -381,7 +424,7 @@ class StateWithCovariance:
     @stamp.setter
     def stamp(self, stamp):
         self.state.stamp = stamp
-        
+
     def symmetrize(self):
         """
         Enforces symmetry of the covariance matrix.
@@ -389,4 +432,7 @@ class StateWithCovariance:
         self.covariance = 0.5 * (self.covariance + self.covariance.T)
 
     def copy(self) -> "StateWithCovariance":
-        return StateWithCovariance(self.state.copy(), self.covariance.copy()) 
+        return StateWithCovariance(self.state.copy(), self.covariance.copy())
+
+    def __repr__(self):
+        return f"StateWithCovariance(stamp={self.stamp})"

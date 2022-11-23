@@ -1,4 +1,5 @@
 from typing import Callable, List, Tuple, Union, Any
+from joblib import Parallel, delayed
 from pynav.types import State, Measurement, StateWithCovariance
 import numpy as np
 import matplotlib.pyplot as plt
@@ -299,7 +300,9 @@ class MonteCarloResult:
 
 
 def monte_carlo(
-    trial: Callable[[int], GaussianResultList], num_trials: int
+    trial: Callable[[int], GaussianResultList], 
+    num_trials: int,
+    n_jobs: int = -1,
 ) -> MonteCarloResult:
     """
     Monte-Carlo experiment executor. Give a callable `trial` function that
@@ -314,6 +317,11 @@ def monte_carlo(
         are expected to remain consistent.
     num_trials : int
         Number of Trials to execute
+    n_jobs: int
+        The maximum number of concurrently running jobs. If -1 all CPUs are used. 
+        If 1 is given, no parallel computing code is used at all, which is useful
+        for debugging. For n_jobs below -1, (n_cpus + 1 + n_jobs) are used. 
+        Thus for n_jobs = -2, all CPUs but one are used.
 
     Returns
     -------
@@ -323,9 +331,10 @@ def monte_carlo(
     trial_results = [None] * num_trials
 
     print("Starting Monte Carlo experiment...")
-    for i in tqdm(range(num_trials), unit="trial", ncols=80):
-        # Execute the trial
-        trial_results[i] = trial(i)
+    trial_results = Parallel(
+        n_jobs=n_jobs, 
+        verbose=10
+    )(delayed(trial)(i) for i in range(num_trials))
 
     return MonteCarloResult(trial_results)
 

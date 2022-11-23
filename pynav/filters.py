@@ -1,8 +1,4 @@
-from ipaddress import v4_int_to_packed
-from operator import length_hint
 from typing import List, Tuple
-
-from pynav.lib.states import MatrixLieGroupState, VectorState
 from .types import (
     Input,
     State,

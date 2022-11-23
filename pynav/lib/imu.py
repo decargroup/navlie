@@ -61,6 +61,24 @@ class IMU(Input):
             self.state_id,
         )
 
+    def __repr__(self):
+        s = [
+            f"IMU(stamp={self.stamp}, state_id={self.state_id})",
+            f"    gyro: {self.gyro.ravel()}",
+            f"    accel: {self.accel.ravel()}",
+        ]
+
+        if np.any(self.bias_accel_walk) or np.any(self.bias_gyro_walk):
+            s.extend(
+                [
+                    f"    gyro_bias_walk: {self.bias_gyro_walk.ravel()}",
+                    f"    accel_bias_walk: {self.bias_accel_walk.ravel()}",
+                ]
+            )
+
+        return "\n".join(s)
+
+
     @staticmethod
     def random():
         return IMU(
@@ -101,9 +119,9 @@ class IMUState(CompositeState):
         direction : str, optional
             Direction of the perturbation for the nav state, by default "right"
         """
-        nav_state = SE23State(nav_state, stamp, state_id, direction)
-        bias_gyro = VectorState(bias_gyro, stamp, state_id)
-        bias_accel = VectorState(bias_accel, stamp, state_id)
+        nav_state = SE23State(nav_state, stamp, "pose", direction)
+        bias_gyro = VectorState(bias_gyro, stamp, "gyro_bias")
+        bias_accel = VectorState(bias_accel, stamp, "accel_bias")
 
         state_list = [nav_state, bias_gyro, bias_accel]
         super().__init__(state_list, stamp, state_id)
@@ -143,7 +161,7 @@ class IMUState(CompositeState):
             [self.value[1].value.ravel(), self.value[2].value.ravel()]
         )
 
-    @bias.setter 
+    @bias.setter
     def bias(self, new_bias: np.ndarray) -> np.ndarray:
         bias_gyro = new_bias[0:3]
         bias_accel = new_bias[3:6]
@@ -506,7 +524,7 @@ class IMUKinematics(ProcessModel):
         jac_kwargs = {}
 
         if hasattr(x, "bias_gyro"):
-            # Jacobian of pose wrt to bias 
+            # Jacobian of pose wrt to bias
             jac_bias = -self._get_input_jacobian(x, u, dt)
 
             # Jacobian of bias random walk wrt to pose
