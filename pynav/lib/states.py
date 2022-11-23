@@ -111,6 +111,16 @@ class MatrixLieGroupState(State):
             raise ValueError("direction must either be 'left' or 'right'.")
         return jac
 
+    def __repr__(self):
+        value_str = str(self.value).split("\n")
+        value_str = "\n".join(["    " + s for s in value_str])
+        s = [
+            f"{self.__class__.__name__}(stamp={self.stamp},"
+            +f" state_id={self.state_id}, direction={self.direction})",
+            f"{value_str}",
+        ]
+        return "\n".join(s)
+
     @property
     def attitude(self) -> np.ndarray:
         raise NotImplementedError(
@@ -772,3 +782,12 @@ class CompositeState(State):
             counter += state.dof
 
         return jac
+
+    def __repr__(self):
+        substate_line_list = []
+        for v in self.value:
+            substate_line_list.extend(v.__repr__().split("\n"))
+        substates_str = "\n".join(["    " + s for s in substate_line_list])
+        s = [f"{self.__class__.__name__}(stamp={self.stamp}, state_id={self.state_id}) with substates:",
+                substates_str]
+        return "\n".join(s)
