@@ -203,7 +203,7 @@ class ExtendedKalmanFilter:
             dt = y.stamp - x.state.stamp
             if dt < -1e10:
                 raise RuntimeError("Measurement stamp is earlier than state stamp")
-            elif u is not None:
+            elif u is not None and dt > 1e-11:
                 x = self.predict(x, u, dt)
 
         if x_jac is None:
@@ -258,8 +258,8 @@ class IteratedKalmanFilter(ExtendedKalmanFilter):
         self,
         process_model: ProcessModel,
         step_tol=1e-4,
-        max_iters=200,  # TODO. implement max iters
-        line_search=True,  # TODO implement line search
+        max_iters=200,  
+        line_search=True, 
         reject_outliers=False,
     ):
         super(IteratedKalmanFilter, self).__init__(process_model)
