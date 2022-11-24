@@ -15,11 +15,11 @@ from pylie import SE23, SE2, SE3, SO3
 from pynav.types import StampedValue, StateWithCovariance
 import pytest
 
-np.set_printoptions(precision=8, linewidth=200)
+np.set_printoptions(precision=5, suppress=True, linewidth=200)
 
 
 @pytest.mark.parametrize("direction", ["left", "right"])
-def test_imu_preintegration(direction):
+def test_imu_preintegration_equivalence(direction):
     """
     Tests to make sure IMU preintegration and regular dead reckoning
     are equivalent.
@@ -60,9 +60,35 @@ def test_imu_preintegration(direction):
     assert np.allclose(x_dr.state.bias, x_pre.state.bias)
     assert np.allclose(x_dr.covariance, x_pre.covariance)
 
+def test_imu_update_bias():
+    Q = np.identity(12)
+    accel_bias = [1, 2, 3]
+    gyro_bias = [0.1, 0.2, 0.3]
+
+    new_accel_bias = [1.1, 2.1, 3.1]
+    new_gyro_bias = [0.11, 0.21, 0.31]
+
+    dt = 0.01
+    u = IMU([1, 2, 3], [2, 3, 1], 0)
+    rmi1 = IMUIncrement(Q, gyro_bias=gyro_bias, accel_bias=accel_bias)
+    rmi2 = IMUIncrement(Q, gyro_bias=new_gyro_bias, accel_bias=new_accel_bias)
+
+    # Do both dead reckoning and preintegration
+    for i in range(100):
+        rmi1.increment(u, dt)
+        rmi2.increment(u, dt)
+
+    # Correct the first rmi with the new bias value
+    rmi1.update_bias(np.array(new_gyro_bias + new_accel_bias))
+
+    assert np.allclose(rmi1.value, rmi2.value, atol=1e-3)
+
+
+
+
 
 @pytest.mark.parametrize("direction", ["left", "right"])
-def test_odometry_preintegration_se3(direction):
+def test_odometry_preintegration_se3_equivalence(direction):
     """
     Tests to make sure preintegration and regular dead reckoning
     are equivalent.
@@ -135,7 +161,7 @@ def test_preintegrated_process_jacobian_imu(direction):
         0,
         direction=direction,
     )
-    rmi = IMUIncrement(Q, gyro_bias=gyro_bias, accel_bias=accel_bias)
+    rmi = IMUIncrement(Q, gyro_bias=[2,3,4], accel_bias=[0.1,0.2,0.3])
     preint_model = PreintegratedIMUKinematics()
 
     # Do preintegration
@@ -147,6 +173,36 @@ def test_preintegrated_process_jacobian_imu(direction):
 
     print(jac - jac_fd)
     assert np.allclose(jac, jac_fd, atol=1e-4)
+
+@pytest.mark.parametrize("direction", ["left", "right"])
+def test_preintegrated_process_covariance_imu(direction):
+    Q = np.identity(12)
+    accel_bias = [1, 2, 3]
+    gyro_bias = [0.1, 0.2, 0.3]
+
+    dt = 0.01
+    u = IMU([1, 2, 3], [2, 3, 1], 0)
+    x = IMUState(
+        SE23.Exp([1, 2, 3, 4, 5, 6, 7, 8, 9]),
+        gyro_bias,
+        accel_bias,
+        0,
+        direction=direction,
+    )
+    rmi = IMUIncrement(Q, gyro_bias=[2,3,4], accel_bias=[0.1,0.2,0.3])
+    preint_model = PreintegratedIMUKinematics()
+
+    # Do preintegration
+    for i in range(10):
+        rmi.increment(u, dt)
+
+    Qd = preint_model.covariance(x, rmi, dt)
+    L = preint_model.input_jacobian_fd(x, rmi, dt)
+    Qd_fd = L @ rmi.covariance @ L.T
+
+    # We are unable to test the covariance associated with the bias RMI
+    # since it is always zero and not actually included in the IMUIncrement object.
+    assert np.allclose(Qd[:9,:9], Qd_fd[:9,:9], atol=1e-4)
 
 
 def test_double_integrator_preintegration():
@@ -278,4 +334,4 @@ def test_double_integrator_bias_equivalence():
 
 
 if __name__ == "__main__":
-    test_double_integrator_bias_equivalence()
+    test_odometry_preintegration_se3_equivalence("left")
