@@ -656,3 +656,15 @@ def state_interp(stamps: Union[float, List[float], Any], state_list: List[State]
         out = out[0]
 
     return out
+
+def schedule_sequential_measurements(model_list, freq):
+    # TODO: Add documentation and tests 
+    n_models = len(model_list)
+    offset_list = [None]*n_models
+    offset_step = (1/freq)
+    new_freq = freq / n_models
+    
+    for i in range(n_models):
+        offset_list[i] = i*offset_step 
+
+    return offset_list, new_freq 
