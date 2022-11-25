@@ -297,37 +297,61 @@ class CompositeInput(Input):
 class CompositeProcessModel(ProcessModel):
     """
     Should this be called a StackedProcessModel?
+    # TODO: Add documentation and tests
     """
 
-    def __init__(self, model_list: List[ProcessModel]):
+    def __init__(
+        self, 
+        model_list: List[ProcessModel],
+        shared_input: bool = False,
+    ):
         self._model_list = model_list
+        self._shared_input = shared_input
 
     def evaluate(
-        self, x: CompositeState, u: CompositeInput, dt: float
+        self, 
+        x: CompositeState, 
+        u: CompositeInput, 
+        dt: float, 
     ) -> CompositeState:
         x = x.copy()
         for i, x_sub in enumerate(x.value):
-            u_sub = u.input_list[i]
+            if self._shared_input:
+                u_sub = u
+            else:
+                u_sub = u.input_list[i]
             x.value[i] = self._model_list[i].evaluate(x_sub, u_sub, dt)
 
         return x
 
     def jacobian(
-        self, x: CompositeState, u: CompositeInput, dt: float
+        self, 
+        x: CompositeState, 
+        u: CompositeInput, 
+        dt: float,
     ) -> np.ndarray:
         jac = []
         for i, x_sub in enumerate(x.value):
-            u_sub = u.input_list[i]
+            if self._shared_input:
+                u_sub = u
+            else:
+                u_sub = u.input_list[i]
             jac.append(self._model_list[i].jacobian(x_sub, u_sub, dt))
 
         return block_diag(*jac)
 
     def covariance(
-        self, x: CompositeState, u: CompositeInput, dt: float
+        self, 
+        x: CompositeState, 
+        u: CompositeInput, 
+        dt: float,
     ) -> np.ndarray:
         cov = []
         for i, x_sub in enumerate(x.value):
-            u_sub = u.input_list[i]
+            if self._shared_input:
+                u_sub = u
+            else:
+                u_sub = u.input_list[i]
             cov.append(self._model_list[i].covariance(x_sub, u_sub, dt))
 
         return block_diag(*cov)
