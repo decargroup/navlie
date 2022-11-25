@@ -73,13 +73,14 @@ class DoubleIntegrator(ProcessModel):
         """
         Evaluate discrete-time process model
         """
+        x_new = x.copy()
         Ad = self.jacobian(None, None, dt)
         Ld = self.input_jacobian(dt)
-
-        x.value = (
-            Ad @ x.value.reshape((-1, 1)) + Ld @ u.value[:self.dim].reshape((-1, 1))
+        u = np.atleast_1d(u.value)
+        x_new.value = (
+            Ad @ x.value.reshape((-1, 1)) + Ld @ u[:self.dim].reshape((-1, 1))
         ).ravel()
-        return x
+        return x_new
 
     def jacobian(self, x, u, dt) -> np.ndarray:
         """
@@ -722,8 +723,10 @@ class GlobalPosition(MeasurementModel):
 
 
 class Altitude(MeasurementModel):
-    def __init__(self, R: np.ndarray, minimum=0.0, bias=0.1):
+    def __init__(self, R: np.ndarray, minimum=None, bias=0.1):
         self.R = R
+        if minimum is None:
+            minimum = -np.inf
         self.minimum = minimum
         self.bias = bias
 
