@@ -204,7 +204,12 @@ class RelativeBodyFrameVelocity(ProcessModel):
             )
 
 class CompositeInput(Input):
+    # TODO: add tests to new methods
     def __init__(self, input_list: List[Input]) -> None:
+        
+        # TODO: maybe this should be called "value" for consistency with
+        # CompositeState. Why does the Input class not have a "value"
+        # attribute?
         self.input_list = input_list
 
     @property 
@@ -214,6 +219,69 @@ class CompositeInput(Input):
     @property
     def stamp(self) -> float:
         return self.input_list[0].stamp
+    
+    def get_index_by_id(self, state_id):
+        """
+        Get index of a particular state_id in the list of inputs.
+        """
+        return [x.state_id for x in self.input_list].index(state_id)
+
+    def add_input(self, input: Input, stamp: float = None, state_id=None):
+        """Adds an input and its corresponding slice to the composite input."""
+        self.input_list.append(input)
+
+    def remove_input_by_id(self, state_id):
+        """Removes a given input by ID."""
+        idx = self.get_index_by_id(state_id)
+        self.input_list.pop(idx)
+
+    def get_input_by_id(self, state_id) -> Input:
+        """
+        Get input object by id.
+        """
+        idx = self.get_index_by_id(state_id)
+        return self.input_list[idx]
+
+    def get_dof_by_id(self, state_id) -> int:
+        """
+        Get degrees of freedom of sub-input by id.
+        """
+        idx = self.get_index_by_id(state_id)
+        return self.input_list[idx].dof
+
+    def get_stamp_by_id(self, state_id) -> float:
+        """
+        Get timestamp of sub-input by id.
+        """
+        idx = self.get_index_by_id(state_id)
+        return self.input_list[idx].stamp
+
+    def set_stamp_by_id(self, stamp: float, state_id):
+        """
+        Set the timestamp of a sub-state by id.
+        """
+        idx = self.get_index_by_id(state_id)
+        self.input_list[idx].stamp = stamp
+
+    def set_input_by_id(self, input: Input, state_id):
+        """
+        Set the whole sub-input by id.
+        """
+        idx = self.get_index_by_id(state_id)
+        self.input_list[idx] = input
+
+    def set_stamp_for_all(self, stamp: float):
+        """
+        Set the timestamp of all subinputs.
+        """
+        for input in self.input_list:
+            input.stamp = stamp
+
+    def to_list(self):
+        """
+        Converts the CompositeInput object back into a list of states.
+        """
+        return self.input_list
 
     def copy(self) -> "CompositeInput":
         return CompositeInput([input.copy() for input in self.input_list])
