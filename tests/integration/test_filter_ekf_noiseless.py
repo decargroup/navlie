@@ -1,31 +1,27 @@
 import pytest
 from pynav.filters import ExtendedKalmanFilter
-from pynav.lib.states import VectorState, SO3State, SE3State
+from pynav.lib.states import VectorState, SE3State
 from pynav.datagen import DataGenerator
-from pynav.types import StampedValue, StateWithCovariance
-from pynav.utils import GaussianResult, GaussianResultList, MonteCarloResult
+from pynav.types import StateWithCovariance
+from pynav.utils import GaussianResult, GaussianResultList
 from pynav.utils import randvec
 
-from pynav.utils import monte_carlo, plot_error
-from pynav.lib.models import (
-    DoubleIntegrator,
-    OneDimensionalPositionVelocityRange,
-)
+from pynav.utils import monte_carlo
 from pynav.lib.models import SingleIntegrator, RangePointToAnchor
 from pynav.lib.models import (
     BodyFrameVelocity,
-    InvariantMeasurement,
     Magnetometer,
     Gravitometer,
 )
 from pynav.lib.models import RangePoseToAnchor
-from pylie import SO3, SE3
+from pylie import SE3
 
 import numpy as np
 from typing import List
 import time
 from matplotlib import pyplot as plt
 
+# TODO. simplify this. 
 
 def make_range_models_ekf_vector(R):
     range_models = [

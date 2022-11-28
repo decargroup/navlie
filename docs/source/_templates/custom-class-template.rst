@@ -5,4 +5,5 @@
 .. autoclass:: {{ objname }}
    :members:                                   
    :show-inheritance:                          
-   :inherited-members:                          
+   :inherited-members:
+   :undoc-members:                          

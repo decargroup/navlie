@@ -19,7 +19,11 @@ from pynav.imm import IMMResultList, IMMResult
 for a state that is on a vector space. The performance is compared to an EKF that knows the ground
 truth process model noise. 
 """
+# TODO. Remove monte carlo. this makes the example more complicated than it needs to be
+# and is not necessary to demonstrate the IMM filter.
 
+# TODO. The IMM seems to have an issue when the user accidently modifies the 
+# provided state in the process model.
 
 # Measurement model
 R = 0.1**4
@@ -100,8 +104,7 @@ def imm_trial(trial_number: int) -> List[GaussianResult]:
     np.random.seed(trial_number)
     state_true, input_list, meas_list = dg.generate(x0, 0, t_max, True)
 
-    x0_check = x0.copy()
-    x0_check = x0_check.plus(randvec(P0))
+    x0_check = x0.plus(randvec(P0))
 
     estimate_list = run_interacting_multiple_model_filter(
         imm, x0_check, P0, input_list, meas_list
@@ -129,7 +132,7 @@ def ekf_trial(trial_number: int) -> List[GaussianResult]:
     x0_check = x0.plus(randvec(P0))
     ekf = ExtendedKalmanFilter(VaryingNoiseProcessModel(Q_profile))
 
-    estimate_list = run_filter(ekf, x0, P0, input_list, meas_list)
+    estimate_list = run_filter(ekf, x0_check, P0, input_list, meas_list)
     results = [
         GaussianResult(estimate_list[i], state_true[i])
         for i in range(len(estimate_list))

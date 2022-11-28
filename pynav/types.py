@@ -39,11 +39,10 @@ class StampedValue(Input):
         self, value: np.ndarray, stamp: float = None, state_id: Any = None
     ):
         if not isinstance(value, np.ndarray):
-            value = np.array(value)
+            value = np.array(value, dtype=np.float64)
 
-        self.value = (
-            value  #:numpy.ndarray:  Variable containing the data values
-        )
+        #:numpy.ndarray:  Variable containing the data values
+        self.value = value
 
         super().__init__(value.size, stamp, state_id)
 
@@ -134,19 +133,18 @@ class State(ABC):
         """
         return np.identity(self.dof)
 
-    def plus_jacobian_fd(self, dx) -> np.ndarray:
+    def plus_jacobian_fd(self, dx, step_size=1e-8) -> np.ndarray:
         """
         Calculates the model jacobian with finite difference.
         """
         dx_bar = dx
         jac_fd = np.zeros((self.dof, self.dof))
-        h = 1e-8
         Y_bar = self.plus(dx_bar)
         for i in range(self.dof):
             dx = np.zeros((self.dof,))
-            dx[i] = h
+            dx[i] = step_size
             Y: State = self.plus(dx_bar.ravel() + dx)
-            jac_fd[:, i] = Y.minus(Y_bar).flatten() / h
+            jac_fd[:, i] = Y.minus(Y_bar).flatten() / step_size
 
         return jac_fd
 
@@ -162,19 +160,19 @@ class State(ABC):
         """
         return np.identity(self.dof)
 
-    def minus_jacobian_fd(self, x: "State") -> np.ndarray:
+    def minus_jacobian_fd(self, x: "State", step_size=1e-8) -> np.ndarray:
         """
         Calculates the model jacobian with finite difference.
         """
         x_bar = x
         jac_fd = np.zeros((self.dof, self.dof))
-        h = 1e-8
+
         y_bar = self.minus(x_bar)
         for i in range(self.dof):
             dx = np.zeros((self.dof,))
-            dx[i] = h
+            dx[i] = step_size
             y: State = self.plus(dx).minus(x_bar)
-            jac_fd[:, i] = (y - y_bar).flatten() / h
+            jac_fd[:, i] = (y - y_bar).flatten() / step_size
 
         return jac_fd
 
@@ -223,7 +221,7 @@ class MeasurementModel(ABC):
         """
         pass
 
-    def jacobian_fd(self, x: State):
+    def jacobian_fd(self, x: State, step_size=1e-6):
         """
         Calculates the model jacobian with finite difference.
         """
@@ -231,12 +229,11 @@ class MeasurementModel(ABC):
         y = self.evaluate(x)
         m = y.size
         jac_fd = np.zeros((m, N))
-        h = 1e-6
         for i in range(N):
             dx = np.zeros((N, 1))
-            dx[i, 0] = h
+            dx[i, 0] = step_size
             x_temp = x.plus(dx)
-            jac_fd[:, i] = (self.evaluate(x_temp) - y).flatten() / h
+            jac_fd[:, i] = (self.evaluate(x_temp) - y).flatten() / step_size
 
         return jac_fd
 
@@ -324,37 +321,35 @@ class ProcessModel(ABC):
         pass
 
     def jacobian_fd(
-        self, x: State, u: Input, dt: float, *args, **kwargs
+        self, x: State, u: Input, dt: float, step_size=1e-6, *args, **kwargs
     ) -> np.ndarray:
         """
         Calculates the model jacobian with finite difference.
         """
         Y_bar = self.evaluate(x.copy(), u, dt, *args, **kwargs)
         jac_fd = np.zeros((x.dof, x.dof))
-        h = 1e-6
         for i in range(x.dof):
             dx = np.zeros((x.dof, 1))
-            dx[i, 0] = h
+            dx[i, 0] = step_size
             x_pert = x.plus(dx)
             Y: State = self.evaluate(x_pert, u, dt, *args, **kwargs)
-            jac_fd[:, i] = Y.minus(Y_bar).flatten() / h
+            jac_fd[:, i] = Y.minus(Y_bar).flatten() / step_size
 
         return jac_fd
 
     def input_jacobian_fd(
-        self, x: State, u: Input, dt: float, *args, **kwargs
+        self, x: State, u: Input, dt: float, step_size=1e-6, *args, **kwargs
     ) -> np.ndarray:
         """
         Calculates the input jacobian with finite difference.
         """
         Y_bar = self.evaluate(x.copy(), u.copy(), dt, *args, **kwargs)
         jac_fd = np.zeros((x.dof, u.dof))
-        h = 1e-6
         for i in range(u.dof):
             du = np.zeros((u.dof,))
-            du[i] = h
+            du[i] = step_size
             Y: State = self.evaluate(x.copy(), u.plus(du), dt, *args, **kwargs)
-            jac_fd[:, i] = Y.minus(Y_bar).flatten() / h
+            jac_fd[:, i] = Y.minus(Y_bar).flatten() / step_size
 
         return jac_fd
 

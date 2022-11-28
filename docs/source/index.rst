@@ -8,15 +8,17 @@
 
 .. toctree::
    :maxdepth: 2
-   :caption: Contents
 
-   Introduction <self>
+   Home <self>
 
-   API <api>
 
-Indices and tables
-==================
+Full Documentation
+------------------
+Click on `pynav`
 
-* :ref:`genindex`
-* :ref:`modindex`
-* :ref:`search`
+.. autosummary::
+   :toctree: _autosummary
+   :template: package.rst
+   :recursive:
+
+   pynav

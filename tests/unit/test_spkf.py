@@ -22,6 +22,7 @@ def test_mean_state_vector():
     assert np.allclose(x_mean_function.value, x_mean)
 
 def test_generate_sigmapoints():
+    np.random.seed(0)
     x = SE3State(SE3.random())
     sps, w = generate_sigmapoints(x.dof, 'unscented')
 
@@ -52,4 +53,4 @@ def test_generate_sigmapoints():
 
 
 if __name__ == "__main__":
-    test_mean_state_vector()
+    test_generate_sigmapoints()

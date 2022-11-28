@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import List, Any
+from typing import List, Any, Callable, Tuple
 from pynav.types import StampedValue, ProcessModel, Input
 from pynav.lib.imu import (
     IMU,
@@ -10,19 +10,17 @@ from pynav.lib.imu import (
     L_matrix,
     G_matrix,
 )
-from pynav.lib.states import MatrixLieGroupState
+from pynav.lib.states import MatrixLieGroupState, VectorState
 import numpy as np
 from pylie import SO3, SE3, SE2, SE23, MatrixLieGroup
 
 
 class RelativeMotionIncrement(Input):
-    __slots__ = ["value", "stamps", "covariance", "state_id"]
+    __slots__ = ["stamps", "covariance", "state_id"]
 
     def __init__(self, dof: int):
+        #:int: Degrees of freedom of the RMI
         self.dof = dof
-
-        #:Any: the value of the RMI
-        self.value = None
 
         #:List[float, float]: the two timestamps i, j associated with the RMI
         self.stamps = [None, None]
@@ -33,8 +31,13 @@ class RelativeMotionIncrement(Input):
         #:Any: an ID associated with the RMI
         self.state_id = None
 
+        self.value = None
+
     @property
     def stamp(self):
+        """
+        The later timestamp :math:`j` of the RMI.
+        """
         return self.stamps[1]
 
     @abstractmethod
@@ -46,42 +49,8 @@ class RelativeMotionIncrement(Input):
         pass
 
     @abstractmethod
-    def new(self):
+    def new(self) -> "RelativeMotionIncrement":
         pass
-
-    def increment_many(
-        self, u_list: List[Input], end_stamp: float = None
-    ) -> "RelativeMotionIncrement":
-        """
-        Creates an RMI object directly from a list of input measurements.
-        The two timestamps i, j are inferred from the first and last measurements
-        in the list, unless the optional `end_stamp` argument is provided.
-        In this case, the ending timestamp is set to `end_stamp` and the
-        last input in the list is used to increment the RMI from `u_list[-1].stamp`
-        to `end_stamp`.
-
-        Parameters
-        ----------
-        u_list : List[StampedValue]
-            List of input measurements to construct RMI from
-        end_stamp : float, optional
-            final timestamp of RMI, by default None
-
-        Returns
-        -------
-        RelativeMotionIncrement
-            The RMI
-        """
-
-        for k in range(len(u_list) - 1):
-            dt = u_list[k + 1].stamp - u_list[k].stamp
-            self.increment(u_list[k], dt)
-
-        if end_stamp is not None:
-            dt = end_stamp - u_list[-1].stamp
-            self.increment(u_list[-1], dt)
-
-        return self
 
     def symmetrize(self):
         """
@@ -89,12 +58,19 @@ class RelativeMotionIncrement(Input):
         """
         self.covariance = 0.5 * (self.covariance + self.covariance.T)
 
+    def update_bias(self, new_bias):
+        """
+        Update the bias of the RMI such that the new `.value` attribute of this
+        RMI instance incorporates the new bias values.
+        """
+        raise NotImplementedError()
+
 
 class IMUIncrement(RelativeMotionIncrement):
     __slots__ = [
-        "value",
         "original_value",
         "original_bias",
+        "new_bias",
         "stamps",
         "covariance",
         "input_covariance",
@@ -118,7 +94,7 @@ class IMUIncrement(RelativeMotionIncrement):
         Parameters
         ----------
         input_covariance : np.ndarray with shape (12, 12) or (6, 6)
-            If a 6 x 6 array is provided, this is the covariance of gyro, accel 
+            If a 6 x 6 array is provided, this is the covariance of gyro, accel
             measurements. If a 12 x 12 array is provided, this is the covariance
             of gyro, accel, gyro bias random walk, and accel bias random walk.
         """
@@ -127,30 +103,27 @@ class IMUIncrement(RelativeMotionIncrement):
             gravity = np.array([0, 0, -9.80665])
 
         if input_covariance.shape[0] == 12:
-            super().__init__(dof=15)
+            self.dof = 15
             self._estimating_bias = True
             self.covariance = np.zeros((15, 15))
         elif input_covariance.shape[0] == 6:
             super().__init__(dof=9)
+            self.dof = 9
             self._estimating_bias = False
             self.covariance = np.zeros((9, 9))
         else:
             raise ValueError("Input covariance must be 12x12 or 6x6")
 
-        
-
         self.original_value = np.identity(5)
         self.original_bias = np.hstack(
             [np.array(gyro_bias).ravel(), np.array(accel_bias).ravel()]
         )
-        self.value = self.original_value
         self.stamps = [None, None]
         self.input_covariance = input_covariance
         self.bias_jacobian = np.zeros((9, 6))
         self.gravity = np.array(gravity).ravel()
         self.state_id = state_id
-
-        
+        self.new_bias = self.original_bias
 
     @property
     def gyro_bias(self):
@@ -160,8 +133,15 @@ class IMUIncrement(RelativeMotionIncrement):
     def accel_bias(self):
         return self.original_bias[3:]
 
+    @property
+    def value(self):
+        db = self.new_bias.reshape((-1, 1)) - self.original_bias.reshape(
+            (-1, 1)
+        )
+        return self.original_value @ SE23.Exp(self.bias_jacobian @ db)
 
     def increment(self, u: IMU, dt: float):
+        u = u.copy()
         if self.stamps[0] is None:
             self.stamps[0] = u.stamp
             self.stamps[1] = u.stamp + dt
@@ -196,12 +176,9 @@ class IMUIncrement(RelativeMotionIncrement):
             A_full @ self.covariance @ A_full.T + L_full @ Q @ L_full.T
         )
         self.bias_jacobian = A @ self.bias_jacobian - L
-        self.value = self.original_value
         self.symmetrize()
 
-    def bias_update(
-        self, new_gyro_bias: np.ndarray, new_accel_bias: np.ndarray
-    ):
+    def update_bias(self, new_bias: np.ndarray):
         """
         Updates the RMI given new bias values
 
@@ -214,17 +191,12 @@ class IMUIncrement(RelativeMotionIncrement):
         """
         # TODO. this needs some tests.
         # TODO. bias jacobian also needs some tests.
-        # bias change
-        new_bias = np.vstack(
-            [new_gyro_bias.reshape((-1, 1)),
-            new_accel_bias.reshape((-1, 1)),
-            ]
-        )
+        if self.original_bias is None:
+            raise ValueError("Cannot update bias of RMI without original bias")
 
-        db = new_bias - self.original_bias.reshape((-1,1))
-        self.value = self.original_value @ SE23.Exp(self.bias_jacobian @ db)
+        self.new_bias = new_bias
 
-    def plus(self, w: np.ndarray):
+    def plus(self, w: np.ndarray) -> "IMUIncrement":
         """
         Adds noise to the RMI
 
@@ -239,10 +211,10 @@ class IMUIncrement(RelativeMotionIncrement):
             The updated RMI
         """
         new = self.copy()
-        new.value = new.value @ SE23.Exp(w[0:9])
+        new.original_value = new.original_value @ SE23.Exp(w[0:9])
         return new
 
-    def copy(self):
+    def copy(self) -> "IMUIncrement":
         """
         Returns
         -------
@@ -256,24 +228,47 @@ class IMUIncrement(RelativeMotionIncrement):
             self.state_id,
             self.gravity,
         )
-        new.value = self.value.copy()
         new.original_value = self.original_value.copy()
         new.covariance = self.covariance.copy()
         new.bias_jacobian = self.bias_jacobian.copy()
         new.stamps = self.stamps.copy()
         return new
 
-    def new(self):
+    def new(
+        self, new_bias: np.ndarray = None, gyro_bias=None, accel_bias=None
+    ) -> "IMUIncrement":
         """
+        Parameters
+        ----------
+        new_bias : np.ndarray
+            The new bias value stacked as [gyro_bias, accel_bias]
+        gyro_bias : np.ndarray
+            The new gyro bias to use in this RMI (overwrites previous argument)
+        accel_bias : np.ndarray
+            The new accel bias to use in this RMI (overwrites previous argument)
+
         Returns
         -------
         IMUIncrement
             A copy of the RMI with reinitialized values
         """
+        gyro_bias = self.gyro_bias
+        accel_bias = self.accel_bias
+
+        if new_bias is not None:
+            gyro_bias = new_bias[:3]
+            accel_bias = new_bias[3:]
+
+        if gyro_bias is not None:
+            gyro_bias = self.gyro_bias
+
+        if accel_bias is not None:
+            accel_bias = self.accel_bias
+
         new = IMUIncrement(
             self.input_covariance,
-            self.gyro_bias,
-            self.accel_bias,
+            gyro_bias,
+            accel_bias,
             self.state_id,
             self.gravity,
         )
@@ -289,7 +284,8 @@ class PreintegratedIMUKinematics(ProcessModel):
     def evaluate(self, x: IMUState, rmi: IMUIncrement, dt=None) -> IMUState:
         x = x.copy()
         rmi = rmi.copy()
-        rmi.bias_update(x.bias_gyro, x.bias_accel)
+
+        rmi.update_bias(x.bias)
         dt = rmi.stamps[1] - rmi.stamps[0]
         DG = G_matrix(self.gravity, dt)
         DU = rmi.value
@@ -299,34 +295,39 @@ class PreintegratedIMUKinematics(ProcessModel):
     def jacobian(self, x: IMUState, rmi: IMUIncrement, dt=None) -> np.ndarray:
         x = x.copy()
         rmi = rmi.copy()
-        rmi.bias_update(x.bias_gyro, x.bias_accel)
+        rmi.update_bias(x.bias)
         dt = rmi.stamps[1] - rmi.stamps[0]
         DG = G_matrix(self.gravity, dt)
         DU = rmi.value
+        J = SE23.right_jacobian(
+            rmi.bias_jacobian @ (x.bias - rmi.original_bias)
+        )
         A = np.identity(15)
         if x.direction == "right":
             A[0:9, 0:9] = adjoint_IE3(inverse_IE3(DU))
-            A[0:9, 9:15] = rmi.bias_jacobian
+            A[0:9, 9:15] = J @ rmi.bias_jacobian
         elif x.direction == "left":
             Ad = SE23.adjoint(DG @ x.pose @ DU)
             A[0:9, 0:9] = adjoint_IE3(DG)
-            A[0:9, 9:15] = Ad @ rmi.bias_jacobian
+            A[0:9, 9:15] = Ad @ J @ rmi.bias_jacobian
         return A
 
     def covariance(self, x: IMUState, rmi: IMUIncrement, dt=None) -> np.ndarray:
         x = x.copy()
         rmi = rmi.copy()
-        rmi.bias_update(x.bias_gyro, x.bias_accel)
+        rmi.update_bias(x.bias)
         dt = rmi.stamps[1] - rmi.stamps[0]
         DG = G_matrix(self.gravity, dt)
         DU = rmi.value
+        update_bias_vec = rmi.bias_jacobian @ (x.bias - rmi.original_bias)
 
         if x.direction == "right":
             L = np.identity(15)
+            L[0:9, 0:9] = SE23.adjoint(SE23.Exp(-update_bias_vec))
         elif x.direction == "left":
-            L = np.identity(15)
             Ad = SE23.adjoint(DG @ x.pose @ DU)
-            L[0:9, 0:9] = Ad
+            L = np.identity(15)
+            L[0:9, 0:9] = Ad @ SE23.adjoint(SE23.Exp(-update_bias_vec))
         return L @ rmi.covariance @ L.T
 
 
@@ -335,7 +336,7 @@ class BodyVelocityIncrement(RelativeMotionIncrement):
     This is a general preintegration class for any process model of the form
 
     .. math::
-        \mathbf{T}_{k} = \mathbf{T}_{k-1} \exp(\Delta t \mbf{u}_{k-1}^\wedge).
+        \mathbf{T}_{k} = \mathbf{T}_{k-1} \exp(\Delta t \mathbf{u}_{k-1}^\wedge).
 
     Preintegration is trivially done with
 
@@ -345,9 +346,9 @@ class BodyVelocityIncrement(RelativeMotionIncrement):
     where :math:`\Delta \mathbf{U}_{ij}` is the preintegrated increment given by
 
     .. math::
-        \Delta \mathbf{U}_{ij} = \prod_{k=i}^{j-1} \exp(\Delta t \mbf{u}_{k}^\wedge).
+        \Delta \mathbf{U}_{ij} = \prod_{k=i}^{j-1} \exp(\Delta t \mathbf{u}_{k}^\wedge).
     """
-
+    # TODO. add bias update tests
     def __init__(
         self,
         group: MatrixLieGroup,
@@ -355,17 +356,21 @@ class BodyVelocityIncrement(RelativeMotionIncrement):
         bias: np.ndarray = None,
         state_id=None,
     ):
-        super().__init__(group.dof)
+        self.dof = group.dof
         self.bias = bias
         self.group = group
         self.covariance = np.zeros((group.dof, group.dof))
         self.input_covariance = Q
-        self.value: np.ndarray = group.identity()
+        self.original_value: np.ndarray = group.identity()
         self.bias_jacobian = np.zeros((group.dof, group.dof))
         self.stamps = [None, None]
         self.state_id = state_id
+
+        bias = np.array(bias).ravel()
         if bias is None:
             self.bias = np.zeros((group.dof))
+
+        self.new_bias = bias
 
     def increment(self, u: StampedValue, dt):
         """
@@ -382,7 +387,7 @@ class BodyVelocityIncrement(RelativeMotionIncrement):
 
         # Increment the value
         U = self.group.Exp(unbiased_velocity * dt)
-        self.value = self.value @ U
+        self.original_value = self.original_value @ U
 
         # Increment the covariance
         A = self.group.adjoint(self.group.inverse(U))
@@ -395,7 +400,7 @@ class BodyVelocityIncrement(RelativeMotionIncrement):
         self.bias_jacobian = A @ self.bias_jacobian + L
         self.symmetrize()
 
-    def bias_update(self, new_bias: np.ndarray):
+    def update_bias(self, new_bias: np.ndarray):
         """
         Internally updates the RMI given a new bias.
 
@@ -404,10 +409,22 @@ class BodyVelocityIncrement(RelativeMotionIncrement):
         new_bias : np.ndarray
             New bias values
         """
-        db = new_bias - self.bias
+        if self.bias is None:
+            raise ValueError("Cannot update bias of RMI without original bias")
 
-        self.value = self.value @ self.group.Exp(self.bias_jacobian @ db)
-        self.bias = new_bias
+        self.new_bias = new_bias
+
+    @property
+    def value(self):
+        """
+        Returns
+        -------
+        numpy.ndarray
+            The RMI matrix :math:`\Delta \mathbf{U}_{ij}`.
+        """
+        db = self.new_bias - self.bias
+
+        return self.original_value @ self.group.Exp(self.bias_jacobian @ db)
 
     def plus(self, w: np.ndarray):
         """
@@ -424,10 +441,7 @@ class BodyVelocityIncrement(RelativeMotionIncrement):
             The updated RMI
         """
         new = self.copy()
-        new.value = new.value @ new.group.Exp(w)
-        if w.size > new.group.dof:
-            new_bias = new.bias + w[new.group.dof :]
-            new.bias_update(new_bias)
+        new.original_value = new.original_value @ new.group.Exp(w)
 
         return new
 
@@ -438,10 +452,8 @@ class BodyVelocityIncrement(RelativeMotionIncrement):
         RelativeMotionIncrement
             A copy of the RMI
         """
-        new = BodyVelocityIncrement(
-            self.group, self.input_covariance, self.bias
-        )
-        new.value = self.value.copy()
+        new = self.new()
+        new.original_value = self.original_value.copy()
         new.covariance = self.covariance.copy()
         new.bias_jacobian = self.bias_jacobian.copy()
         new.stamps = self.stamps.copy()
@@ -454,13 +466,23 @@ class BodyVelocityIncrement(RelativeMotionIncrement):
         RelativeMotionIncrement
             A copy of the RMI
         """
-        new = BodyVelocityIncrement(
-            self.group, self.input_covariance, self.bias
+        new = self.__class__(
+            self.group, self.input_covariance, self.bias, self.state_id
         )
         return new
 
 
 class PreintegratedBodyVelocity(ProcessModel):
+    """
+    Process model that performs prediction of the state given an RMI
+    :math:`\Delta \mathbf{U}_{ij}` according to the equation
+
+    .. math::
+        \mathbf{T}_{j} = \mathbf{T}_{i} \Delta \mathbf{U}_{ij}.
+
+    The covariance is also propagated accordingly
+    """
+
     def __init__(self):
         pass
 
@@ -531,9 +553,9 @@ class AngularVelocityIncrement(BodyVelocityIncrement):
     where :math:`\Delta \mathbf{\Omega}_{ij}` is the preintegrated increment given by
 
     .. math::
-        \Delta \mathbf{\Omega}_{ij} = \prod_{k=i}^{j-1} \exp(\Delta t \mbf{\omega}_{k}^\wedge)
+        \Delta \mathbf{\Omega}_{ij} = \prod_{k=i}^{j-1} \exp(\Delta t \mathbf{\omega}_{k}^\wedge)
 
-    and :math:`\mbf{\omega}_{k}` is the angular velocity measurement at time :math:`k`.
+    and :math:`\mathbf{\omega}_{k}` is the angular velocity measurement at time :math:`k`.
 
     """
 
@@ -554,8 +576,8 @@ class WheelOdometryIncrement(BodyVelocityIncrement):
     .. math::
         \Delta \mathbf{V}_{ij} = \prod_{k=i}^{j-1} \exp(\Delta t \mathbf{\\varpi}_{k}^\wedge)
 
-    and :math:`\mathbf{\\varpi}_{k} = [\mathbf{\omega}_k^\\trans \;
-    \mathbf{v}_k^\trans]^\trans` is the angular and translational velocity of the
+    and :math:`\mathbf{\\varpi}_{k} = [\mathbf{\omega}_k^T \;
+    \mathbf{v}_k^T]^T` is the angular and translational velocity of the
     robot at time :math:`k`.
     """
 
@@ -577,3 +599,287 @@ class PreintegratedAngularVelocity(PreintegratedBodyVelocity):
 
 class PreintegratedWheelOdometry(PreintegratedBodyVelocity):
     pass
+
+
+class LinearIncrement(RelativeMotionIncrement):
+    """
+    This class preintegrates any process model of the form
+
+    .. math::
+        \mathbf{x}_{k} = \mathbf{A}_{k-1} \mathbf{x}_{k-1}
+        + \mathbf{B}_{k-1}(\mathbf{u}_{k-1} + \mathbf{w}_{k-1})
+
+    where :math:`\mathbf{w}_{k-1} \sim \mathcal{N}(\mathbf{0},
+    \mathbf{Q}_{k-1})`. By directly interating this equation, it can be shown
+    that
+
+    .. math::
+        \mathbf{x}_j - \left(\prod_{k=i}^{j-1} \mathbf{A}_k \\right) \mathbf{x}_i
+        + \sum_{k=i}^{j-1} \left(\prod_{\ell=k+1}^{j-1} \mathbf{A}_\ell\\right)
+        \mathbf{B}_k \mathbf{u}_k
+
+    which can be rewritten as
+
+    .. math::
+        \mathbf{x}_j = \mathbf{A}_{ij} \mathbf{x}_i + \Delta \mathbf{u}_{ij} + \mathbf{w}_{ij}
+
+    This class will compute the preintegrated quantities :math:`\mathbf{A}_{ij},
+    \Delta \\bar{\mathbf{u}}_{ij}, \mathbf{Q}_{ij}` where :math:`\mathbf{w}_{ij} \sim \mathcal{N}(\mathbf{0},
+    \mathbf{Q}_{ij})`.
+
+    """
+
+    def __init__(
+        self,
+        input_covariance: np.ndarray,
+        state_matrix: Callable[[StampedValue, float], np.ndarray],
+        input_matrix: Callable[[StampedValue, float], np.ndarray],
+        dof: int,
+        bias: np.ndarray = None,
+        state_id: Any = None,
+    ):
+        """
+
+        Parameters
+        ----------
+        input_covariance : numpy.ndarray
+            Covariance associated with the input. If a bias is also supplied,
+            then this should also contain the covariance of the bias random walk.
+        state_matrix : Callable[[StampedValue, float], numpy.ndarray]
+            The state transition matrix, supplied as a function of the input
+            and time interval `dt`.
+        input_matrix : Callable[[StampedValue, float], numpy.ndarray]
+            The input matrix, supplied as a function of the input and time
+            interval `dt`.
+        dof : int
+            the total dof of the state
+        bias : numpy.ndarray, optional
+            If provided, this bias will be subtracted from the input values.
+            Furthermore, the covariance associated with this RMI will also
+            be augmented to include a bias state.
+        state_id : Any, optional
+            Optional container for other identifying information, by default None.
+        """
+        self.dof = dof
+        self._input_covariance = input_covariance
+        self._state_matrix = state_matrix
+        self._input_matrix = input_matrix
+        self.state_id = state_id
+
+        #:numpy.ndarray: The RMI value before a new bias correction.
+        self.original_value = [
+            np.identity(dof),
+            np.zeros((dof, 1)),
+        ]
+        if bias is not None:
+            bias = np.array(bias).ravel()
+
+            #:numpy.ndarray: Covariance matrix :math:`\mathbf{Q}_{ij}`.
+            self.covariance = np.zeros((dof + bias.size, dof + bias.size))
+
+            #:numpy.ndarray: The bias jacobian :math:`\mathbf{B}_{ij}`.
+            self.bias_jacobian = np.zeros((dof, bias.size))
+        else:
+            self.covariance = np.zeros((dof, dof))
+            self.bias_jacobian = None
+
+        #:numpy.ndarray: The bias value used when computing the RMI
+        self.original_bias = bias
+
+        #:numpy.ndarray: The bias value used to modify the original RMIs
+        self.new_bias = self.original_bias
+        self.stamps = [None, None]
+
+    def increment(self, u: StampedValue, dt: float):
+        u = u.copy()
+
+        if self.stamps[0] is None:
+            self.stamps[0] = u.stamp
+            self.stamps[1] = u.stamp + dt
+        else:
+            self.stamps[1] += dt
+
+        # Remove bias is supplied
+        if self.original_bias is not None:
+            u.value = u.value.ravel() - self.original_bias.ravel()
+
+        # Get the state and input matrices, increment the RMI value
+        A = self._state_matrix(u, dt)
+        B = self._input_matrix(u, dt)
+
+        if self.original_bias is not None:
+            bias = self.original_bias
+            A_full = np.zeros((self.dof + bias.size, self.dof + bias.size))
+            A_full[: self.dof, : self.dof] = A
+            A_full[self.dof :, self.dof :] = np.identity(bias.size)
+            A_full[: self.dof, self.dof :] = -B
+
+            B_full = np.zeros((self.dof + bias.size, 2 * bias.size))
+            B_full[: self.dof, : bias.size] = B
+            B_full[self.dof :, bias.size :] = dt * np.identity(bias.size)
+            if u.value.size == 2 * bias.size:
+                u.value = u.value[: bias.size]
+        else:
+            A_full = A
+            B_full = B
+
+        self.original_value[0] = A @ self.original_value[0]
+        self.original_value[1] = A @ self.original_value[1].reshape(
+            (-1, 1)
+        ) + B @ u.value.reshape((-1, 1))
+
+        self.covariance = (
+            A_full @ self.covariance @ A_full.T
+            + B_full @ self._input_covariance @ B_full.T
+        )
+
+        if self.bias_jacobian is None:
+            self.bias_jacobian = np.zeros((self.dof, u.dof))
+
+        self.bias_jacobian = A @ self.bias_jacobian - B
+
+    def update_bias(self, new_bias):
+        """
+        Update the bias of the RMI.
+
+        Parameters
+        ----------
+        new_bias : np.ndarray
+            The new bias value
+        """
+        if self.original_bias is None:
+            raise ValueError("Cannot update bias of RMI without original bias")
+
+        self.new_bias = new_bias
+
+    @property
+    def value(self) -> Tuple[np.ndarray, np.ndarray]:
+        """
+        The two matrices :math:`\mathbf{A}_{ij}, \Delta\\bar{\mathbf{u}}_{ij}`
+        that make up the RMI.
+        """
+
+        if self.original_bias is None or self.new_bias is None:
+            return self.original_value
+        else:
+            delta_bias = (self.new_bias - self.original_bias).reshape((-1, 1))
+            out = self.original_value
+            out[1] = (
+                self.original_value[1].reshape((-1, 1))
+                + self.bias_jacobian @ delta_bias
+            )
+            return out
+
+    def plus(self, w: np.ndarray) -> "LinearIncrement":
+        """
+        Increment the RMI itself
+
+        Parameters
+        ----------
+        w : np.ndarray
+            The noise to add
+
+        Returns
+        -------
+        LinearIncrement
+            The updated RMI
+        """
+        new = self.copy()
+        new.original_value[1] = new.original_value[1] + w
+        return new
+
+    def copy(self) -> "LinearIncrement":
+        """
+        Returns
+        -------
+        LinearIncrement
+            A copy of the RMI
+        """
+        new = self.new()
+        new.original_value = [
+            self.original_value[0].copy(),
+            self.original_value[1].copy(),
+        ]
+        new.covariance = self.covariance.copy()
+        new.bias_jacobian = self.bias_jacobian.copy()
+        new.stamps = self.stamps.copy()
+        new.new_bias = self.new_bias
+        return new
+
+    def new(self, new_bias=None) -> "LinearIncrement":
+        """
+        Returns
+        -------
+        LinearIncrement
+            A copy of the RMI with reinitialized values
+        """
+        if new_bias is None:
+            new_bias = self.original_bias
+
+        new = LinearIncrement(
+            self._input_covariance,
+            self._state_matrix,
+            self._input_matrix,
+            self.dof,
+            new_bias,
+            self.state_id,
+        )
+        return new
+
+
+class PreintegratedLinearModel(ProcessModel):
+    """
+    Process model that applies a preintegrated `LinearIncrement` to predict
+    a state forward in time using the equation
+
+    .. math::
+        \mathbf{x}_k = \mathbf{A}_{ij} \mathbf{x}_i + \Delta \mathbf{u}_{ij}
+    """
+
+    def __init__(self):
+        pass
+
+    def evaluate(
+        self, x: VectorState, rmi: LinearIncrement, dt=None
+    ) -> VectorState:
+
+        x = x.copy()
+        A_ij = rmi.value[0]
+        Du_ij = rmi.value[1]
+
+        if rmi.original_bias is not None:
+            x_i = x.value[0 : -rmi.original_bias.size].reshape((-1, 1))
+        else:
+            x_i = x.value.reshape((-1, 1))
+
+        x_j = A_ij @ x_i + Du_ij
+
+        if rmi.original_bias is not None:
+            x_j = np.vstack(
+                (x_j, x.value[-rmi.original_bias.size :].reshape((-1, 1)))
+            )
+
+        x.value = x_j.ravel()
+        return x
+
+    def jacobian(
+        self, x: VectorState, rmi: LinearIncrement, dt=None
+    ) -> np.ndarray:
+
+        if rmi.original_bias is not None:
+            A_ij = rmi.value[0]
+            B_ij = rmi.bias_jacobian
+            state_dof = x.dof - rmi.original_bias.size
+            A = np.zeros((x.dof, x.dof))
+            A[:state_dof, :state_dof] = A_ij
+            A[state_dof:, state_dof:] = np.identity(rmi.original_bias.size)
+            A[:state_dof, state_dof:] = B_ij
+        else:
+            A = rmi.value[0]
+
+        return A
+
+    def covariance(
+        self, x: VectorState, rmi: LinearIncrement, dt=None
+    ) -> np.ndarray:
+        return rmi.covariance

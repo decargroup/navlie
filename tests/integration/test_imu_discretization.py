@@ -3,6 +3,7 @@ from pynav.lib.imu import IMU, IMUKinematics
 from pynav.lib.states import SE23State
 import numpy as np
 
+# TODO. remove this or turn into a real test.
 
 class ClassicIMU:
     """
