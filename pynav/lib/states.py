@@ -21,7 +21,7 @@ class VectorState(State):
     """
 
     def __init__(self, value: np.ndarray, stamp: float = None, state_id=None):
-        value = np.array(value).ravel()
+        value = np.array(value, dtype=np.float64).ravel()
         super(VectorState, self).__init__(
             value=value,
             dof=value.size,
@@ -119,7 +119,7 @@ class MatrixLieGroupState(State):
         value_str = "\n".join(["    " + s for s in value_str])
         s = [
             f"{self.__class__.__name__}(stamp={self.stamp},"
-            +f" state_id={self.state_id}, direction={self.direction})",
+            + f" state_id={self.state_id}, direction={self.direction})",
             f"{value_str}",
         ]
         return "\n".join(s)
@@ -702,7 +702,7 @@ class CompositeState(State):
         Returns a new composite state object where the state values have also
         been copied.
         """
-        return CompositeState(
+        return self.__class__(
             [state.copy() for state in self.value], self.stamp, self.state_id
         )
 
@@ -724,9 +724,11 @@ class CompositeState(State):
     def minus(self, x: "CompositeState") -> np.ndarray:
         dx = []
         for i, v in enumerate(x.value):
-            dx.append(self.value[i].minus(x.value[i]).reshape((-1, 1)))
+            dx.append(
+                self.value[i].minus(x.value[i]).reshape((self.value[i].dof,))
+            )
 
-        return np.vstack(dx)
+        return np.concatenate(dx).reshape((-1, 1))
 
     def plus_by_id(
         self, dx, state_id: int, new_stamp: float = None
@@ -791,6 +793,8 @@ class CompositeState(State):
         for v in self.value:
             substate_line_list.extend(v.__repr__().split("\n"))
         substates_str = "\n".join(["    " + s for s in substate_line_list])
-        s = [f"{self.__class__.__name__}(stamp={self.stamp}, state_id={self.state_id}) with substates:",
-                substates_str]
+        s = [
+            f"{self.__class__.__name__}(stamp={self.stamp}, state_id={self.state_id}) with substates:",
+            substates_str,
+        ]
         return "\n".join(s)

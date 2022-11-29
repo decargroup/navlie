@@ -16,8 +16,8 @@ class IMU(Input):
         gyro: np.ndarray,
         accel: np.ndarray,
         stamp: float,
-        bias_gyro_walk=[0, 0, 0],
-        bias_accel_walk=[0, 0, 0],
+        bias_gyro_walk: np.ndarray=[0, 0, 0],
+        bias_accel_walk: np.ndarray=[0, 0, 0],
         state_id: Any = None,
     ):
         super().__init__(dof=12, stamp=stamp)
@@ -26,10 +26,20 @@ class IMU(Input):
             accel
         ).ravel()  #:np.ndarray: Accelerometer reading
 
-        #:np.ndarray: driving input for gyro bias random walk
-        self.bias_gyro_walk = np.array(bias_gyro_walk).ravel()
-        #:np.ndarray: driving input for accel bias random walk
-        self.bias_accel_walk = np.array(bias_accel_walk).ravel()
+        if bias_accel_walk is None:
+            bias_accel_walk = np.zeros((3,1))
+        else:
+            #:np.ndarray: driving input for gyro bias random walk
+            self.bias_gyro_walk = np.array(bias_gyro_walk).ravel()
+
+        if bias_gyro_walk is None:
+            bias_gyro_walk = np.zeros((3,1))
+        else: 
+            #:np.ndarray: driving input for accel bias random walk
+            self.bias_accel_walk = np.array(bias_accel_walk).ravel()
+
+
+
         self.state_id = state_id  #:Any: State ID associated with the reading
 
     def plus(self, w: np.ndarray):
@@ -77,7 +87,6 @@ class IMU(Input):
             )
 
         return "\n".join(s)
-
 
     @staticmethod
     def random():
@@ -156,7 +165,8 @@ class IMUState(CompositeState):
 
     @property
     def bias(self) -> np.ndarray:
-        return np.hstack(
+        """Bias vector with in order [gyro_bias, accel_bias]"""
+        return np.concatenate(
             [self.value[1].value.ravel(), self.value[2].value.ravel()]
         )
 
@@ -270,11 +280,9 @@ def N_matrix(phi_vec: np.ndarray):
         a = phi_vec / phi
         a = a.reshape((-1, 1))
         a_wedge = SO3.wedge(a)
-        N = (
-            2 * (1 - np.cos(phi)) / phi**2 * np.identity(3)
-            + (1 - 2 * (1 - np.cos(phi)) / phi**2) * (a @ a.T)
-            + 2 * ((phi - np.sin(phi)) / phi**2) * a_wedge
-        )
+        c = (1 - np.cos(phi)) / phi**2
+        s = (phi - np.sin(phi)) / phi**2
+        N = 2 * c * np.identity(3) + (1 - 2 * c) * (a @ a.T) + 2 * s * a_wedge
         return N
 
 
@@ -385,33 +393,29 @@ def L_matrix(unbiased_gyro, unbiased_accel, dt: float) -> np.ndarray:
 
     a = unbiased_accel
     om = unbiased_gyro
-    N = N_matrix(om * dt)
-    J_att_inv = SO3.left_jacobian_inv(om * dt)
-    xi = np.vstack(
-        [
-            dt * om,
-            dt * a,
-            (dt**2 / 2) * J_att_inv @ N @ a,
-        ]
-    )
+    omdt = om * dt
+    J_att_inv_times_N = SO3.left_jacobian_inv(omdt) @ N_matrix(omdt)
+    xi = np.zeros((9,))
+    xi[:3] = dt * om
+    xi[3:6] = dt * a
+    xi[6:9] = (dt**2 / 2) * J_att_inv_times_N @ a
     J = SE23.left_jacobian(-xi)
-    Om = SO3.wedge(om * dt)
+    Om = SO3.wedge(omdt)
+    OmOm = Om @ Om
     A = SO3.wedge(a)
     # See Barfoot 2nd edition, equation 9.247
-    Up = np.zeros((9, 6))
-    Up[0:3, 0:3] = dt * np.eye(3)
-    Up[3:6, 3:6] = dt * np.eye(3)
+    Up = dt * np.eye(9, 6)
     Up[6:9, 0:3] = (
         -0.5
         * (dt**2 / 2)
         * (
             (1 / 360)
             * (dt**3)
-            * (Om @ Om @ A + Om @ (SO3.wedge(Om @ a)) + SO3.wedge(Om @ Om @ a))
+            * (OmOm @ A + Om @ (SO3.wedge(Om @ a)) + SO3.wedge(OmOm @ a))
             - (1 / 6) * dt * A
         )
     )
-    Up[6:9, 3:6] = (dt**2 / 2) * J_att_inv @ N
+    Up[6:9, 3:6] = (dt**2 / 2) * J_att_inv_times_N
 
     L = J @ Up
     return L

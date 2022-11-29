@@ -123,6 +123,7 @@ class DataGenerator:
         """
 
         times = np.arange(start, stop, 1 / self.input_freq)
+        times = np.round(times,12)
 
         # Build large list of Measurement objects with the correct stamps,
         # but empty values, which we will fill later.
@@ -130,6 +131,7 @@ class DataGenerator:
         for model_and_freq in self._meas_model_info:
             model, freq, init_offset = model_and_freq
             stamps = np.arange(times[0] + init_offset, times[-1], 1 / freq)
+            stamps = np.round(stamps,12)
             temp = [Measurement(None, stamp, model) for stamp in stamps]
             meas_list.extend(temp)
 
