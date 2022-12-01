@@ -3,7 +3,7 @@ This is an example script showing how to run a batch estimator on custom
 process and measurement models.
 """
 
-from pynav.batch import OptimizationSettings, run_batch
+from pynav.batch import BatchEstimator
 from pynav.lib.states import SE3State
 from pynav.datagen import DataGenerator
 from pynav.utils import GaussianResult, GaussianResultList, randvec
@@ -18,12 +18,12 @@ from pylie import SE3
 import matplotlib.pyplot as plt
 
 # #############################################################################
-# Specify optimization settings
-opt_settings = OptimizationSettings(max_iters=20, verbose=True)
+# Create the batch estimator with desired settings
+estimator = BatchEstimator(solver="GN", max_iters=20)
 
 # ##############################################################################
 # Problem Setup
-
+t_end = 4
 x0 = SE3State(SE3.Exp([0, 0, 0, 0, 0, 0]), stamp=0.0)
 P0 = 0.1**2 * np.identity(6)
 R = 0.1**2
@@ -60,17 +60,16 @@ dg = DataGenerator(
     range_freqs,
 )
 
-state_true, input_list, meas_list = dg.generate(x0, 0, 5, noise_active)
+state_true, input_list, meas_list = dg.generate(x0, 0, t_end, noise_active)
 
 # Run batch
-estimate_list, opt_results = run_batch(
+estimate_list, opt_results = estimator.run_batch(
     x0,
     P0,
     input_list,
     meas_list,
     process_model,
     return_opt_results=True,
-    opt_settings=opt_settings,
 )
 
 print(opt_results["summary"])

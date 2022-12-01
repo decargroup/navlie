@@ -14,7 +14,7 @@ from pynav.lib.models import (
 from pynav.datagen import DataGenerator
 from pynav.filters import ExtendedKalmanFilter, run_filter
 from pynav.utils import GaussianResult, GaussianResultList, plot_error, randvec
-from pynav.batch import run_batch
+from pynav.batch import BatchEstimator
 from pylie import SO3, SE3
 import numpy as np
 import matplotlib.pyplot as plt
@@ -110,7 +110,8 @@ def test_noiseless_batch(
     state_true, input_list, meas_list = dg.generate(x0, 0, 5, noise_active)
 
     # Run batch
-    estimate_list = run_batch(x0, P0, input_list, meas_list, process_model)
+    estimator = BatchEstimator(max_iters=20)
+    estimate_list = estimator.run_batch(x0, P0, input_list, meas_list, process_model)
     results = GaussianResultList(
         [
             GaussianResult(estimate_list[i], state_true[i])

@@ -6,7 +6,7 @@ The example is a single integrator process model with three range measurement
 models.
 """
 
-from pynav.batch import run_batch, OptimizationSettings
+from pynav.batch import BatchEstimator
 from pynav.lib.states import VectorState
 from pynav.datagen import DataGenerator
 from pynav.utils import (
@@ -22,8 +22,8 @@ from typing import List
 import matplotlib.pyplot as plt
 
 # #############################################################################
-# Specify optimization settings here
-opt_settings = OptimizationSettings(max_iters=20)
+# Create the batch estimator with desired settings
+estimator = BatchEstimator(solver="GN", max_iters=20)
 
 # ##############################################################################
 # Problem Setup
@@ -63,8 +63,8 @@ gt_data, input_data, meas_data = dg.generate(x0, 0, 10, noise=noise_active)
 if noise_active:
     x0 = x0.plus(randvec(P0))
 
-estimate_list, opt_results = run_batch(
-    x0, P0, input_data, meas_data, process_model, opt_settings=opt_settings, return_opt_results=True
+estimate_list, opt_results = estimator.run_batch(
+    x0, P0, input_data, meas_data, process_model, return_opt_results=True
 )
 
 print(opt_results["summary"])
