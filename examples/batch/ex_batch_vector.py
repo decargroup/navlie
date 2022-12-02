@@ -63,7 +63,7 @@ gt_data, input_data, meas_data = dg.generate(x0, 0, 10, noise=noise_active)
 if noise_active:
     x0 = x0.plus(randvec(P0))
 
-estimate_list, opt_results = estimator.run_batch(
+estimate_list, opt_results = estimator.solve(
     x0, P0, input_data, meas_data, process_model, return_opt_results=True
 )
 

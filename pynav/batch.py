@@ -9,7 +9,7 @@ are :
     - a MeasurementResidual, which uses a pynav `Measurement` to compare 
     a true measurement to the measurement predicted by the `MeasurementModel`.
 
-The run_batch() function can also be used to construct a batch problem given an initial estimate 
+The BatchEstimator.solve() function can also be used to construct a batch problem given an initial estimate 
 (x0, P0), a list of input data and a corresponding process model, and a list of measurements.
 """
 
@@ -192,7 +192,7 @@ class BatchEstimator:
         self.tau = tau 
         self.verbose = verbose  
 
-    def run_batch(
+    def solve(
         self,
         x0: State,
         P0: np.ndarray,

@@ -63,7 +63,7 @@ dg = DataGenerator(
 state_true, input_list, meas_list = dg.generate(x0, 0, t_end, noise_active)
 
 # Run batch
-estimate_list, opt_results = estimator.run_batch(
+estimate_list, opt_results = estimator.solve(
     x0,
     P0,
     input_list,
