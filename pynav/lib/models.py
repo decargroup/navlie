@@ -12,7 +12,7 @@ from pynav.lib.states import (
 )
 from pylie import SO2, SO3
 import numpy as np
-from typing import List
+from typing import List, Any
 from scipy.linalg import block_diag
 
 
@@ -78,7 +78,7 @@ class DoubleIntegrator(ProcessModel):
         Ld = self.input_jacobian(dt)
         u = np.atleast_1d(u.value)
         x_new.value = (
-            Ad @ x.value.reshape((-1, 1)) + Ld @ u[:self.dim].reshape((-1, 1))
+            Ad @ x.value.reshape((-1, 1)) + Ld @ u[: self.dim].reshape((-1, 1))
         ).ravel()
         return x_new
 
@@ -86,7 +86,7 @@ class DoubleIntegrator(ProcessModel):
         """
         Discrete-time state Jacobian
         """
-        
+
         Ad = np.identity(2 * self.dim)
         Ad[0 : self.dim, self.dim :] = dt * np.identity(self.dim)
         return Ad
@@ -152,19 +152,19 @@ class DoubleIntegratorWithBias(DoubleIntegrator):
 
         pv = x.value[0 : 2 * self.dim].reshape((-1, 1))
         bias = x.value[2 * self.dim :].reshape((-1, 1))
-        accel = u.value[:self.dim].reshape((-1, 1)) - bias
+        accel = u.value[: self.dim].reshape((-1, 1)) - bias
 
         # If the input contains extra dimensions, we assume that they are the
         # random walk input being used for data generation.
         if u.value.size > self.dim:
-            walk = u.value[self.dim:].reshape((-1,1))
+            walk = u.value[self.dim :].reshape((-1, 1))
         else:
             walk = np.zeros((self.dim, 1))
 
         # TODO. just augment these as matrices
         pv = (Ad @ pv + Ld @ accel).ravel()
         x.value[0 : 2 * self.dim] = pv
-        x.value[2*self.dim:] = (bias + walk * dt).ravel()
+        x.value[2 * self.dim :] = (bias + walk * dt).ravel()
         return x
 
     def jacobian(self, x, u, dt) -> np.ndarray:
@@ -196,6 +196,7 @@ class DoubleIntegratorWithBias(DoubleIntegrator):
         L[0 : 2 * self.dim, 0 : self.dim] = Ld
         L[2 * self.dim :, self.dim :] = dt * np.identity(self.dim)
         return L
+
 
 class OneDimensionalPositionVelocityRange(MeasurementModel):
     """
@@ -299,6 +300,7 @@ class RelativeBodyFrameVelocity(ProcessModel):
                 "TODO: left covariance not yet implemented."
             )
 
+
 class LinearMeasurement(MeasurementModel):
     def __init__(self, C: np.ndarray, R: np.ndarray):
         # TODO. add tests
@@ -306,11 +308,11 @@ class LinearMeasurement(MeasurementModel):
         self._R = R
 
     def evaluate(self, x: VectorState) -> np.ndarray:
-        return self._C @ x.value.reshape((-1,1))
-    
+        return self._C @ x.value.reshape((-1, 1))
+
     def jacobian(self, x: VectorState) -> np.ndarray:
         return self._C
-    
+
     def covariance(self, x: VectorState) -> np.ndarray:
         return self._R
 
@@ -343,18 +345,19 @@ class CompositeProcessModel(ProcessModel):
     """
     Should this be called a StackedProcessModel?
     """
+
     # TODO: This needs to be expanded and/or changed. We have come across the
     # following use cases:
     # 1. Applying a completely seperate process model to each sub-state.
     # 2. Applying a single process model to each sub-state (seperately).
     # 3. Applying a single process model to one sub-state, and leaving the rest
     #    unchanged.
-    # 4. Applying process model A to some sub-states, and process model B to 
+    # 4. Applying process model A to some sub-states, and process model B to
     #    other sub-states
-    # 5. Receiving a CompositeInput, which is a list of synchronously-received 
+    # 5. Receiving a CompositeInput, which is a list of synchronously-received
     #    inputs, and applying each input to the corresponding sub-state.
     # 6. Receiving the state-specific input asynchronously, applying to the
-    #    corresponding sub-state, and leaving the rest unchanged. Typically happens 
+    #    corresponding sub-state, and leaving the rest unchanged. Typically happens
     #    with case 3.
 
     # What they all have in common: list of decoupled process models, one per
@@ -405,6 +408,9 @@ class CompositeMeasurementModel(MeasurementModel):
         self.model = model
         self.state_id = state_id
 
+    def __repr__(self):
+        return f"{self.model}(of substate {self.state_id})"
+
     def evaluate(self, x: CompositeState) -> np.ndarray:
         return self.model.evaluate(x.get_state_by_id(self.state_id))
 
@@ -419,6 +425,26 @@ class CompositeMeasurementModel(MeasurementModel):
     def covariance(self, x: CompositeState) -> np.ndarray:
         x_sub = x.get_state_by_id(self.state_id)
         return self.model.covariance(x_sub)
+
+
+class CompositeMeasurement(Measurement):
+    def __init__(self, y: Measurement, state_id: Any):
+        """
+        Converts a standard Measurement into a CompositeMeasurement, which
+        replaces the model with a CompositeMeasurementModel.
+
+        Parameters
+        ----------
+        y : Measurement
+            Measurement to be converted.
+        state_id : Any
+            ID of the state that the measurement will be assigned to,
+            as per the CompositeMeasurementModel.
+        """
+        model = CompositeMeasurementModel(y.model, state_id)
+        super().__init__(
+            value=y.value, stamp=y.stamp, model=model, state_id=y.state_id
+        )
 
 
 class RangePointToAnchor(MeasurementModel):
@@ -681,12 +707,39 @@ class RangePoseToPose(MeasurementModel):
 
 class RangeRelativePose(CompositeMeasurementModel):
     """
-    Range model given a pose of another body relative to current pose.
+    Range model given a pose of another body relative to current pose. This
+    model operates on a CompositeState where it is assumed that the neighbor
+    relative pose is stored as a substate somewhere inside the composite state
+    with a state_id matching the `nb_state_id` supplied to this model.
     """
 
-    def __init__(self, tag_body_position, nb_tag_body_position, nb_state_id, R):
+    def __init__(
+        self,
+        tag_body_position: np.ndarray,
+        nb_tag_body_position: np.ndarray,
+        nb_state_id: Any,
+        R: np.ndarray,
+    ):
+        """
+
+        Parameters
+        ----------
+        tag_body_position : numpy.ndarray
+            Position of tag in body frame of Robot 1.
+        nb_tag_body_position : numpy.ndarray
+            Position of 2nd tag in body frame of Robot 2.
+        nb_state_id : Any
+            State ID of Robot 2.
+        R : float or numpy.ndarray
+            covariance associated with range measurement
+        """
+
         model = RangePoseToAnchor(tag_body_position, nb_tag_body_position, R)
         super(RangeRelativePose, self).__init__(model, nb_state_id)
+
+    def __repr__(self):
+        return f"RangeRelativePose (of substate {self.state_id})"
+
 
 
 class GlobalPosition(MeasurementModel):
@@ -723,7 +776,23 @@ class GlobalPosition(MeasurementModel):
 
 
 class Altitude(MeasurementModel):
-    def __init__(self, R: np.ndarray, minimum=None, bias=0.1):
+    """
+    A model that returns that z component of a position vector.
+    """
+
+    def __init__(self, R: np.ndarray, minimum=None, bias=0.0):
+        """
+
+        Parameters
+        ----------
+        R : np.ndarray
+            variance associated with the measurement
+        minimum : float, optional
+            Minimal height for the measurement to be valid, by default None
+        bias : float, optional
+            Fixed sensor bias, by default 0.0. This bias will be added to the
+            z component of position to create the modelled measurement.
+        """
         self.R = R
         if minimum is None:
             minimum = -np.inf
