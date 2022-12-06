@@ -303,6 +303,7 @@ def monte_carlo(
     trial: Callable[[int], GaussianResultList], 
     num_trials: int,
     n_jobs: int = -1,
+    verbose: int = 10,
 ) -> MonteCarloResult:
     """
     Monte-Carlo experiment executor. Give a callable `trial` function that
@@ -317,11 +318,17 @@ def monte_carlo(
         are expected to remain consistent.
     num_trials : int
         Number of Trials to execute
-    n_jobs: int
-        The maximum number of concurrently running jobs. If -1 all CPUs are used. 
-        If 1 is given, no parallel computing code is used at all, which is useful
-        for debugging. For n_jobs below -1, (n_cpus + 1 + n_jobs) are used. 
-        Thus for n_jobs = -2, all CPUs but one are used.
+    n_jobs: int, optional
+        The maximum number of concurrently running jobs, by default -1. 
+        If -1 all CPUs are used. If 1 is given, no parallel computing code
+        is used at all, which is useful for debugging. For n_jobs below -1,
+        (n_cpus + 1 + n_jobs) are used. Thus for n_jobs = -2, all CPUs but
+        one are used.
+    verbose: int, optional
+        The verbosity level, by default 10. If non zero, progress messages
+        are printed. Above 50, the output is sent to stdout. The frequency
+        of the messages increases with the verbosity level. If it more than
+        10, all iterations are reported.
 
     Returns
     -------
@@ -333,7 +340,7 @@ def monte_carlo(
     print("Starting Monte Carlo experiment...")
     trial_results = Parallel(
         n_jobs=n_jobs, 
-        verbose=10
+        verbose=verbose
     )(delayed(trial)(i) for i in range(num_trials))
 
     return MonteCarloResult(trial_results)
