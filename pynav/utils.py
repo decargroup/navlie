@@ -55,7 +55,7 @@ class GaussianResult:
         #:numpy.ndarray: covariance associated with estimated state
         self.covariance = covariance
 
-        e = state.minus(state_true).reshape((-1, 1))
+        e = state_true.minus(state).reshape((-1, 1))
         #:numpy.ndarray: error vector between estimated and true state
         self.error = e.ravel()
         #:float: sum of estimation error squared (EES)
