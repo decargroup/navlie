@@ -402,7 +402,7 @@ class SE23State(MatrixLieGroupState):
         super().__init__(value, SE23, stamp, state_id, direction)
 
     @property
-    def pose(self):
+    def pose(self)  -> np.ndarray:
         return self.value[0:5, 0:5]
 
     @pose.setter
@@ -410,7 +410,7 @@ class SE23State(MatrixLieGroupState):
         self.value[0:5, 0:5] = T
 
     @property
-    def attitude(self):
+    def attitude(self)  -> np.ndarray:
         return self.value[0:3, 0:3]
 
     @attitude.setter
@@ -418,7 +418,7 @@ class SE23State(MatrixLieGroupState):
         self.value[0:3, 0:3] = C
 
     @property
-    def position(self):
+    def position(self)  -> np.ndarray:
         return self.value[0:3, 4]
 
     @position.setter
@@ -426,12 +426,12 @@ class SE23State(MatrixLieGroupState):
         self.value[0:3, 4] = r.ravel()
 
     @property
-    def velocity(self):
+    def velocity(self) -> np.ndarray:
         return self.value[0:3, 3]
 
     @velocity.setter
-    def velocity(self, v):
-        self.value[0:3, 3] = v.ravel()
+    def velocity(self, v)  -> np.ndarray:
+        self.value[0:3, 3] = v
 
     @staticmethod
     def jacobian_from_blocks(

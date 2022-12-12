@@ -916,9 +916,10 @@ class _InvariantInnovation(MeasurementModel):
         y_hat = self.measurement_model.evaluate(x)
         e: np.ndarray = y_hat.ravel() - self.y.ravel()
 
-        if self.direction == "left":
+        direction = self._compute_direction(x)
+        if direction == "left":
             z = x.attitude.T @ e
-        elif self.direction == "right":
+        elif direction == "right":
             z = x.attitude @ e
 
         return z
@@ -926,9 +927,10 @@ class _InvariantInnovation(MeasurementModel):
     def jacobian(self, x: MatrixLieGroupState) -> np.ndarray:
         G = self.measurement_model.jacobian(x)
 
-        if self.direction == "left":
+        direction = self._compute_direction(x)
+        if direction == "left":
             jac = x.attitude.T @ G
-        elif self.direction == "right":
+        elif direction == "right":
             jac = x.attitude @ G
 
         return jac
@@ -937,13 +939,30 @@ class _InvariantInnovation(MeasurementModel):
 
         R = np.atleast_2d(self.measurement_model.covariance(x))
 
-        if self.direction == "left":
+        direction = self._compute_direction(x)
+        if direction == "left":
             M = x.attitude.T
             cov = M @ R @ M.T
-        elif self.direction == "right":
+        elif direction == "right":
             M = x.attitude
             cov = M @ R @ M.T
         return cov
+
+    def _compute_direction(self, x: MatrixLieGroupState) -> str:
+        if self.direction == "left":
+            direction = self.direction
+        elif self.direction == "right":
+            direction = self.direction
+        elif self.direction == "auto":
+            if x.direction == "left":
+                direction = "right"
+            elif x.direction == "right":
+                direction = "left"
+        else:
+            raise ValueError(
+                "Invalid direction. Must be 'left', 'right' or 'auto'"
+            )
+        return direction
 
 
 class InvariantMeasurement(Measurement):
@@ -980,14 +999,16 @@ class InvariantMeasurement(Measurement):
     :math:`\mathbf{z}`.
     """
 
-    def __init__(self, meas: Measurement, direction, model=None):
+    def __init__(self, meas: Measurement, direction="auto", model=None):
         """
         Parameters
         ----------
         meas : Measurement
             Measurement value
-        direction : "left" or "right", optional
-            whether to form a left- or right-invariant innovation, by default "right"
+        direction : "left" or "right" or "auto"
+            whether to form a left- or right-invariant innovation, by default "auto".
+            If "auto" is chosen, the direction will be chosen to be the opposite of
+            the direction of the state.
         model : MeasurementModel, optional
             a measurement model that directly returns the innovation and
             Jacobian and covariance of the innovation. If none is supplied,
@@ -1002,4 +1023,5 @@ class InvariantMeasurement(Measurement):
             value=np.zeros((meas.value.size,)),
             stamp=meas.stamp,
             model=model,
+            state_id=meas.state_id,
         )

@@ -237,6 +237,9 @@ class MeasurementModel(ABC):
 
         return jac_fd
 
+    def __repr__(self):
+        return f"{self.__class__.__name__}"
+
 
 class ProcessModel(ABC):
     """
@@ -353,6 +356,9 @@ class ProcessModel(ABC):
 
         return jac_fd
 
+    def __repr__(self):
+        return f"{self.__class__.__name__} at {hex(id(self))}"
+
 
 class Measurement:
     """
@@ -385,7 +391,7 @@ class Measurement:
 
         s = [
             f"Measurement(stamp={self.stamp}, state_id={self.state_id})"
-            + f" of {self.model.__class__.__name__}",
+            + f" of {self.model}",
             value_str,
         ]
         return "\n".join(s)
