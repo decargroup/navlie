@@ -1,7 +1,7 @@
 from pylie import SO2, SO3, SE2, SE3, SE23, SL3
 from pylie.numpy.base import MatrixLieGroup
 import numpy as np
-from ..types import State
+from pynav.types import State
 from typing import Any, List
 
 try:
@@ -45,7 +45,8 @@ class VectorState(State):
 
 class MatrixLieGroupState(State):
     """
-    The MatrixLieGroupState class.
+    The MatrixLieGroupState class. Although this class can be used directly,
+    it is recommended to use one of the subclasses, such as SE2State or SO3State.
     """
 
     __slots__ = ["group", "direction"]
@@ -55,9 +56,35 @@ class MatrixLieGroupState(State):
         value: np.ndarray,
         group: MatrixLieGroup,
         stamp: float = None,
-        state_id=None,
+        state_id: Any=None,
         direction="right",
     ):
+        """
+        Parameters
+        ----------
+        value : np.ndarray
+            Value of of the state. If the value has as many elements as the 
+            DOF of the group, then it is assumed to be a vector of exponential
+            coordinates. Otherwise, the value must be a 2D numpy array representing
+            a direct element of the group in matrix form.
+        group : MatrixLieGroup
+            A `pylie.MatrixLieGroup` class, such as `pylie.SE2` or `pylie.SO3`.
+        stamp : float, optional
+            timestamp, by default None
+        state_id : Any, optional
+            optional state ID, by default None
+        direction : str, optional
+            either "left" or "right", by default "right". Defines the perturbation
+            :math:`\\delta \mathbf{x}` as either 
+
+            .. math::
+                \mathbf{X} = \mathbf{X} \exp(\delta \mathbf{x}^\wedge) \text{ (right)}
+
+                \mathbf{X} = \exp(\delta \mathbf{x}^\wedge) \mathbf{X} \text{ (left)}
+        """
+        if value.size == group.dof:
+            value = group.Exp(value)
+
         self.direction = direction
         self.group = group
         super(MatrixLieGroupState, self).__init__(
