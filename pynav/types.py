@@ -377,6 +377,18 @@ class Measurement:
         model: MeasurementModel = None,
         state_id: Any = None,
     ):
+        """
+        Parameters
+        ----------
+        value : np.ndarray
+            the value of the measurement reading
+        stamp : float, optional
+            timestamp, by default None
+        model : MeasurementModel, optional
+            model for this measurement, by default None
+        state_id : Any, optional
+            optional state ID, by default None
+        """
         #:numpy.ndarray: Container for the measurement value
         self.value = np.array(value) if np.isscalar(value) else value
         #:float: Timestamp
