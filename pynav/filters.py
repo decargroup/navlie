@@ -237,7 +237,7 @@ class ExtendedKalmanFilter:
                 x.covariance = (np.identity(x.state.dof) - K @ G) @ P
                 x.symmetrize()
 
-            details_dict = {"z": z, "S": S}
+            details_dict = {"z": z, "S": S, "is_outlier": outlier}
 
         if output_details:
             return x, details_dict

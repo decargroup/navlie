@@ -859,7 +859,10 @@ class Gravitometer(MeasurementModel):
             )
 
     def covariance(self, x: MatrixLieGroupState) -> np.ndarray:
-        return self.R
+        if np.isscalar(self.R):
+            return self.R * np.identity(x.position.size)
+        else:
+            return self.R
 
 
 class Magnetometer(MeasurementModel):
@@ -901,7 +904,10 @@ class Magnetometer(MeasurementModel):
             )
 
     def covariance(self, x: MatrixLieGroupState) -> np.ndarray:
-        return self.R
+        if np.isscalar(self.R):
+            return self.R * np.identity(x.position.size)
+        else:
+            return self.R
 
 
 class _InvariantInnovation(MeasurementModel):

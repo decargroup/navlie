@@ -130,6 +130,41 @@ class GaussianResultList:
         #:numpy.ndarray with shape (N,): true state value. type depends on implementation
         self.value_true = np.array([r.state_true.value for r in result_list])
 
+    def __getitem__(self, key):
+        if not isinstance(key, tuple):
+            keys = [key, slice(None, None, None)]
+        else:
+            keys = list(key)
+        
+        for i, key in enumerate(keys):
+            if isinstance(key, int):
+                keys[i] = slice(key, key + 1)
+            elif isinstance(key, slice):
+                keys[i] = key
+            else:
+                raise TypeError("key must be int or slice")
+
+        key1, key2 = keys
+        out = GaussianResultList([])
+        out.stamp = self.stamp[key1]
+        out.state = self.state[key1]
+        out.state_true = self.state_true[key1]
+        out.covariance = self.covariance[key1,key2, key2] # (N, key_size, key_size)
+        out.error = self.error[key1,key2] # (N, key_size)
+        out.ees = np.sum(np.atleast_2d(out.error**2), axis=1)
+        out.nees = np.sum(out.error * np.linalg.solve(out.covariance, out.error), axis=1)
+        out.md = np.sqrt(out.nees)
+        out.three_sigma = 3 * np.sqrt(np.diagonal(out.covariance))
+        out.dof = out.error.shape[1]
+        out.value = self.value[key1]
+        out.value_true = self.value_true[key1] 
+        out.covariance = out.covariance.squeeze()
+        out.error = out.error.squeeze()
+
+        return out
+
+
+
     def nees_lower_bound(self, confidence_interval: float):
         """
         Calculates the NEES lower bound throughout the trajectory.
