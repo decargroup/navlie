@@ -371,6 +371,7 @@ def monte_carlo(
     trial: Callable[[int], GaussianResultList],
     num_trials: int,
     n_jobs: int = -1,
+    verbose: int = 10,
 ) -> MonteCarloResult:
     """
     Monte-Carlo experiment executor. Give a callable `trial` function that
@@ -385,11 +386,17 @@ def monte_carlo(
         are expected to remain consistent.
     num_trials : int
         Number of Trials to execute
-    n_jobs: int
-        The maximum number of concurrently running jobs. If -1 all CPUs are used.
-        If 1 is given, no parallel computing code is used at all, which is useful
-        for debugging. For n_jobs below -1, (n_cpus + 1 + n_jobs) are used.
-        Thus for n_jobs = -2, all CPUs but one are used.
+    n_jobs: int, optional
+        The maximum number of concurrently running jobs, by default -1.
+        If -1 all CPUs are used. If 1 is given, no parallel computing code
+        is used at all, which is useful for debugging. For n_jobs below -1,
+        (n_cpus + 1 + n_jobs) are used. Thus for n_jobs = -2, all CPUs but
+        one are used.
+    verbose: int, optional
+        The verbosity level, by default 10. If non zero, progress messages
+        are printed. Above 50, the output is sent to stdout. The frequency
+        of the messages increases with the verbosity level. If it more than
+        10, all iterations are reported.
 
     Returns
     -------
@@ -399,7 +406,7 @@ def monte_carlo(
     trial_results = [None] * num_trials
 
     print("Starting Monte Carlo experiment...")
-    trial_results = Parallel(n_jobs=n_jobs, verbose=10)(
+    trial_results = Parallel(n_jobs=n_jobs, verbose=verbose)(
         delayed(trial)(i) for i in range(num_trials)
     )
 
@@ -521,7 +528,11 @@ def plot_error(
 
     dim = results.error.shape[1]
 
-    n_rows = 3
+    if dim < 3:
+        n_rows = dim
+    else:
+        n_rows = 3
+
     n_cols = int(np.ceil(dim / 3))
 
     if axs is None:
@@ -927,3 +938,170 @@ def state_interp(
         out = out[0]
 
     return out
+
+
+def associate_stamps(
+    first_stamps: List[float],
+    second_stamps: List[float],
+    offset: float = 0.0,
+    max_difference: float = 0.02,
+) -> List[Tuple[int, int]]:
+    """Associate timestamps.
+
+    Returns a sorted list of matches, of length of the smallest of
+    first_stamps and second_stamps.
+
+    Function taken from rpg_trajectory_evaluation toolbox.
+
+    Parameters
+    ----------
+    first_stamps : List[float]
+        List of first timestamps
+    second_stamps : List[float]
+        List of second timestamps
+    offset : float, optional
+        Offset between the two lists, by default 0.0.
+    max_difference : float, optional
+        Maximum difference between stamps in the two list
+        to be considered a match, by default 0.02.
+
+    Returns
+    -------
+    List[Tuple[int, int]]
+        Sorted list of matches in the form (match_first_idx, match_second_idx).
+    """
+    potential_matches = [
+        (abs(a - (b + offset)), idx_a, idx_b)
+        for idx_a, a in enumerate(first_stamps)
+        for idx_b, b in enumerate(second_stamps)
+        if abs(a - (b + offset)) < max_difference
+    ]
+    potential_matches.sort()  # prefer the closest
+    matches = []
+    first_idxes = list(range(len(first_stamps)))
+    second_idxes = list(range(len(second_stamps)))
+    for diff, idx_a, idx_b in potential_matches:
+        if idx_a in first_idxes and idx_b in second_idxes:
+            first_idxes.remove(idx_a)
+            second_idxes.remove(idx_b)
+            matches.append((int(idx_a), int(idx_b)))
+
+    matches.sort()
+    return matches
+
+
+def find_nearest_stamp_idx(stamps_list: List[float], stamp: float) -> int:
+    """Uses interp1d to find the index of the nearest timestamp.
+
+    Parameters
+    ----------
+    stamps_list : List[float]
+        List of timestamps
+    stamp : float
+        Query stamp.
+
+    Returns
+    -------
+    int
+        Index of nearest stamp.
+    """
+    nearest_state = interp1d(
+        stamps_list,
+        np.array(range(len(stamps_list))),
+        "nearest",
+        bounds_error=False,
+        fill_value="extrapolate",
+    )
+
+    return int(nearest_state(stamp))
+
+
+def jacobian(
+    fun: Callable,
+    x: Union[np.ndarray, State],
+    step_size=1e-6,
+    method="forward",
+    *args,
+    **kwargs,
+) -> np.ndarray:
+    """
+    Compute the Jacobian of a function.
+
+    Parameters
+    ----------
+    fun : Callable
+        function to compute the Jacobian of
+    x : Union[np.ndarray, State]
+        input to the function
+    step_size : float, optional
+        finite difference step size, by default 1e-6
+    method : str, optional
+        "forward", "central" or "cs", by default "forward". "forward" calculates
+        using a forward finite difference procedure. "central" calculates using
+        a central finite difference procedure. "cs" calculates using the
+        complex-step procedure. If using "cs", you must be careful to ensure 
+        that the function can handle and propagate through complex 
+        components.
+
+    Returns
+    -------
+    np.ndarray with shape (M, N)
+        Jacobian of the function, where ``M`` is the DOF of the output and
+        ``N`` is the DOF of the input.
+    """
+    x = x.copy() 
+
+    # Check if input has a plus method. otherwise, assume it will behave
+    # like a numpy array
+    if hasattr(x, "plus"):
+        input_plus = lambda x, dx: x.plus(dx)
+    else:
+        input_plus = lambda x, dx: x + dx.reshape(x.shape)
+
+    Y_bar: State = fun(x.copy(), *args, **kwargs)
+
+    # Check if output has a minus method. otherwise, assume it will behave
+    # like a numpy array 
+    if hasattr(Y_bar, "minus"):
+        output_diff = lambda Y, Y_bar: Y.minus(Y_bar)
+    else:
+        output_diff = lambda Y, Y_bar: Y - Y_bar
+
+    # Check if input/output has a dof attribute. otherwise, assume it will
+    # behave like a numpy array and use the `.size` attribute to get
+    # the DOF of the input/output
+    if hasattr(x, "dof"):
+        N = x.dof
+    else:
+        N = x.size
+
+    if hasattr(Y_bar, "dof"):
+        M = Y_bar.dof
+    else:
+        M = Y_bar.size
+
+    jac_fd = np.zeros((M, N))
+
+    # Main loop to calculate jacobian
+    for i in range(N):
+        dx = np.zeros((N))
+
+        if method == "forward":
+            dx[i] = step_size
+            Y_plus: State = fun(input_plus(x, dx).copy(), *args, **kwargs)
+            jac_fd[:, i] = output_diff(Y_plus, Y_bar).ravel() / step_size
+
+        elif method == "central":
+            dx[i] = step_size
+            Y_plus: State = fun(input_plus(x, dx).copy(), *args, **kwargs)
+            Y_minus: State = fun(input_plus(x, -dx).copy(), *args, **kwargs)
+            jac_fd[:, i] = output_diff(Y_plus, Y_minus).ravel() / (2*step_size)
+
+        elif method == "cs":
+            dx[i] = 1e-16
+            Y_imag: State = fun(input_plus(x, 1j*dx).copy(), *args, **kwargs)
+            jac_fd[:, i] = np.imag(Y_imag).ravel() / 1e-16
+
+
+
+    return jac_fd

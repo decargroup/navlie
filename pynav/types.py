@@ -239,6 +239,10 @@ class MeasurementModel(ABC):
 
     def __repr__(self):
         return f"{self.__class__.__name__}"
+        
+    def sqrt_information(self, x: State):
+        R = np.atleast_2d(self.covariance(x))
+        return np.linalg.cholesky(np.linalg.inv(R))
 
 
 class ProcessModel(ABC):
@@ -359,6 +363,10 @@ class ProcessModel(ABC):
     def __repr__(self):
         return f"{self.__class__.__name__} at {hex(id(self))}"
 
+    def sqrt_information(self, x: State, u: Input, dt: float) -> np.ndarray:
+        Q = np.atleast_2d(self.covariance(x, u, dt))
+        return np.linalg.cholesky(np.linalg.inv(Q))
+
 
 class Measurement:
     """
@@ -375,6 +383,18 @@ class Measurement:
         model: MeasurementModel = None,
         state_id: Any = None,
     ):
+        """
+        Parameters
+        ----------
+        value : np.ndarray
+            the value of the measurement reading
+        stamp : float, optional
+            timestamp, by default None
+        model : MeasurementModel, optional
+            model for this measurement, by default None
+        state_id : Any, optional
+            optional state ID, by default None
+        """
         #:numpy.ndarray: Container for the measurement value
         self.value = np.array(value) if np.isscalar(value) else value
         #:float: Timestamp
