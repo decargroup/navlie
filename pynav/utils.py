@@ -182,7 +182,7 @@ class GaussianResultList:
         An example of how to make a NEES plot with only upper bounds:
 
         .. code-block:: python
-        
+
             ax.plot(results.stamp, results.nees)
             ax.plot(results.stamp, results.nees_upper_bound(0.99, double_sided=False))
 
@@ -300,7 +300,7 @@ class MonteCarloResult:
 
 
 def monte_carlo(
-    trial: Callable[[int], GaussianResultList], 
+    trial: Callable[[int], GaussianResultList],
     num_trials: int,
     n_jobs: int = -1,
     verbose: int = 10,
@@ -319,7 +319,7 @@ def monte_carlo(
     num_trials : int
         Number of Trials to execute
     n_jobs: int, optional
-        The maximum number of concurrently running jobs, by default -1. 
+        The maximum number of concurrently running jobs, by default -1.
         If -1 all CPUs are used. If 1 is given, no parallel computing code
         is used at all, which is useful for debugging. For n_jobs below -1,
         (n_cpus + 1 + n_jobs) are used. Thus for n_jobs = -2, all CPUs but
@@ -338,10 +338,9 @@ def monte_carlo(
     trial_results = [None] * num_trials
 
     print("Starting Monte Carlo experiment...")
-    trial_results = Parallel(
-        n_jobs=n_jobs, 
-        verbose=verbose
-    )(delayed(trial)(i) for i in range(num_trials))
+    trial_results = Parallel(n_jobs=n_jobs, verbose=verbose)(
+        delayed(trial)(i) for i in range(num_trials)
+    )
 
     return MonteCarloResult(trial_results)
 
@@ -770,6 +769,7 @@ def state_interp(
 
     return out
 
+
 def associate_stamps(
     first_stamps: List[float],
     second_stamps: List[float],
@@ -778,9 +778,9 @@ def associate_stamps(
 ) -> List[Tuple[int, int]]:
     """Associate timestamps.
 
-    Returns a sorted list of matches, of length of the smallest of 
+    Returns a sorted list of matches, of length of the smallest of
     first_stamps and second_stamps.
-    
+
     Function taken from rpg_trajectory_evaluation toolbox.
 
     Parameters
@@ -844,3 +844,94 @@ def find_nearest_stamp_idx(stamps_list: List[float], stamp: float) -> int:
     )
 
     return int(nearest_state(stamp))
+
+
+def jacobian(
+    fun: Callable,
+    x: Union[np.ndarray, State],
+    step_size=1e-6,
+    method="forward",
+    *args,
+    **kwargs,
+) -> np.ndarray:
+    """
+    Compute the Jacobian of a function.
+
+    Parameters
+    ----------
+    fun : Callable
+        function to compute the Jacobian of
+    x : Union[np.ndarray, State]
+        input to the function
+    step_size : float, optional
+        finite difference step size, by default 1e-6
+    method : str, optional
+        "forward", "central" or "cs", by default "forward". "forward" calculates
+        using a forward finite difference procedure. "central" calculates using
+        a central finite difference procedure. "cs" calculates using the
+        complex-step procedure. If using "cs", you must be careful to ensure 
+        that the function can handle and propagate through complex 
+        components.
+
+    Returns
+    -------
+    np.ndarray with shape (M, N)
+        Jacobian of the function, where ``M`` is the DOF of the output and
+        ``N`` is the DOF of the input.
+    """
+    x = x.copy() 
+
+    # Check if input has a plus method. otherwise, assume it will behave
+    # like a numpy array
+    if hasattr(x, "plus"):
+        input_plus = lambda x, dx: x.plus(dx)
+    else:
+        input_plus = lambda x, dx: x + dx.reshape(x.shape)
+
+    Y_bar: State = fun(x.copy(), *args, **kwargs)
+
+    # Check if output has a minus method. otherwise, assume it will behave
+    # like a numpy array 
+    if hasattr(Y_bar, "minus"):
+        output_diff = lambda Y, Y_bar: Y.minus(Y_bar)
+    else:
+        output_diff = lambda Y, Y_bar: Y - Y_bar
+
+    # Check if input/output has a dof attribute. otherwise, assume it will
+    # behave like a numpy array and use the `.size` attribute to get
+    # the DOF of the input/output
+    if hasattr(x, "dof"):
+        N = x.dof
+    else:
+        N = x.size
+
+    if hasattr(Y_bar, "dof"):
+        M = Y_bar.dof
+    else:
+        M = Y_bar.size
+
+    jac_fd = np.zeros((M, N))
+
+    # Main loop to calculate jacobian
+    for i in range(N):
+        dx = np.zeros((N))
+
+        if method == "forward":
+            dx[i] = step_size
+            Y_plus: State = fun(input_plus(x, dx).copy(), *args, **kwargs)
+            jac_fd[:, i] = output_diff(Y_plus, Y_bar).ravel() / step_size
+
+        elif method == "central":
+            dx[i] = step_size
+            Y_plus: State = fun(input_plus(x, dx).copy(), *args, **kwargs)
+            Y_minus: State = fun(input_plus(x, -dx).copy(), *args, **kwargs)
+            jac_fd[:, i] = output_diff(Y_plus, Y_minus).ravel() / (2*step_size)
+
+        elif method == "cs":
+            dx[i] = 1e-16
+            Y_imag: State = fun(input_plus(x, 1j*dx).copy(), *args, **kwargs)
+            jac_fd[:, i] = np.imag(Y_imag).ravel() / 1e-16
+
+
+
+    return jac_fd
