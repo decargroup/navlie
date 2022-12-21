@@ -511,8 +511,6 @@ class CompositeState(State):
     and by ID.
     """
 
-    __slots__ = ["state_id"]
-
     def __init__(
         self, state_list: List[State], stamp: float = None, state_id=None
     ):

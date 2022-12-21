@@ -154,8 +154,8 @@ class GaussianResultList:
         out.ees = np.sum(np.atleast_2d(out.error**2), axis=1)
         out.nees = np.sum(out.error * np.linalg.solve(out.covariance, out.error), axis=1)
         out.md = np.sqrt(out.nees)
-        out.three_sigma = 3 * np.sqrt(np.diagonal(out.covariance))
-        out.dof = out.error.shape[1]
+        out.three_sigma = 3 * np.sqrt(np.diagonal(out.covariance, axis1=1, axis2=2))
+        out.dof = out.error.shape[1] * np.ones_like(out.stamp)
         out.value = self.value[key1]
         out.value_true = self.value_true[key1] 
         out.covariance = out.covariance.squeeze()
@@ -990,22 +990,33 @@ def associate_stamps(
     return matches
 
 
-def find_nearest_stamp_idx(stamps_list: List[float], stamp: float) -> int:
-    """Uses interp1d to find the index of the nearest timestamp.
+def find_nearest_stamp_idx(stamps_list: List[float], stamp: Union[float, List[float]]) -> int:
+    """
+    Find the index of the nearest stamp in ``stamps_list`` to ``stamp``. If
+    ``stamp`` is a list or array, then the output is a list of indices.
 
     Parameters
     ----------
     stamps_list : List[float]
         List of timestamps
-    stamp : float
-        Query stamp.
+    stamp : float or List[float] or numpy.ndarray
+        Query stamp(s).
 
     Returns
     -------
-    int
+    int or List[int]
         Index of nearest stamp.
     """
-    nearest_state = interp1d(
+
+    if isinstance(stamp, float):
+        single_query = True
+        query_stamps = np.array([stamp])
+    else:
+        single_query = False
+        query_stamps = np.array(stamp).ravel()
+
+
+    nearest_stamp = interp1d(
         stamps_list,
         np.array(range(len(stamps_list))),
         "nearest",
@@ -1013,7 +1024,12 @@ def find_nearest_stamp_idx(stamps_list: List[float], stamp: float) -> int:
         fill_value="extrapolate",
     )
 
-    return int(nearest_state(stamp))
+    out = nearest_stamp(query_stamps).astype(int).tolist()
+
+    if single_query:
+        out = out[0]
+
+    return out
 
 
 def jacobian(
