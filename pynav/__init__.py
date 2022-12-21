@@ -1,2 +1,2 @@
-from .types import *
-from .filters import ExtendedKalmanFilter, IteratedKalmanFilter
+from pynav.types import *
+from pynav.filters import ExtendedKalmanFilter, IteratedKalmanFilter

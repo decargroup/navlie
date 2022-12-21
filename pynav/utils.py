@@ -1041,7 +1041,7 @@ def jacobian(
     **kwargs,
 ) -> np.ndarray:
     """
-    Compute the Jacobian of a function.
+    Compute the Jacobian of a function. Example use:
 
     Parameters
     ----------

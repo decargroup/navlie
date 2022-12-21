@@ -1,6 +1,6 @@
 from typing import List
 
-from .types import (
+from pynav.types import (
     Input,
     State,
     Measurement,
