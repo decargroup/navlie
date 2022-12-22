@@ -97,6 +97,19 @@ def test_jacobian_so3():
     J_true = SO3.left_jacobian(x)
     assert np.allclose(J_test, J_true, atol=1e-6)
 
+def test_jacobian_x2():
+
+    x = np.array([1.0, 2.0]).reshape((-1,1))
+
+    def fun(x):
+        return x.T @ x
+
+    J_test = jacobian(fun, x, method="cs", step_size=1e-15)
+
+    assert np.allclose(J_test, 2*x.T)
+
+
+
 if __name__=="__main__":
     # just for debugging purposes
-    test_jacobian_so3()
+    test_jacobian_x2()

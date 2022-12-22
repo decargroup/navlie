@@ -558,6 +558,57 @@ def plot_error(
 
     return fig, axs_og
 
+def plot_nees(
+    results: GaussianResultList,
+    axs: List[plt.Axes] = None,
+    label: str = None,
+    color=None,
+    confidence_interval: float = 0.95,
+) -> Tuple[plt.Figure, plt.Axes]:
+    """
+    Makes a plot of the NEES, showing the actual NEES values, the expected NEES,
+    and the bounds of the specified confidence interval.
+
+    Parameters
+    ----------
+    results : GaussianResultList or MonteCarloResult
+        Results to plot
+    axs : List[plt.Axes], optional
+        Axes on which to draw, by default None. If None, new axes will be
+        created.
+    label : str, optional
+        Label to assign to the NEES line, by default None
+    color : optional
+        Fed directly to the ``plot(..., color=color)`` function, by default None
+    confidence_interval : float, optional
+        Desired probability confidence region, by default 0.95. Must lie between
+        0 and 1.
+
+    Returns
+    -------
+    plt.Figure
+        Figure on which the plot was drawn  
+    plt.Axes
+        Axes on which the plot was drawn
+    """
+
+    if axs is None:
+        fig, axs = plt.subplots(1, 1, sharex=True,)
+    else:
+        fig = axs.get_figure()
+
+    axs_og = axs
+    kwargs = {}
+    if color is not None:
+        kwargs["color"] = color
+
+    axs.plot(results.stamp, results.nees, label=label, **kwargs)
+    axs.plot(results.stamp, results.dof, label="Expected NEES", color="r")
+    axs.plot(results.stamp, results.nees_upper_bound(confidence_interval), "--", color="k", label="95% CI")
+    axs.plot(results.stamp, results.nees_lower_bound(confidence_interval), "--", color="k")
+    axs.legend()
+
+    return fig, axs_og
 
 def plot_meas(
     meas_list: List[Measurement],
@@ -1042,6 +1093,19 @@ def jacobian(
 ) -> np.ndarray:
     """
     Compute the Jacobian of a function. Example use:
+
+    .. code-block:: python
+
+        x = np.array([1, 2]).reshape((-1,1))
+        
+        A = np.array([[1, 2], [3, 4]])
+        def fun(x):
+            return 1/np.sqrt(x.T @ A.T @ A @ x)
+
+        jac_test = jacobian(fun, x, method=method)
+        jac_true = (- x.T @ A.T @ A)/((x.T @ A.T @ A @ x)**(3/2))
+
+        assert np.allclose(jac_test, jac_true, atol=1e-6)
 
     Parameters
     ----------
