@@ -385,7 +385,7 @@ class IteratedKalmanFilter(ExtendedKalmanFilter):
 
         x.state = x_op
         if not outlier:
-            x.covariance = (np.identity(x.state.dof) - K @ G) @ P
+            x.covariance = (np.identity(x.state.dof) - K @ G) @ (J @ P @ J.T)
 
         x.symmetrize()
 
