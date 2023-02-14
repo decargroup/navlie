@@ -27,6 +27,7 @@ class GaussianResult:
         "nees",
         "md",
         "three_sigma",
+        "rmse",
     ]
 
     def __init__(
@@ -45,7 +46,7 @@ class GaussianResult:
 
         state = estimate.state
         covariance = estimate.covariance
-
+        
         #:float: timestamp
         self.stamp = state.stamp
         #:State: estimated state
@@ -62,6 +63,8 @@ class GaussianResult:
         self.ees = np.ndarray.item(e.T @ e)
         #:float: normalized estimation error squared (NEES)
         self.nees = np.ndarray.item(e.T @ np.linalg.solve(covariance, e))
+        #:float: root mean squared error (RMSE)
+        self.rmse = np.sqrt(self.ees/state.dof)
         #:float: Mahalanobis distance
         self.md = np.sqrt(self.nees)
         #:numpy.ndarray: three-sigma bounds on each error component
@@ -88,6 +91,7 @@ class GaussianResultList:
         "value",
         "value_true",
         "dof",
+        "rmse",
     ]
 
     def __init__(self, result_list: List[GaussianResult]):
@@ -117,6 +121,8 @@ class GaussianResultList:
         self.error = np.array([r.error for r in result_list])
         #:numpy.ndarray with shape (N,): EES throughout trajectory
         self.ees = np.array([r.ees for r in result_list])
+        #:numpy.ndarray with shape (N,): EES throughout trajectory
+        self.rmse = np.array([r.rmse for r in result_list])
         #:numpy.ndarray with shape (N,): NEES throughout trajectory
         self.nees = np.array([r.nees for r in result_list])
         #:numpy.ndarray with shape (N,): Mahalanobis distance throughout trajectory
@@ -131,31 +137,46 @@ class GaussianResultList:
         self.value_true = np.array([r.state_true.value for r in result_list])
 
     def __getitem__(self, key):
-        if not isinstance(key, tuple):
-            keys = [key, slice(None, None, None)]
-        else:
-            keys = list(key)
-        
-        for i, key in enumerate(keys):
-            if isinstance(key, int):
-                keys[i] = slice(key, key + 1)
-            elif isinstance(key, slice):
-                keys[i] = key
-            else:
-                raise TypeError("key must be int or slice")
+        if isinstance(key, tuple):
+            if not len(key) == 2:
+                raise IndexError("Only two dimensional indexing is supported")
+        else: 
+            key = (key, slice(None, None, None))
 
-        key1, key2 = keys
+        key_lists = list(key) # make mutable
+        for i,k in enumerate(key):
+            if isinstance(k, int):
+                key_lists[i] = [k]
+            elif isinstance(k, slice):
+                start = k.start if k.start is not None else 0
+                stop = k.stop if k.stop is not None else self.error.shape[i]
+                step = k.step if k.step is not None else 1
+                key_lists[i] = list(range(start, stop, step))
+            elif isinstance(k, list):
+                pass 
+            else:
+                raise TypeError("keys must be int, slice, or list of indices")
+        
+
+        key1, key2 = key
         out = GaussianResultList([])
         out.stamp = self.stamp[key1]
         out.state = self.state[key1]
         out.state_true = self.state_true[key1]
-        out.covariance = self.covariance[key1,key2, key2] # (N, key_size, key_size)
+        out.covariance = self.covariance[np.ix_(key_lists[0], key_lists[1], key_lists[1])] # (N, key_size, key_size)
         out.error = self.error[key1,key2] # (N, key_size)
         out.ees = np.sum(np.atleast_2d(out.error**2), axis=1)
-        out.nees = np.sum(out.error * np.linalg.solve(out.covariance, out.error), axis=1)
+
+        if len(out.error.shape) == 1:
+            out.nees = out.error**2 / out.covariance.flatten()
+            out.dof = np.ones_like(out.stamp)
+        else:
+            out.nees = np.sum(out.error * np.linalg.solve(out.covariance, out.error), axis=1)
+            out.dof = out.error.shape[1] * np.ones_like(out.stamp)
+            
         out.md = np.sqrt(out.nees)
         out.three_sigma = 3 * np.sqrt(np.diagonal(out.covariance, axis1=1, axis2=2))
-        out.dof = out.error.shape[1] * np.ones_like(out.stamp)
+        out.rmse = np.sqrt(out.ees/out.dof)
         out.value = self.value[key1]
         out.value_true = self.value_true[key1] 
         out.covariance = out.covariance.squeeze()
@@ -501,6 +522,7 @@ def plot_error(
     label: str = None,
     sharey: bool = False,
     color=None,
+    bounds=True,
 ) -> Tuple[plt.Figure, List[plt.Axes]]:
     """
     A generic three-sigma bound plotter.
@@ -538,7 +560,7 @@ def plot_error(
     if axs is None:
         fig, axs = plt.subplots(n_rows, n_cols, sharex=True, sharey=sharey)
     else:
-        fig = axs.ravel("F")[0].get_figure()
+        fig: plt.Figure = axs.ravel("F")[0].get_figure()
 
     axs_og = axs
     kwargs = {}
@@ -547,13 +569,14 @@ def plot_error(
 
     axs: List[plt.Axes] = axs.ravel("F")
     for i in range(results.three_sigma.shape[1]):
-        axs[i].fill_between(
-            results.stamp,
-            results.three_sigma[:, i],
-            -results.three_sigma[:, i],
-            alpha=0.5,
-            **kwargs,
-        )
+        if bounds:
+            axs[i].fill_between(
+                results.stamp,
+                results.three_sigma[:, i],
+                -results.three_sigma[:, i],
+                alpha=0.5,
+                **kwargs,
+            )
         axs[i].plot(results.stamp, results.error[:, i], label=label, **kwargs)
 
     return fig, axs_og
@@ -564,6 +587,7 @@ def plot_nees(
     label: str = None,
     color=None,
     confidence_interval: float = 0.95,
+    normalize: bool = False,
 ) -> Tuple[plt.Figure, plt.Axes]:
     """
     Makes a plot of the NEES, showing the actual NEES values, the expected NEES,
@@ -583,6 +607,8 @@ def plot_nees(
     confidence_interval : float, optional
         Desired probability confidence region, by default 0.95. Must lie between
         0 and 1.
+    normalize : bool, optional
+        Whether to normalize the NEES by the degrees of freedom, by default False
 
     Returns
     -------
@@ -602,10 +628,28 @@ def plot_nees(
     if color is not None:
         kwargs["color"] = color
 
-    axs.plot(results.stamp, results.nees, label=label, **kwargs)
-    axs.plot(results.stamp, results.dof, label="Expected NEES", color="r")
-    axs.plot(results.stamp, results.nees_upper_bound(confidence_interval), "--", color="k", label="95% CI")
-    axs.plot(results.stamp, results.nees_lower_bound(confidence_interval), "--", color="k")
+    if normalize:
+        s = results.dof
+    else:
+        s = 1
+
+
+    expected_nees_label = "Expected NEES"
+    ci_label = f"${int(confidence_interval*100)}\%$ CI"
+    _, exisiting_labels = axs.get_legend_handles_labels()
+
+    if expected_nees_label in exisiting_labels:
+        expected_nees_label = None
+    if ci_label in exisiting_labels:
+        ci_label = None
+
+    # fmt:off
+    axs.plot(results.stamp, results.nees/s, label=label, **kwargs)
+    axs.plot(results.stamp, results.dof/s, label=expected_nees_label, color="r")
+    axs.plot(results.stamp, results.nees_upper_bound(confidence_interval)/s, "--", color="k", label=ci_label)
+    axs.plot(results.stamp, results.nees_lower_bound(confidence_interval)/s, "--", color="k")
+    # fmt:on
+
     axs.legend()
 
     return fig, axs_og
@@ -793,7 +837,7 @@ def plot_poses(
     label : str, optional
         Optional label for the triad
     """
-
+    # TODO. handle 2D case
     if ax is None:
         fig = plt.figure()
         ax = plt.axes(projection="3d")
