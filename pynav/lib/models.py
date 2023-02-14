@@ -224,6 +224,9 @@ class BodyFrameVelocity(ProcessModel):
     both translational and angular velocity measurements, both relative to
     a local reference frame, but resolved in the robot body frame.
 
+    .. math::
+        \mathbf{T}_k = \mathbf{T}_{k-1} \exp(\Delta t \mathbf{u}_{k-1}^\wedge)
+
     This is commonly the process model associated with SE(n).
     """
 
@@ -334,9 +337,10 @@ class CompositeInput(Input):
 
     def plus(self, w: np.ndarray):
         new = self.copy()
+        temp = w
         for i, input in enumerate(self.input_list):
-            new.input_list[i] = input.plus(w[: input.dof])
-            w = w[input.dof :]
+            new.input_list[i] = input.plus(temp[: input.dof])
+            temp = temp[input.dof :]
 
         return new
 
@@ -629,7 +633,7 @@ class RangePoseToPose(MeasurementModel):
     """
     Range model given two absolute poses of rigid bodies, each containing a tag.
     """
-
+    # TODO. tag_body_positions should be optional
     def __init__(
         self, tag_body_position1, tag_body_position2, state_id1, state_id2, R
     ):

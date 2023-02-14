@@ -290,6 +290,14 @@ class SE2State(MatrixLieGroupState):
     def position(self, r):
         self.value[0:2, 2] = r
 
+    @property
+    def pose(self) -> np.ndarray:
+        return self.value
+
+    @pose.setter
+    def pose(self, T):
+        self.value = T
+
     @staticmethod
     def jacobian_from_blocks(
         attitude: np.ndarray = None, position: np.ndarray = None

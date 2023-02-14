@@ -12,7 +12,7 @@ from numpy.polynomial.hermite_e import hermeroots
 from math import factorial
 from scipy.special import eval_hermitenorm
 import scipy.linalg as la
-
+from tqdm import tqdm
 
 def check_outlier(error: np.ndarray, covariance: np.ndarray):
     """
@@ -808,7 +808,7 @@ def run_filter(
         y = meas_data[meas_idx]
 
     results_list = []
-    for k in range(len(input_data) - 1):
+    for k in tqdm(range(len(input_data) - 1)):
         u = input_data[k]
         # Fuse any measurements that have occurred.
         if len(meas_data) > 0:
