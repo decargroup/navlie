@@ -5,6 +5,7 @@ from .states import (
     SE3State,
     SO3State,
     SE23State,
+    SL3State,
     CompositeState,
     MatrixLieGroupState,
 )
@@ -27,4 +28,16 @@ from .models import (
     Magnetometer, 
     GlobalPosition,
     InvariantMeasurement    
+)
+
+from .preintegration import (
+    RelativeMotionIncrement,
+    IMUIncrement,
+    BodyVelocityIncrement,
+    LinearIncrement,
+    WheelOdometryIncrement,
+    PreintegratedAngularVelocity,
+    PreintegratedBodyVelocity,
+    PreintegratedIMUKinematics,
+    PreintegratedLinearModel,
 )
