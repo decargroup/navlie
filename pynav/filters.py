@@ -518,7 +518,7 @@ class SigmaPointKalmanFilter:
     def __init__(
         self,
         process_model: ProcessModel,
-        method: str,
+        method: str = "unscented",
         reject_outliers=False,
         iterate_mean=True,
     ):

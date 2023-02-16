@@ -171,7 +171,7 @@ class IMMResult(GaussianResult):
         "model_probabilities",
     ]
 
-    def __init__(self, imm_estimate, state_true):
+    def __init__(self, imm_estimate: IMMState, state_true: State):
         super().__init__(
             gaussian_mixing(
                 imm_estimate.model_probabilities, imm_estimate.model_states
@@ -371,7 +371,7 @@ class InteractingModelFilter:
 
 
 def run_interacting_multiple_model_filter(
-    filter,
+    filter: InteractingModelFilter,
     x0: State,
     P0: np.ndarray,
     input_data: List[Input],

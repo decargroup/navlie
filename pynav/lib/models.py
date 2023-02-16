@@ -103,7 +103,6 @@ class DoubleIntegrator(ProcessModel):
         """
         Discrete-time input Jacobian
         """
-        # TODO. make these public
         Ld = np.zeros((2 * self.dim, self.dim))
         Ld[0 : self.dim, :] = 0.5 * dt**2 * np.identity(self.dim)
         Ld[self.dim :, :] = dt * np.identity(self.dim)

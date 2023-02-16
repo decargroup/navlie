@@ -832,12 +832,15 @@ def plot_poses(
         Triad color. If none are specified, defaults to RGB.
     arrow_length : int, optional
         Triad arrow length, by default 1.
-    step : int, optional
-        Step size in list of poses, by default 5.
+    step : int or None, optional
+        Step size in list of poses, by default 5. If None, no triads are plotted.
     label : str, optional
         Optional label for the triad
     """
     # TODO. handle 2D case
+    if isinstance(poses, GaussianResultList):
+        poses = poses.state
+
     if ax is None:
         fig = plt.figure()
         ax = plt.axes(projection="3d")
@@ -854,42 +857,43 @@ def plot_poses(
     ax.plot3D(r[:, 0], r[:, 1], r[:, 2], color=line_color, label=label)
 
     # Plot triads using quiver
-    C = np.array([poses[i].attitude.T for i in range(0, len(poses), step)])
-    r = np.array([poses[i].position for i in range(0, len(poses), step)])
-    x, y, z = r[:, 0], r[:, 1], r[:, 2]
-    ax.quiver(
-        x,
-        y,
-        z,
-        C[:, 0, 0],
-        C[:, 0, 1],
-        C[:, 0, 2],
-        color=colors[0],
-        length=arrow_length,
-        arrow_length_ratio=0.1,
-    )
-    ax.quiver(
-        x,
-        y,
-        z,
-        C[:, 1, 0],
-        C[:, 1, 1],
-        C[:, 1, 2],
-        color=colors[1],
-        length=arrow_length,
-        arrow_length_ratio=0.1,
-    )
-    ax.quiver(
-        x,
-        y,
-        z,
-        C[:, 2, 0],
-        C[:, 2, 1],
-        C[:, 2, 2],
-        color=colors[2],
-        length=arrow_length,
-        arrow_length_ratio=0.1,
-    )
+    if step is not None:
+        C = np.array([poses[i].attitude.T for i in range(0, len(poses), step)])
+        r = np.array([poses[i].position for i in range(0, len(poses), step)])
+        x, y, z = r[:, 0], r[:, 1], r[:, 2]
+        ax.quiver(
+            x,
+            y,
+            z,
+            C[:, 0, 0],
+            C[:, 0, 1],
+            C[:, 0, 2],
+            color=colors[0],
+            length=arrow_length,
+            arrow_length_ratio=0.1,
+        )
+        ax.quiver(
+            x,
+            y,
+            z,
+            C[:, 1, 0],
+            C[:, 1, 1],
+            C[:, 1, 2],
+            color=colors[1],
+            length=arrow_length,
+            arrow_length_ratio=0.1,
+        )
+        ax.quiver(
+            x,
+            y,
+            z,
+            C[:, 2, 0],
+            C[:, 2, 1],
+            C[:, 2, 2],
+            color=colors[2],
+            length=arrow_length,
+            arrow_length_ratio=0.1,
+        )
 
     set_axes_equal(ax)
     return fig, ax
@@ -950,11 +954,22 @@ def state_interp(
     """
     # TODO: add tests
     # Handle input
-    if not isinstance(query_stamps, list):
+    if isinstance(query_stamps, list):
+        single_query = False
+    elif isinstance(query_stamps, np.ndarray):
+        single_query = False
+    elif isinstance(query_stamps, float):
         query_stamps = [query_stamps]
         single_query = True
     else:
-        single_query = False
+        pass    
+
+
+    # if not isinstance(query_stamps, list):
+    #     query_stamps = [query_stamps]
+    #     single_query = True
+    # else:
+    #     single_query = False
 
     query_stamps = query_stamps.copy()
     for i, stamp in enumerate(query_stamps):
