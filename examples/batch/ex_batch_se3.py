@@ -3,7 +3,7 @@ This is an example script showing how to run a batch estimator on custom
 process and measurement models.
 """
 
-from pynav.batch import BatchEstimator
+from pynav.batch.estimator import BatchEstimator
 from pynav.lib.states import SE3State
 from pynav.datagen import DataGenerator
 from pynav.utils import GaussianResult, GaussianResultList, randvec
@@ -19,7 +19,7 @@ import matplotlib.pyplot as plt
 
 # #############################################################################
 # Create the batch estimator with desired settings
-estimator = BatchEstimator(solver="GN", max_iters=20)
+estimator = BatchEstimator(solver_type="GN", max_iters=20)
 
 # ##############################################################################
 # Problem Setup
