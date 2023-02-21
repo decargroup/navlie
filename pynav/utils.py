@@ -1145,7 +1145,7 @@ def find_nearest_stamp_idx(stamps_list: List[float], stamp: Union[float, List[fl
 def jacobian(
     fun: Callable,
     x: Union[np.ndarray, State],
-    step_size=1e-6,
+    step_size=None,
     method="forward",
     *args,
     **kwargs,
@@ -1190,6 +1190,12 @@ def jacobian(
     """
     x = x.copy() 
 
+    if step_size is None:
+        if method=="cs":
+            step_size = 1e-16
+        else:
+            step_size = 1e-6
+
     # Check if input has a plus method. otherwise, assume it will behave
     # like a numpy array
     if hasattr(x, "plus"):
@@ -1206,6 +1212,10 @@ def jacobian(
     else:
         output_diff = lambda Y, Y_bar: Y - Y_bar
 
+
+
+    func_to_diff = lambda dx : output_diff(fun(input_plus(x, dx), *args, **kwargs), Y_bar)
+
     # Check if input/output has a dof attribute. otherwise, assume it will
     # behave like a numpy array and use the `.size` attribute to get
     # the DOF of the input/output
@@ -1219,28 +1229,31 @@ def jacobian(
     else:
         M = Y_bar.size
 
+
+    Y_bar_diff = func_to_diff(np.zeros((N,)))
     jac_fd = np.zeros((M, N))
 
     # Main loop to calculate jacobian
     for i in range(N):
         dx = np.zeros((N))
+        dx[i] = step_size
 
         if method == "forward":
-            dx[i] = step_size
-            Y_plus: State = fun(input_plus(x, dx).copy(), *args, **kwargs)
-            jac_fd[:, i] = output_diff(Y_plus, Y_bar).ravel() / step_size
+            Y_plus: State = func_to_diff(dx.copy())
+            jac_fd[:, i] = (Y_plus - Y_bar_diff).ravel() / step_size
 
         elif method == "central":
-            dx[i] = step_size
-            Y_plus: State = fun(input_plus(x, dx).copy(), *args, **kwargs)
-            Y_minus: State = fun(input_plus(x, -dx).copy(), *args, **kwargs)
-            jac_fd[:, i] = output_diff(Y_plus, Y_minus).ravel() / (2*step_size)
+            Y_plus = func_to_diff(dx.copy())
+            Y_minus = func_to_diff(-dx.copy())
+            jac_fd[:, i] = (Y_plus - Y_minus).ravel() / (2*step_size)
 
         elif method == "cs":
-            dx[i] = 1e-16
-            Y_imag: State = fun(input_plus(x, 1j*dx).copy(), *args, **kwargs)
-            jac_fd[:, i] = np.imag(Y_imag).ravel() / 1e-16
+            Y_imag: State = func_to_diff(1j*dx.copy())
+            jac_fd[:, i] = np.imag(Y_imag).ravel() / step_size
 
+        else:
+            raise ValueError(f"Unknown method '{method}'. "
+                             "Must be 'forward', 'central' or 'cs")
 
 
     return jac_fd

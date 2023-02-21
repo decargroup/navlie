@@ -23,6 +23,7 @@ from .models import (
     RelativeBodyFrameVelocity,
     CompositeMeasurementModel,
     CompositeProcessModel,
+    CompositeInput,
     Altitude,
     Gravitometer,
     Magnetometer, 

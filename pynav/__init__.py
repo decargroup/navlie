@@ -31,4 +31,5 @@ from .utils import (
     set_axes_equal,
     find_nearest_stamp_idx,
     randvec,    
+    jacobian
 )

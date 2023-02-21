@@ -48,7 +48,7 @@ class MatrixLieGroupState(State):
     The MatrixLieGroupState class. Although this class can be used directly,
     it is recommended to use one of the subclasses, such as SE2State or SO3State.
     """
-
+    # TODO. Add identity() and random() functions to this
     __slots__ = ["group", "direction"]
 
     def __init__(
@@ -82,8 +82,16 @@ class MatrixLieGroupState(State):
 
                 \mathbf{X} = \exp(\delta \mathbf{x}^\wedge) \mathbf{X} \text{ (left)}
         """
+        if isinstance(value, list):
+            value = np.array(value)
+
         if value.size == group.dof:
             value = group.Exp(value)
+        elif value.shape[0] != value.shape[1]:
+            raise ValueError(
+                f"value must either be a {group.dof}-length vector of exponential"
+                "coordinates or a matrix direct element of the group."
+            )
 
         self.direction = direction
         self.group = group
@@ -147,7 +155,7 @@ class MatrixLieGroupState(State):
             f"{value_str}",
         ]
         return "\n".join(s)
-
+    
     @property
     def attitude(self) -> np.ndarray:
         raise NotImplementedError(
@@ -431,9 +439,6 @@ class SE23State(MatrixLieGroupState):
         state_id=None,
         direction="right",
     ):
-        if value.shape != (5, 5):
-            raise ValueError("Value must be a 5x5 matrix")
-
         super().__init__(value, SE23, stamp, state_id, direction)
 
     @property
