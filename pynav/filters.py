@@ -1,5 +1,5 @@
 from typing import List, Tuple
-from .types import (
+from pynav.types import (
     Input,
     State,
     ProcessModel,
@@ -12,7 +12,7 @@ from numpy.polynomial.hermite_e import hermeroots
 from math import factorial
 from scipy.special import eval_hermitenorm
 import scipy.linalg as la
-
+from tqdm import tqdm
 
 def check_outlier(error: np.ndarray, covariance: np.ndarray):
     """
@@ -20,8 +20,8 @@ def check_outlier(error: np.ndarray, covariance: np.ndarray):
     an outlier.
     """
     error = error.reshape((-1, 1))
-    md = np.ndarray.item(error.T @ np.linalg.solve(covariance, error))
-    if md > chi2.ppf(0.99, df=error.size):
+    nis = np.ndarray.item(error.T @ np.linalg.solve(covariance, error))
+    if nis > chi2.ppf(0.99, df=error.size):
         is_outlier = True
     else:
         is_outlier = False
@@ -136,6 +136,7 @@ class ExtendedKalmanFilter:
         if x_jac is None:
             x_jac = x.state
 
+        details_dict = {}
         if u is not None:
             A = self.process_model.jacobian(x_jac, u, dt)
             Q = self.process_model.covariance(x_jac, u, dt)
@@ -144,7 +145,8 @@ class ExtendedKalmanFilter:
             x_new.symmetrize()
             x_new.state.stamp = x.state.stamp + dt
 
-        details_dict = {"A": A, "Q": Q}
+            details_dict = {"A": A, "Q": Q}
+            
         if output_details:
             return x_new, details_dict
         else:
@@ -168,11 +170,13 @@ class ExtendedKalmanFilter:
         ----------
         x : StateWithCovariance
             The current state estimate.
-        u: Input
-            Most recent input, to be used to predict the state forward
-            if the measurement stamp is larger than the state stamp.
         y : Measurement
             Measurement to be fused into the current state estimate.
+        u: Input
+            Most recent input, to be used to predict the state forward
+            if the measurement stamp is larger than the state stamp. If set to
+            None, no prediction will be performed and the correction will
+            just be done with the current state estimate.
         x_jac : State, optional
             valuation point for the process model Jacobian. If not provided, the
             current state estimate will be used.
@@ -180,8 +184,8 @@ class ExtendedKalmanFilter:
             Whether to apply the NIS test to this measurement, by default None,
             in which case the value of `self.reject_outliers` will be used.
         output_details : bool, optional
-            Whether to output intermediate computation results (innovation, innovation covariance)
-                in an additional returned dict.
+            Whether to output intermediate computation results (innovation,
+            innovation covariance) in an additional returned dict.
         Returns
         -------
         StateWithCovariance
@@ -233,7 +237,7 @@ class ExtendedKalmanFilter:
                 x.covariance = (np.identity(x.state.dof) - K @ G) @ P
                 x.symmetrize()
 
-            details_dict = {"z": z, "S": S}
+            details_dict = {"z": z, "S": S, "is_outlier": outlier}
 
         if output_details:
             return x, details_dict
@@ -514,7 +518,7 @@ class SigmaPointKalmanFilter:
     def __init__(
         self,
         process_model: ProcessModel,
-        method: str,
+        method: str = "unscented",
         reject_outliers=False,
         iterate_mean=True,
     ):
@@ -804,7 +808,7 @@ def run_filter(
         y = meas_data[meas_idx]
 
     results_list = []
-    for k in range(len(input_data) - 1):
+    for k in tqdm(range(len(input_data) - 1)):
         u = input_data[k]
         # Fuse any measurements that have occurred.
         if len(meas_data) > 0:

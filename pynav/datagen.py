@@ -1,7 +1,7 @@
-from typing import Callable, List, Union
+from typing import Callable, List, Union, Any
 import numpy as np
-from .utils import randvec
-from .types import (
+from pynav.utils import randvec
+from pynav.types import (
     State,
     ProcessModel,
     MeasurementModel,
@@ -46,7 +46,6 @@ class DataGenerator:
         meas_freq_list: Union[float, List[float]] = None,
     ):
 
-
         # Make input covariance a callable if it isnt
         if callable(input_covariance):
             self.input_covariance = input_covariance
@@ -70,7 +69,6 @@ class DataGenerator:
         self.input_func = input_func
         self.input_freq = input_freq
         self._meas_model_and_freq = list(zip(meas_model_list, meas_freq_list))
-
 
     def add_measurement_model(self, model: MeasurementModel, freq: float):
         self._meas_model_and_freq.append((model, freq))
@@ -165,8 +163,8 @@ class DataGenerator:
             # Propagate forward
             dt = times[k + 1] - x.stamp
             x = self.process_model.evaluate(x.copy(), u, dt)
-            x.stamp = times[k+1]
-            
+            x.stamp = times[k + 1]
+
             # Add noise to input if requested.
             if noise:
                 Q = np.atleast_2d(self.input_covariance(times[k]))
@@ -182,11 +180,15 @@ class DataGenerator:
 
 
 def generate_measurement(
-    state: Union[State, List[State]], model: MeasurementModel, noise=True
+    state: Union[State, List[State]],
+    model: MeasurementModel,
+    noise=True,
+    state_id: Any = None,
 ) -> Union[Measurement, List[Measurement]]:
     """
     Generates a `Measurement` object given a measurement model and corresponding
-    ground truth state value. Optionally add noise.
+    ground truth `State` objects. If a list of ground truth state objects is
+    provided, a measurement will be generated for each state.
 
     Parameters
     ----------
@@ -196,6 +198,8 @@ def generate_measurement(
         measurement model that will be evaluated to generate the measurement
     noise : bool, optional
         flag whether to add noise to measurement, by default True
+    state_id : Any, optional
+        value to be given to the state_id field of the `Measurement` object
 
     Returns
     -------
@@ -220,7 +224,9 @@ def generate_measurement(
         if noise:
             y = y.reshape((-1, 1)) + randvec(R)
 
-        meas_list.append(Measurement(y.reshape(og_shape), x.stamp, model))
+        meas_list.append(
+            Measurement(y.reshape(og_shape), x.stamp, model, state_id)
+        )
 
     if not received_list:
         meas_list = meas_list[0]

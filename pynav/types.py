@@ -10,14 +10,15 @@ from abc import ABC, abstractmethod
 
 class Input(ABC):
 
-    __slots__ = ["stamp", "dof"]
+    __slots__ = ["stamp", "dof", "covariance", "state_id"]
 
-    def __init__(self, dof: int, stamp: float = None, state_id: Any = None):
+    def __init__(self, dof: int, stamp: float = None, state_id: Any = None, covariance=None):
         self.stamp = stamp  #:float: Timestamp
         self.dof = dof  #:int: Degrees of freedom of the object
 
         #:Any: Arbitrary optional identifier, possible to "assign" to a state.
         self.state_id = state_id
+        self.covariance = covariance
 
     @abstractmethod
     def plus(self, w: np.ndarray) -> "Input":
@@ -33,10 +34,10 @@ class StampedValue(Input):
     Generic data container for timestamped information.
     """
 
-    __slots__ = ["value", "state_id"]
+    __slots__ = ["value"]
 
     def __init__(
-        self, value: np.ndarray, stamp: float = None, state_id: Any = None
+        self, value: np.ndarray, stamp: float = None, state_id: Any = None, covariance=None
     ):
         if not isinstance(value, np.ndarray):
             value = np.array(value, dtype=np.float64)
@@ -44,7 +45,7 @@ class StampedValue(Input):
         #:numpy.ndarray:  Variable containing the data values
         self.value = value
 
-        super().__init__(value.size, stamp, state_id)
+        super().__init__(dof=value.size, stamp=stamp, state_id=state_id, covariance=covariance)
 
     def plus(self, w: np.ndarray) -> "StampedValue":
         """
@@ -65,7 +66,7 @@ class StampedValue(Input):
         """
         Returns a copy of the instance with fully seperate memory.
         """
-        return StampedValue(self.value.copy(), self.stamp, self.state_id)
+        return StampedValue(self.value.copy(), self.stamp, self.state_id, self.covariance)
 
     def __repr__(self):
 
@@ -237,6 +238,9 @@ class MeasurementModel(ABC):
 
         return jac_fd
 
+    def __repr__(self):
+        return f"{self.__class__.__name__}"
+        
     def sqrt_information(self, x: State):
         R = np.atleast_2d(self.covariance(x))
         return np.linalg.cholesky(np.linalg.inv(R))
@@ -357,6 +361,9 @@ class ProcessModel(ABC):
 
         return jac_fd
 
+    def __repr__(self):
+        return f"{self.__class__.__name__} at {hex(id(self))}"
+
     def sqrt_information(self, x: State, u: Input, dt: float) -> np.ndarray:
         Q = np.atleast_2d(self.covariance(x, u, dt))
         return np.linalg.cholesky(np.linalg.inv(Q))
@@ -405,7 +412,7 @@ class Measurement:
 
         s = [
             f"Measurement(stamp={self.stamp}, state_id={self.state_id})"
-            + f" of {self.model.__class__.__name__}",
+            + f" of {self.model}",
             value_str,
         ]
         return "\n".join(s)

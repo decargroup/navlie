@@ -1,11 +1,10 @@
-from typing import Callable, List, Tuple, Union, Any
+from typing import Callable, List, Tuple, Union, Any, Dict
 from joblib import Parallel, delayed
 from pynav.types import State, Measurement, StateWithCovariance
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.stats.distributions import chi2
 from scipy.interpolate import interp1d
-from tqdm import tqdm
 from scipy.linalg import block_diag, expm
 
 from pynav.lib.states import SE3State
@@ -28,6 +27,7 @@ class GaussianResult:
         "nees",
         "md",
         "three_sigma",
+        "rmse",
     ]
 
     def __init__(
@@ -46,7 +46,7 @@ class GaussianResult:
 
         state = estimate.state
         covariance = estimate.covariance
-
+        
         #:float: timestamp
         self.stamp = state.stamp
         #:State: estimated state
@@ -56,13 +56,15 @@ class GaussianResult:
         #:numpy.ndarray: covariance associated with estimated state
         self.covariance = covariance
 
-        e = state.minus(state_true).reshape((-1, 1))
+        e = state_true.minus(state).reshape((-1, 1))
         #:numpy.ndarray: error vector between estimated and true state
         self.error = e.ravel()
         #:float: sum of estimation error squared (EES)
         self.ees = np.ndarray.item(e.T @ e)
         #:float: normalized estimation error squared (NEES)
         self.nees = np.ndarray.item(e.T @ np.linalg.solve(covariance, e))
+        #:float: root mean squared error (RMSE)
+        self.rmse = np.sqrt(self.ees/state.dof)
         #:float: Mahalanobis distance
         self.md = np.sqrt(self.nees)
         #:numpy.ndarray: three-sigma bounds on each error component
@@ -89,6 +91,7 @@ class GaussianResultList:
         "value",
         "value_true",
         "dof",
+        "rmse",
     ]
 
     def __init__(self, result_list: List[GaussianResult]):
@@ -118,6 +121,8 @@ class GaussianResultList:
         self.error = np.array([r.error for r in result_list])
         #:numpy.ndarray with shape (N,): EES throughout trajectory
         self.ees = np.array([r.ees for r in result_list])
+        #:numpy.ndarray with shape (N,): EES throughout trajectory
+        self.rmse = np.array([r.rmse for r in result_list])
         #:numpy.ndarray with shape (N,): NEES throughout trajectory
         self.nees = np.array([r.nees for r in result_list])
         #:numpy.ndarray with shape (N,): Mahalanobis distance throughout trajectory
@@ -130,6 +135,56 @@ class GaussianResultList:
         self.dof = np.array([r.state.dof for r in result_list])
         #:numpy.ndarray with shape (N,): true state value. type depends on implementation
         self.value_true = np.array([r.state_true.value for r in result_list])
+
+    def __getitem__(self, key):
+        if isinstance(key, tuple):
+            if not len(key) == 2:
+                raise IndexError("Only two dimensional indexing is supported")
+        else: 
+            key = (key, slice(None, None, None))
+
+        key_lists = list(key) # make mutable
+        for i,k in enumerate(key):
+            if isinstance(k, int):
+                key_lists[i] = [k]
+            elif isinstance(k, slice):
+                start = k.start if k.start is not None else 0
+                stop = k.stop if k.stop is not None else self.error.shape[i]
+                step = k.step if k.step is not None else 1
+                key_lists[i] = list(range(start, stop, step))
+            elif isinstance(k, list):
+                pass 
+            else:
+                raise TypeError("keys must be int, slice, or list of indices")
+        
+
+        key1, key2 = key
+        out = GaussianResultList([])
+        out.stamp = self.stamp[key1]
+        out.state = self.state[key1]
+        out.state_true = self.state_true[key1]
+        out.covariance = self.covariance[np.ix_(key_lists[0], key_lists[1], key_lists[1])] # (N, key_size, key_size)
+        out.error = self.error[key1,key2] # (N, key_size)
+        out.ees = np.sum(np.atleast_2d(out.error**2), axis=1)
+
+        if len(out.error.shape) == 1:
+            out.nees = out.error**2 / out.covariance.flatten()
+            out.dof = np.ones_like(out.stamp)
+        else:
+            out.nees = np.sum(out.error * np.linalg.solve(out.covariance, out.error), axis=1)
+            out.dof = out.error.shape[1] * np.ones_like(out.stamp)
+            
+        out.md = np.sqrt(out.nees)
+        out.three_sigma = 3 * np.sqrt(np.diagonal(out.covariance, axis1=1, axis2=2))
+        out.rmse = np.sqrt(out.ees/out.dof)
+        out.value = self.value[key1]
+        out.value_true = self.value_true[key1] 
+        out.covariance = out.covariance.squeeze()
+        out.error = out.error.squeeze()
+
+        return out
+
+
 
     def nees_lower_bound(self, confidence_interval: float):
         """
@@ -195,6 +250,40 @@ class GaussianResultList:
             upper_bound_threshold += (1 - confidence_interval) / 2
 
         return chi2.ppf(upper_bound_threshold, df=self.dof)
+
+    @staticmethod
+    def from_estimates(
+        estimate_list: List[StateWithCovariance],
+        state_true_list: List[State],
+        method="nearest",
+    ):
+        """
+        A convenience function that creates a GaussianResultList from a list of
+        StateWithCovariance and a list of true State objects
+
+        Parameters
+        ----------
+        estimate_list : List[StateWithCovariance]
+            A list of StateWithCovariance objects
+        state_true_list : List[State]
+            A list of true State objects
+        method : "nearest" or "linear", optional
+            The method used to interpolate the true state when the timestamps
+            do not line up exactly, by default "nearest".
+
+        Returns
+        -------
+        GaussianResultList
+            A GaussianResultList object
+        """
+        stamps = [r.stamp for r in estimate_list]
+        state_true_list = state_interp(stamps, state_true_list, method=method)
+        return GaussianResultList(
+            [
+                GaussianResult(estimate, state_true)
+                for estimate, state_true in zip(estimate_list, state_true_list)
+            ]
+        )
 
 
 class MonteCarloResult:
@@ -433,6 +522,7 @@ def plot_error(
     label: str = None,
     sharey: bool = False,
     color=None,
+    bounds=True,
 ) -> Tuple[plt.Figure, List[plt.Axes]]:
     """
     A generic three-sigma bound plotter.
@@ -470,7 +560,7 @@ def plot_error(
     if axs is None:
         fig, axs = plt.subplots(n_rows, n_cols, sharex=True, sharey=sharey)
     else:
-        fig = axs.ravel("F")[0].get_figure()
+        fig: plt.Figure = axs.ravel("F")[0].get_figure()
 
     axs_og = axs
     kwargs = {}
@@ -479,21 +569,94 @@ def plot_error(
 
     axs: List[plt.Axes] = axs.ravel("F")
     for i in range(results.three_sigma.shape[1]):
-        axs[i].fill_between(
-            results.stamp,
-            results.three_sigma[:, i],
-            -results.three_sigma[:, i],
-            alpha=0.5,
-            **kwargs,
-        )
+        if bounds:
+            axs[i].fill_between(
+                results.stamp,
+                results.three_sigma[:, i],
+                -results.three_sigma[:, i],
+                alpha=0.5,
+                **kwargs,
+            )
         axs[i].plot(results.stamp, results.error[:, i], label=label, **kwargs)
 
     return fig, axs_og
 
+def plot_nees(
+    results: GaussianResultList,
+    axs: List[plt.Axes] = None,
+    label: str = None,
+    color=None,
+    confidence_interval: float = 0.95,
+    normalize: bool = False,
+) -> Tuple[plt.Figure, plt.Axes]:
+    """
+    Makes a plot of the NEES, showing the actual NEES values, the expected NEES,
+    and the bounds of the specified confidence interval.
+
+    Parameters
+    ----------
+    results : GaussianResultList or MonteCarloResult
+        Results to plot
+    axs : List[plt.Axes], optional
+        Axes on which to draw, by default None. If None, new axes will be
+        created.
+    label : str, optional
+        Label to assign to the NEES line, by default None
+    color : optional
+        Fed directly to the ``plot(..., color=color)`` function, by default None
+    confidence_interval : float, optional
+        Desired probability confidence region, by default 0.95. Must lie between
+        0 and 1.
+    normalize : bool, optional
+        Whether to normalize the NEES by the degrees of freedom, by default False
+
+    Returns
+    -------
+    plt.Figure
+        Figure on which the plot was drawn  
+    plt.Axes
+        Axes on which the plot was drawn
+    """
+
+    if axs is None:
+        fig, axs = plt.subplots(1, 1, sharex=True,)
+    else:
+        fig = axs.get_figure()
+
+    axs_og = axs
+    kwargs = {}
+    if color is not None:
+        kwargs["color"] = color
+
+    if normalize:
+        s = results.dof
+    else:
+        s = 1
+
+
+    expected_nees_label = "Expected NEES"
+    ci_label = f"${int(confidence_interval*100)}\%$ CI"
+    _, exisiting_labels = axs.get_legend_handles_labels()
+
+    if expected_nees_label in exisiting_labels:
+        expected_nees_label = None
+    if ci_label in exisiting_labels:
+        ci_label = None
+
+    # fmt:off
+    axs.plot(results.stamp, results.nees/s, label=label, **kwargs)
+    axs.plot(results.stamp, results.dof/s, label=expected_nees_label, color="r")
+    axs.plot(results.stamp, results.nees_upper_bound(confidence_interval)/s, "--", color="k", label=ci_label)
+    axs.plot(results.stamp, results.nees_lower_bound(confidence_interval)/s, "--", color="k")
+    # fmt:on
+
+    axs.legend()
+
+    return fig, axs_og
 
 def plot_meas(
     meas_list: List[Measurement],
-    state_true_list: List[State],
+    state_list: List[State],
     axs: List[plt.Axes] = None,
     sharey=False,
 ) -> Tuple[plt.Figure, List[plt.Axes]]:
@@ -505,7 +668,7 @@ def plot_meas(
     ----------
     meas_list : List[Measurement]
         Measurement data to be plotted.
-    state_true_list : List[State]
+    state_list : List[State]
         A list of true State objects with similar timestamp domain. Will be
         interpolated if timestamps do not line up perfectly.
     axs : List[plt.Axes], optional
@@ -523,11 +686,16 @@ def plot_meas(
 
     # Convert everything to numpy arrays for plotting, and compute the
     # ground-truth model-based measurement value.
+
+    meas_list.sort(key=lambda y: y.stamp)
+
+    # Find the state of the nearest timestamp to the measurement
     y_stamps = np.array([y.stamp for y in meas_list])
-    x_stamps = np.array([x.stamp for x in state_true_list])
+    x_stamps = np.array([x.stamp for x in state_list])
+    indexes = np.array(range(len(state_list)))
     nearest_state = interp1d(
         x_stamps,
-        np.array(range(len(state_true_list))),
+        indexes,
         "nearest",
         bounds_error=False,
         fill_value="extrapolate",
@@ -535,18 +703,27 @@ def plot_meas(
     state_idx = nearest_state(y_stamps)
     y_meas = []
     y_true = []
+    three_sigma = []
     for i in range(len(meas_list)):
-        y_meas.append(np.ravel(meas_list[i].value))
-        x = state_true_list[int(state_idx[i])]
-        y_true.append(np.ravel(meas_list[i].model.evaluate(x)))
+        data = np.ravel(meas_list[i].value)
+        y_meas.append(data)
+        x = state_list[int(state_idx[i])]
+        y = meas_list[i].model.evaluate(x)
+        if y is None:
+            y_true.append(np.zeros_like(data)*np.nan)
+            three_sigma.append(np.zeros_like(data)*np.nan)
+        else:
+            y_true.append(np.ravel(y))
+            R = np.atleast_2d(meas_list[i].model.covariance(x))
+            three_sigma.append(3 * np.sqrt(np.diag(R)))
 
     y_meas = np.atleast_2d(np.array(y_meas))
     y_true = np.atleast_2d(np.array(y_true))
-    y_stamps = np.array(y_stamps)
+    three_sigma = np.atleast_2d(np.array(three_sigma))
+    y_stamps = np.array(y_stamps)  # why is this necessary?
     x_stamps = np.array(x_stamps)
 
     # Plot
-
     size_y = np.size(meas_list[0].value)
     if axs is None:
         fig, axs = plt.subplots(size_y, 1, sharex=True, sharey=sharey)
@@ -555,7 +732,7 @@ def plot_meas(
             axs = np.array([axs])
 
         fig = axs.ravel("F")[0].get_figure()
-
+    axs = np.atleast_1d(axs)
     for i in range(size_y):
         axs[i].scatter(
             y_stamps, y_meas[:, i], color="b", alpha=0.7, s=2, label="Measured"
@@ -563,8 +740,72 @@ def plot_meas(
         axs[i].plot(
             y_stamps, y_true[:, i], color="r", alpha=1, label="Modelled"
         )
+        axs[i].fill_between(
+            y_stamps,
+            y_true[:, i] + three_sigma[:, i],
+            y_true[:, i] - three_sigma[:, i],
+            alpha=0.5,
+            color="r",
+        )
+    return fig, axs
+
+
+def plot_meas_by_model(
+    meas_list: List[Measurement],
+    state_list: List[State],
+    axs: List[plt.Axes] = None,
+    sharey=False,
+) -> Tuple[plt.Figure, List[plt.Axes]]:
+    """
+    Given measurement data, make time-domain plots of the measurement values
+    and their ground-truth model-based values.
+
+    Parameters
+    ----------
+    meas_list : List[Measurement]
+        Measurement data to be plotted.
+    state_list : List[State]
+        A list of true State objects with similar timestamp domain. Will be
+        interpolated if timestamps do not line up perfectly.
+    axs : List[plt.Axes], optional
+        Axes to draw on, by default None. If None, new axes will be created.
+    sharey : bool, optional
+        Whether to have a common y axis or not, by default False
+
+    Returns
+    -------
+    plt.Figure
+        Handle to figure.
+    List[plt.Axes]
+        Handle to axes that were drawn on.
+    """
+
+    # Create sub-lists for every model ID
+    meas_by_model: Dict[int, List[Measurement]] = {}
+    for meas in meas_list:
+        model_id = id(meas.model)
+        if model_id not in meas_by_model:
+            meas_by_model[model_id] = []
+        meas_by_model[model_id].append(meas)
+
+    if axs is None:
+        axs = np.array([None]*len(meas_by_model))
+
+    axs = axs.ravel("F")
+
+    figs = [None]*len(meas_by_model)
+    for i, temp in enumerate(meas_by_model.items()):
+        model_id, meas_list = temp
+        fig, ax = plot_meas(meas_list, state_list, axs[i], sharey=sharey)
+        figs[i] = fig
+        axs[i] = ax
+        ax[0].set_title(f"{meas_list[0].model} {hex(model_id)}", fontsize=12)
+        ax[0].tick_params(axis='both', which='major', labelsize=10)
+        ax[0].tick_params(axis='both', which='minor', labelsize=8)
+    
 
     return fig, axs
+    
 
 
 def plot_poses(
@@ -591,11 +832,14 @@ def plot_poses(
         Triad color. If none are specified, defaults to RGB.
     arrow_length : int, optional
         Triad arrow length, by default 1.
-    step : int, optional
-        Step size in list of poses, by default 5.
+    step : int or None, optional
+        Step size in list of poses, by default 5. If None, no triads are plotted.
     label : str, optional
         Optional label for the triad
     """
+    # TODO. handle 2D case
+    if isinstance(poses, GaussianResultList):
+        poses = poses.state
 
     if ax is None:
         fig = plt.figure()
@@ -613,42 +857,43 @@ def plot_poses(
     ax.plot3D(r[:, 0], r[:, 1], r[:, 2], color=line_color, label=label)
 
     # Plot triads using quiver
-    C = np.array([poses[i].attitude.T for i in range(0, len(poses), step)])
-    r = np.array([poses[i].position for i in range(0, len(poses), step)])
-    x, y, z = r[:, 0], r[:, 1], r[:, 2]
-    ax.quiver(
-        x,
-        y,
-        z,
-        C[:, 0, 0],
-        C[:, 0, 1],
-        C[:, 0, 2],
-        color=colors[0],
-        length=arrow_length,
-        arrow_length_ratio=0.1,
-    )
-    ax.quiver(
-        x,
-        y,
-        z,
-        C[:, 1, 0],
-        C[:, 1, 1],
-        C[:, 1, 2],
-        color=colors[1],
-        length=arrow_length,
-        arrow_length_ratio=0.1,
-    )
-    ax.quiver(
-        x,
-        y,
-        z,
-        C[:, 2, 0],
-        C[:, 2, 1],
-        C[:, 2, 2],
-        color=colors[2],
-        length=arrow_length,
-        arrow_length_ratio=0.1,
-    )
+    if step is not None:
+        C = np.array([poses[i].attitude.T for i in range(0, len(poses), step)])
+        r = np.array([poses[i].position for i in range(0, len(poses), step)])
+        x, y, z = r[:, 0], r[:, 1], r[:, 2]
+        ax.quiver(
+            x,
+            y,
+            z,
+            C[:, 0, 0],
+            C[:, 0, 1],
+            C[:, 0, 2],
+            color=colors[0],
+            length=arrow_length,
+            arrow_length_ratio=0.1,
+        )
+        ax.quiver(
+            x,
+            y,
+            z,
+            C[:, 1, 0],
+            C[:, 1, 1],
+            C[:, 1, 2],
+            color=colors[1],
+            length=arrow_length,
+            arrow_length_ratio=0.1,
+        )
+        ax.quiver(
+            x,
+            y,
+            z,
+            C[:, 2, 0],
+            C[:, 2, 1],
+            C[:, 2, 2],
+            color=colors[2],
+            length=arrow_length,
+            arrow_length_ratio=0.1,
+        )
 
     set_axes_equal(ax)
     return fig, ax
@@ -679,7 +924,9 @@ def set_axes_equal(ax: plt.Axes):
 
 
 def state_interp(
-    stamps: Union[float, List[float], Any], state_list: List[State]
+    query_stamps: Union[float, List[float], Any],
+    state_list: List[State],
+    method="linear",
 ) -> Union[State, List[State]]:
     """
     Performs "linear" (geodesic) interpolation between `State` objects. Multiple
@@ -688,7 +935,7 @@ def state_interp(
 
     Parameters
     ----------
-    stamps : Union[float, List[float], Any]
+    query_stamps : float or object with `.stamp` attribute (or Lists thereof)
         Query stamps. Can either be a float, or an object containing a `stamp`
         attribute. If a list is provided, it will be treated as multiple query
         points and the return value will be a list of `State` objects.
@@ -707,62 +954,95 @@ def state_interp(
     """
     # TODO: add tests
     # Handle input
-    if not isinstance(stamps, list):
-        stamps = [stamps]
+    if isinstance(query_stamps, list):
+        single_query = False
+    elif isinstance(query_stamps, np.ndarray):
+        single_query = False
+    elif isinstance(query_stamps, float):
+        query_stamps = [query_stamps]
         single_query = True
     else:
-        single_query = False
+        pass    
 
-    stamps = stamps.copy()
-    for i, stamp in enumerate(stamps):
+
+    # if not isinstance(query_stamps, list):
+    #     query_stamps = [query_stamps]
+    #     single_query = True
+    # else:
+    #     single_query = False
+
+    query_stamps = query_stamps.copy()
+    for i, stamp in enumerate(query_stamps):
         if not isinstance(stamp, float):
             if hasattr(stamp, "stamp"):
                 stamp = stamp.stamp
-                stamps[i] = stamp
+                query_stamps[i] = stamp
             else:
                 raise TypeError(
                     "Stamps must be of type float or have a stamp attribute"
                 )
 
     # Get the indices of the states just before and just after.
+    query_stamps = np.array(query_stamps)
     state_list = np.array(state_list)
     stamp_list = [state.stamp for state in state_list]
     stamp_list.sort()
     stamp_list = np.array(stamp_list)
-    idx_middle = np.interp(stamps, stamp_list, np.array(range(len(stamp_list))))
-    idx_lower = np.floor(idx_middle).astype(int)
-    idx_upper = idx_lower + 1
+    if method == "linear":
+        idx_middle = np.interp(
+            query_stamps, stamp_list, np.array(range(len(stamp_list)))
+        )
+        idx_lower = np.floor(idx_middle).astype(int)
+        idx_upper = idx_lower + 1
 
-    # Return endpoint if out of bounds
-    idx_upper[idx_upper == len(state_list)] = len(state_list) - 1
+        before_start = query_stamps < stamp_list[0]
+        after_end = idx_upper >= len(state_list)
+        inside = np.logical_not(np.logical_or(before_start, after_end))
 
-    # Do the interpolation
-    stamp_lower = stamp_list[idx_lower]
-    stamp_upper = stamp_list[idx_upper]
+        # Return endpoint if out of bounds
+        idx_upper[idx_upper == len(state_list)] = len(state_list) - 1
 
-    # "Fraction" of the way between the two states
-    alpha = np.array(
-        (stamps - stamp_lower) / (stamp_upper - stamp_lower)
-    ).ravel()
+        # ############ Do the interpolation #################
+        stamp_lower = stamp_list[idx_lower]
+        stamp_upper = stamp_list[idx_upper]
 
-    # The two neighboring states around the query point
-    state_lower: List[State] = np.array(state_list[idx_lower]).ravel()
-    state_upper: List[State] = np.array(state_list[idx_upper]).ravel()
+        # "Fraction" of the way between the two states
+        alpha = np.zeros(len(query_stamps))
+        alpha[inside] = np.array(
+            (query_stamps[inside] - stamp_lower[inside]) / (stamp_upper[inside] - stamp_lower[inside])
+        ).ravel()
 
-    # Interpolate between the two states
-    dx = np.array(
-        [s.minus(state_lower[i]).ravel() for i, s in enumerate(state_upper)]
-    )
+        # The two neighboring states around the query point
+        state_lower: List[State] = np.array(state_list[idx_lower]).ravel()
+        state_upper: List[State] = np.array(state_list[idx_upper]).ravel()
 
-    out = []
-    for i, state in enumerate(state_lower):
-        if np.isnan(alpha[i]) or np.isinf(alpha[i]) or alpha[i] < 0.0:
-            state_interp = state.copy()
-        else:
+        # Interpolate between the two states
+        dx = np.array(
+            [s.minus(state_lower[i]).ravel() for i, s in enumerate(state_upper)]
+        )
+
+        out = []
+        for i, state in enumerate(state_lower):
+            if np.isnan(alpha[i]) or np.isinf(alpha[i]) or alpha[i] < 0.0:
+                raise RuntimeError("wtf")
+            
             state_interp = state.plus(dx[i] * alpha[i])
 
-        state_interp.stamp = stamps[i]
-        out.append(state_interp)
+            state_interp.stamp = query_stamps[i]
+            out.append(state_interp)
+
+    elif method == "nearest":
+
+        indexes = np.array(range(len(stamp_list)))
+        nearest_state = interp1d(
+            stamp_list,
+            indexes,
+            "nearest",
+            bounds_error=False,
+            fill_value="extrapolate",
+        )
+        state_idx = nearest_state(query_stamps).astype(int)
+        out = state_list[state_idx].tolist()
 
     if single_query:
         out = out[0]
@@ -820,22 +1100,33 @@ def associate_stamps(
     return matches
 
 
-def find_nearest_stamp_idx(stamps_list: List[float], stamp: float) -> int:
-    """Uses interp1d to find the index of the nearest timestamp.
+def find_nearest_stamp_idx(stamps_list: List[float], stamp: Union[float, List[float]]) -> int:
+    """
+    Find the index of the nearest stamp in ``stamps_list`` to ``stamp``. If
+    ``stamp`` is a list or array, then the output is a list of indices.
 
     Parameters
     ----------
     stamps_list : List[float]
         List of timestamps
-    stamp : float
-        Query stamp.
+    stamp : float or List[float] or numpy.ndarray
+        Query stamp(s).
 
     Returns
     -------
-    int
+    int or List[int]
         Index of nearest stamp.
     """
-    nearest_state = interp1d(
+
+    if isinstance(stamp, float):
+        single_query = True
+        query_stamps = np.array([stamp])
+    else:
+        single_query = False
+        query_stamps = np.array(stamp).ravel()
+
+
+    nearest_stamp = interp1d(
         stamps_list,
         np.array(range(len(stamps_list))),
         "nearest",
@@ -843,19 +1134,37 @@ def find_nearest_stamp_idx(stamps_list: List[float], stamp: float) -> int:
         fill_value="extrapolate",
     )
 
-    return int(nearest_state(stamp))
+    out = nearest_stamp(query_stamps).astype(int).tolist()
+
+    if single_query:
+        out = out[0]
+
+    return out
 
 
 def jacobian(
     fun: Callable,
     x: Union[np.ndarray, State],
-    step_size=1e-6,
+    step_size=None,
     method="forward",
     *args,
     **kwargs,
 ) -> np.ndarray:
     """
-    Compute the Jacobian of a function.
+    Compute the Jacobian of a function. Example use:
+
+    .. code-block:: python
+
+        x = np.array([1, 2]).reshape((-1,1))
+        
+        A = np.array([[1, 2], [3, 4]])
+        def fun(x):
+            return 1/np.sqrt(x.T @ A.T @ A @ x)
+
+        jac_test = jacobian(fun, x, method=method)
+        jac_true = (- x.T @ A.T @ A)/((x.T @ A.T @ A @ x)**(3/2))
+
+        assert np.allclose(jac_test, jac_true, atol=1e-6)
 
     Parameters
     ----------
@@ -881,6 +1190,12 @@ def jacobian(
     """
     x = x.copy() 
 
+    if step_size is None:
+        if method=="cs":
+            step_size = 1e-16
+        else:
+            step_size = 1e-6
+
     # Check if input has a plus method. otherwise, assume it will behave
     # like a numpy array
     if hasattr(x, "plus"):
@@ -897,6 +1212,10 @@ def jacobian(
     else:
         output_diff = lambda Y, Y_bar: Y - Y_bar
 
+
+
+    func_to_diff = lambda dx : output_diff(fun(input_plus(x, dx), *args, **kwargs), Y_bar)
+
     # Check if input/output has a dof attribute. otherwise, assume it will
     # behave like a numpy array and use the `.size` attribute to get
     # the DOF of the input/output
@@ -910,28 +1229,31 @@ def jacobian(
     else:
         M = Y_bar.size
 
+
+    Y_bar_diff = func_to_diff(np.zeros((N,)))
     jac_fd = np.zeros((M, N))
 
     # Main loop to calculate jacobian
     for i in range(N):
         dx = np.zeros((N))
+        dx[i] = step_size
 
         if method == "forward":
-            dx[i] = step_size
-            Y_plus: State = fun(input_plus(x, dx).copy(), *args, **kwargs)
-            jac_fd[:, i] = output_diff(Y_plus, Y_bar).ravel() / step_size
+            Y_plus: State = func_to_diff(dx.copy())
+            jac_fd[:, i] = (Y_plus - Y_bar_diff).ravel() / step_size
 
         elif method == "central":
-            dx[i] = step_size
-            Y_plus: State = fun(input_plus(x, dx).copy(), *args, **kwargs)
-            Y_minus: State = fun(input_plus(x, -dx).copy(), *args, **kwargs)
-            jac_fd[:, i] = output_diff(Y_plus, Y_minus).ravel() / (2*step_size)
+            Y_plus = func_to_diff(dx.copy())
+            Y_minus = func_to_diff(-dx.copy())
+            jac_fd[:, i] = (Y_plus - Y_minus).ravel() / (2*step_size)
 
         elif method == "cs":
-            dx[i] = 1e-16
-            Y_imag: State = fun(input_plus(x, 1j*dx).copy(), *args, **kwargs)
-            jac_fd[:, i] = np.imag(Y_imag).ravel() / 1e-16
+            Y_imag: State = func_to_diff(1j*dx.copy())
+            jac_fd[:, i] = np.imag(Y_imag).ravel() / step_size
 
+        else:
+            raise ValueError(f"Unknown method '{method}'. "
+                             "Must be 'forward', 'central' or 'cs")
 
 
     return jac_fd
