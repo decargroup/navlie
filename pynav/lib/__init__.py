@@ -42,3 +42,5 @@ from .preintegration import (
     PreintegratedIMUKinematics,
     PreintegratedLinearModel,
 )
+
+from .datasets import SimulatedPoseRanging, SimulatedInertialGPS
