@@ -460,3 +460,27 @@ class StateWithCovariance:
 
     def __repr__(self):
         return f"StateWithCovariance(stamp={self.stamp})"
+
+class Dataset(ABC):
+    """A container to store a dataset.
+    
+    Contains abstract methods to get the groundtruth data,
+    the input data, and measurement data.
+    """
+    def __init__(self):
+        pass
+    
+    @abstractmethod
+    def get_ground_truth(self) -> List[State]:
+        """Returns a list of groundtruth states."""
+        pass
+
+    @abstractmethod
+    def get_input_data(self) -> List[Input]:
+        """Retruns a list of inputs."""
+        pass
+    
+    @abstractmethod
+    def get_meas_data(self) -> List[Measurement]:
+        """Returns a list of measurements."""
+        pass
