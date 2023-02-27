@@ -14,7 +14,7 @@ from pynav.lib.models import (
 from pynav.datagen import DataGenerator
 from pynav.filters import ExtendedKalmanFilter, run_filter
 from pynav.utils import GaussianResult, GaussianResultList, plot_error, randvec
-from pynav.batch import BatchEstimator
+from pynav.batch.estimator import BatchEstimator
 from pylie import SO3, SE3
 import numpy as np
 import matplotlib.pyplot as plt

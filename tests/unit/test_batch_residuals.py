@@ -2,7 +2,7 @@
 
 from pynav.types import StampedValue, Measurement
 from pynav.lib.models import SingleIntegrator, BodyFrameVelocity, GlobalPosition
-from pynav.batch import PriorResidual, ProcessResidual, MeasurementResidual
+from pynav.batch.estimator import PriorResidual, ProcessResidual, MeasurementResidual
 from pynav.lib.states import VectorState, SE3State
 from pylie import SE3
 import numpy as np

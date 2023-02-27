@@ -6,7 +6,7 @@ The example is a single integrator process model with three range measurement
 models.
 """
 
-from pynav.batch import BatchEstimator
+from pynav.batch.estimator import BatchEstimator
 from pynav.lib.states import VectorState
 from pynav.datagen import DataGenerator
 from pynav.utils import (
@@ -23,7 +23,7 @@ import matplotlib.pyplot as plt
 
 # #############################################################################
 # Create the batch estimator with desired settings
-estimator = BatchEstimator(solver="GN", max_iters=20)
+estimator = BatchEstimator(solver_type="GN", max_iters=20)
 
 # ##############################################################################
 # Problem Setup
@@ -70,7 +70,7 @@ estimate_list, opt_results = estimator.solve(
 print(opt_results["summary"])
 # # The estimate list returns the estimates at each of the
 # # interoceptive and measurement timestamps.
-# Find matching timestamps 
+# Find matching timestamps
 estimate_stamps = [float(x.state.stamp) for x in estimate_list]
 gt_stamps = [x.stamp for x in gt_data]
 

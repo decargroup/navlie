@@ -11,15 +11,16 @@ from .filters import (
     ExtendedKalmanFilter,
     IteratedKalmanFilter,
     SigmaPointKalmanFilter,
-    run_filter
+    run_filter,
 )
-
+from . import batch
 from . import lib
 
 from .datagen import DataGenerator, generate_measurement
 from .utils import (
-    GaussianResult, 
-    GaussianResultList, MonteCarloResult,
+    GaussianResult,
+    GaussianResultList,
+    MonteCarloResult,
     plot_error,
     plot_meas,
     plot_poses,
@@ -27,9 +28,9 @@ from .utils import (
     monte_carlo,
     van_loans,
     state_interp,
-    associate_stamps, 
+    associate_stamps,
     set_axes_equal,
     find_nearest_stamp_idx,
-    randvec,    
-    jacobian
+    randvec,
+    jacobian,
 )
