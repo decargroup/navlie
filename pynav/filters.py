@@ -206,7 +206,9 @@ class ExtendedKalmanFilter:
         if y.stamp is not None:
             dt = y.stamp - x.state.stamp
             if dt < -1e10:
-                raise RuntimeError("Measurement stamp is earlier than state stamp")
+                raise RuntimeError(
+                    "Measurement stamp is earlier than state stamp"
+                )
             elif u is not None and dt > 1e-11:
                 x = self.predict(x, u, dt)
 
@@ -219,7 +221,7 @@ class ExtendedKalmanFilter:
             P = x.covariance
             R = np.atleast_2d(y.model.covariance(x_jac))
             G = np.atleast_2d(y.model.jacobian(x_jac))
-            z = y.value.reshape((-1, 1)) - y_check.reshape((-1, 1))
+            z = y.minus(y_check)
             S = G @ P @ G.T + R
 
             outlier = False
@@ -229,7 +231,6 @@ class ExtendedKalmanFilter:
                 outlier = check_outlier(z, S)
 
             if not outlier:
-
                 # Do the correction
                 K = np.linalg.solve(S.T, (P @ G.T).T).T
                 dx = K @ z
@@ -262,8 +263,8 @@ class IteratedKalmanFilter(ExtendedKalmanFilter):
         self,
         process_model: ProcessModel,
         step_tol=1e-4,
-        max_iters=200,  
-        line_search=True, 
+        max_iters=200,
+        line_search=True,
         reject_outliers=False,
     ):
         super(IteratedKalmanFilter, self).__init__(process_model)
@@ -331,7 +332,6 @@ class IteratedKalmanFilter(ExtendedKalmanFilter):
         x_op = x.state.copy()  # Operating point
         count = 0
         while count < self.max_iters:
-
             # Load a dedicated state evaluation point for jacobian
             # if the user supplied it.
 
@@ -371,7 +371,9 @@ class IteratedKalmanFilter(ExtendedKalmanFilter):
                 step_accepted = False
                 while not step_accepted and alpha > self.step_tol:
                     x_new = x_op.plus(alpha * dx)
-                    cost_new = self._get_cost_and_info(x_new, x, y, x_jac)["cost"]
+                    cost_new = self._get_cost_and_info(x_new, x, y, x_jac)[
+                        "cost"
+                    ]
                     if cost_new < cost_old:
                         step_accepted = True
                     else:
@@ -402,7 +404,6 @@ class IteratedKalmanFilter(ExtendedKalmanFilter):
         y: Measurement,
         x_jac,
     ) -> float:
-
         if x_jac is not None:
             x_op_jac = x_jac
         else:
@@ -410,7 +411,7 @@ class IteratedKalmanFilter(ExtendedKalmanFilter):
         R = np.atleast_2d(y.model.covariance(x_op_jac))
         G = np.atleast_2d(y.model.jacobian(x_op_jac))
         y_check = y.model.evaluate(x_op)
-        z = y.value.reshape((-1, 1)) - y_check.reshape((-1, 1))
+        z = y.minus(y_check)
         e = x_op.minus(x_check.state).reshape((-1, 1))
         J = x_op.plus_jacobian(e)
         P = J @ x_check.covariance @ J.T
@@ -462,7 +463,6 @@ def generate_sigmapoints(
         w[0] = kappa / (dof + kappa)
 
     elif method == "cubature":
-
         sigma_points = np.sqrt(dof) * np.block([[np.eye(dof), -np.eye(dof)]])
 
         w = 1 / (2 * dof) * np.ones((2 * dof))
@@ -491,7 +491,6 @@ def generate_sigmapoints(
         sigma_points = np.zeros((dof, p**dof))
         w = np.zeros(p**dof)
         for i in range(p**dof):
-
             w[i] = 1
             sigma_point = []
             for j in range(dof):
@@ -587,7 +586,6 @@ class SigmaPointKalmanFilter:
 
         if input_covariance is None:
             if u.covariance is not None:
-
                 input_covariance = u.covariance
             else:
                 raise ValueError(
@@ -601,7 +599,6 @@ class SigmaPointKalmanFilter:
             raise RuntimeError("dt is negative!")
 
         if u is not None:
-
             n_x = x.state.dof
             n_u = u.dof
 
@@ -719,7 +716,6 @@ class SigmaPointKalmanFilter:
         y_check = y.model.evaluate(x.state)
 
         if y_check is not None:
-
             y_propagated = [
                 y.model.evaluate(x.state.plus(sp)) for sp in sigmapoints.T
             ]
@@ -740,7 +736,7 @@ class SigmaPointKalmanFilter:
 
             Pyy += R
 
-            z = y.value.reshape((-1, 1)) - y_mean.reshape((-1, 1))
+            z = y.minus(y_mean)
 
             outlier = False
 
@@ -749,7 +745,6 @@ class SigmaPointKalmanFilter:
                 outlier = check_outlier(z, Pyy)
 
             if not outlier:
-
                 # Do the correction
                 K = np.linalg.solve(Pyy.T, Pxy.T).T
                 dx = K @ z
@@ -815,7 +810,6 @@ def run_filter(
             while y.stamp < input_data[k + 1].stamp and meas_idx < len(
                 meas_data
             ):
-
                 x = filter.correct(x, y, u)
                 meas_idx += 1
                 if meas_idx < len(meas_data):
