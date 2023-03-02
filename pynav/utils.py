@@ -137,6 +137,7 @@ class GaussianResultList:
         self.value_true = np.array([r.state_true.value for r in result_list])
 
     def __getitem__(self, key):
+        # TODO need more tests for all cases!
         if isinstance(key, tuple):
             if not len(key) == 2:
                 raise IndexError("Only two dimensional indexing is supported")
@@ -277,6 +278,8 @@ class GaussianResultList:
             A GaussianResultList object
         """
         stamps = [r.stamp for r in estimate_list]
+
+        # TODO: dont do interpolation by default
         state_true_list = state_interp(stamps, state_true_list, method=method)
         return GaussianResultList(
             [
@@ -588,6 +591,7 @@ def plot_nees(
     color=None,
     confidence_interval: float = 0.95,
     normalize: bool = False,
+    expected_nees_color = "r",
 ) -> Tuple[plt.Figure, plt.Axes]:
     """
     Makes a plot of the NEES, showing the actual NEES values, the expected NEES,
@@ -604,9 +608,9 @@ def plot_nees(
         Label to assign to the NEES line, by default None
     color : optional
         Fed directly to the ``plot(..., color=color)`` function, by default None
-    confidence_interval : float, optional
+    confidence_interval : float or None, optional
         Desired probability confidence region, by default 0.95. Must lie between
-        0 and 1.
+        0 and 1. If None, no confidence interval will be plotted.
     normalize : bool, optional
         Whether to normalize the NEES by the degrees of freedom, by default False
 
@@ -645,9 +649,10 @@ def plot_nees(
 
     # fmt:off
     axs.plot(results.stamp, results.nees/s, label=label, **kwargs)
-    axs.plot(results.stamp, results.dof/s, label=expected_nees_label, color="r")
-    axs.plot(results.stamp, results.nees_upper_bound(confidence_interval)/s, "--", color="k", label=ci_label)
-    axs.plot(results.stamp, results.nees_lower_bound(confidence_interval)/s, "--", color="k")
+    if confidence_interval:
+        axs.plot(results.stamp, results.dof/s, label=expected_nees_label, color=expected_nees_color)
+        axs.plot(results.stamp, results.nees_upper_bound(confidence_interval)/s, "--", color="k", label=ci_label)
+        axs.plot(results.stamp, results.nees_lower_bound(confidence_interval)/s, "--", color="k")
     # fmt:on
 
     axs.legend()
