@@ -14,8 +14,8 @@ from .filters import (
     run_filter,
 )
 from . import batch
-
-from batch.estimator import BatchEstimator
+from . import lib
+from .batch import BatchEstimator
 
 from .datagen import DataGenerator, generate_measurement
 from .utils import (

@@ -56,7 +56,7 @@ def mean_state(x_array: List[State], weights: np.ndarray) -> State:
     while np.linalg.norm(err) > 1e-6 and iter <= 50:
         err = np.zeros(x_0.dof)
         for i in range(n):
-            err += weights[i] * x_array[i].minus(x_mean)
+            err += weights[i] * (x_array[i].minus(x_mean)).ravel()
 
         x_mean = x_mean.plus(err)
         iter += 1
@@ -717,7 +717,7 @@ class SigmaPointKalmanFilter:
 
         if y_check is not None:
             y_propagated = [
-                y.model.evaluate(x.state.plus(sp)) for sp in sigmapoints.T
+                y.model.evaluate(x.state.plus(sp)).ravel() for sp in sigmapoints.T
             ]
 
             # predicted measurement mean

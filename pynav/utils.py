@@ -7,8 +7,6 @@ from scipy.stats.distributions import chi2
 from scipy.interpolate import interp1d
 from scipy.linalg import block_diag, expm
 
-from pynav.lib.states import SE3State
-
 
 class GaussianResult:
     """
@@ -814,7 +812,7 @@ def plot_meas_by_model(
 
 
 def plot_poses(
-    poses: List[SE3State],
+    poses,
     ax: plt.Axes = None,
     line_color: str = "tab:blue",
     triad_color: str = None,
