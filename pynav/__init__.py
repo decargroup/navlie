@@ -15,6 +15,7 @@ from .filters import (
 )
 from . import batch
 from . import lib
+from .batch import BatchEstimator
 
 from .datagen import DataGenerator, generate_measurement
 from .utils import (

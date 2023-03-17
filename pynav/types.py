@@ -16,7 +16,7 @@ class Input(ABC):
         dof: int,
         stamp: float = None,
         state_id: Any = None,
-        covariance=None,
+        covariance: np.ndarray=None,
     ):
         self.stamp = stamp  #:float: Timestamp
         self.dof = dof  #:int: Degrees of freedom of the object

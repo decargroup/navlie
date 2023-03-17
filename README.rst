@@ -20,12 +20,6 @@ By implementing a few classes, the user can model almost any problem. Documentat
 Setup
 -----
 
-Dependencies
-^^^^^^^^^^^^
-- python3.6+
-- `pylie` Clone and install https://github.com/decarsg/pylie by following the README.
-- All other dependencies should get installed automatically by `pip`
-
 Installation
 ^^^^^^^^^^^^
 
@@ -34,6 +28,8 @@ Clone this repo, change to its directory, and execute
 .. code-block:: bash
 
     pip install -e .
+
+This command should automatically install all dependencies, including our package `pylie` (found at https://github.com/decargroup/pylie) for back-end Lie group mathematical operations.
 
 Examples
 ^^^^^^^^

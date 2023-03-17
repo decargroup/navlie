@@ -19,8 +19,9 @@ class IMU(Input):
         bias_gyro_walk: np.ndarray = [0, 0, 0],
         bias_accel_walk: np.ndarray = [0, 0, 0],
         state_id: Any = None,
+        covariance: np.ndarray = None,
     ):
-        super().__init__(dof=12, stamp=stamp)
+        super().__init__(dof=12, stamp=stamp, covariance=covariance)
         self.gyro = np.array(gyro).ravel()  #:np.ndarray: Gyro reading
         self.accel = np.array(
             accel
@@ -60,6 +61,10 @@ class IMU(Input):
         return new
 
     def copy(self):
+        if self.covariance is None:
+            cov_copy = None 
+        else:
+            cov_copy = self.covariance.copy()
         return IMU(
             self.gyro.copy(),
             self.accel.copy(),
@@ -67,6 +72,7 @@ class IMU(Input):
             self.bias_gyro_walk.copy(),
             self.bias_accel_walk.copy(),
             self.state_id,
+            cov_copy,
         )
 
     def __repr__(self):
