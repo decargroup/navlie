@@ -803,7 +803,7 @@ class CompositeState(State):
             jac[
                 counter : counter + state.dof,
                 counter : counter + state.dof,
-            ] = state.plus_jacobian(dx)
+            ] = state.plus_jacobian(dx[: state.dof])
             dx = dx[state.dof :]
             counter += state.dof
 
