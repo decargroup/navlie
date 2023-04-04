@@ -834,7 +834,7 @@ class Gravitometer(MeasurementModel):
     """
 
     def __init__(
-        self, R: np.ndarray, gravity_vector: List[float] = [0, 0, -9.80665]
+        self, R: np.ndarray, gravity_vector: List[float] = None
     ):
         """
         Parameters
@@ -844,6 +844,9 @@ class Gravitometer(MeasurementModel):
         gravity_vector : list[float] or numpy.ndarray, optional
             local magnetic field vector, by default [0, 0, -9.80665]
         """
+        if gravity_vector is None:
+            gravity_vector = [0, 0, -9.80665]
+
         self.R = R
         self._g_a = np.array(gravity_vector).reshape((-1, 1))
 
@@ -879,7 +882,7 @@ class Magnetometer(MeasurementModel):
     where :math:`\mathbf{m}_a` is the magnetic field vector in a world frame `a`.
     """
 
-    def __init__(self, R: np.ndarray, magnetic_vector: List[float] = [1, 0, 0]):
+    def __init__(self, R: np.ndarray, magnetic_vector: List[float] = None):
         """
 
         Parameters
@@ -889,6 +892,9 @@ class Magnetometer(MeasurementModel):
         magnetic_vector : list[float] or numpy.ndarray, optional
             local magnetic field vector, by default [1, 0, 0]
         """
+        if magnetic_vector is None:
+            magnetic_vector = [1, 0, 0]
+
         self.R = R
         self._m_a = np.array(magnetic_vector).reshape((-1, 1))
 

@@ -103,9 +103,9 @@ class MatrixLieGroupState(State):
     def plus(self, dx: np.ndarray) -> "MatrixLieGroupState":
         new = self.copy()
         if self.direction == "right":
-            new.value = new.value @ new.group.Exp(dx)
+            new.value = self.value @ self.group.Exp(dx)
         elif self.direction == "left":
-            new.value = new.group.Exp(dx) @ new.value
+            new.value = self.group.Exp(dx) @ self.value
         else:
             raise ValueError("direction must either be 'left' or 'right'.")
         return new

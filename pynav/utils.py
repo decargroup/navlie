@@ -814,7 +814,7 @@ def plot_meas_by_model(
 def plot_poses(
     poses,
     ax: plt.Axes = None,
-    line_color: str = "tab:blue",
+    line_color: str = None,
     triad_color: str = None,
     arrow_length: float = 1,
     step: int = 5,
