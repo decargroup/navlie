@@ -1,9 +1,8 @@
-from pynav.lib.states import SE3State
-from pynav.lib.models import BodyFrameVelocity, RangePoseToAnchor
-from pynav.datagen import DataGenerator
-from pynav.filters import ExtendedKalmanFilter, IteratedKalmanFilter, SigmaPointKalmanFilter
+from pynav.lib import SE3State, BodyFrameVelocity
+from pynav.filters import SigmaPointKalmanFilter
 from pynav.utils import GaussianResult, GaussianResultList, plot_error, randvec
 from pynav.types import StateWithCovariance
+from pynav.lib.datasets import SimulatedPoseRangingDataset
 import time
 from pylie import SE3
 import numpy as np
@@ -15,40 +14,21 @@ np.random.seed(0)
 x0 = SE3State(SE3.Exp([0, 0, 0, 0, 0, 0]), stamp=0.0, direction="right")
 P0 = np.diag([0.1**2, 0.1**2, 0.1**2, 1, 1, 1])
 Q = np.diag([0.01**2, 0.01**2, 0.01**2, 0.1, 0.1, 0.1])
-process_model = BodyFrameVelocity(Q)
 noise_active = True
-
-def input_profile(t, x):
-    return np.array(
-        [np.sin(0.1 * t), np.cos(0.1 * t), np.sin(0.1 * t), 1, 0, 0]
-    )
+process_model = BodyFrameVelocity(Q)
 
 
-range_models = [
-    RangePoseToAnchor([1, 0, 0], [0.17, 0.17, 0], 0.1**2),
-    RangePoseToAnchor([1, 0, 0], [-0.17, 0.17, 0], 0.1**2),
-    RangePoseToAnchor([-1, 0, 0], [0.17, 0.17, 0], 0.1**2),
-    RangePoseToAnchor([-1, 0, 0], [-0.17, 0.17, 0], 0.1**2),
-    RangePoseToAnchor([0, 2, 0], [0.17, 0.17, 0], 0.1**2),
-    RangePoseToAnchor([0, 2, 0], [-0.17, 0.17, 0], 0.1**2),
-    RangePoseToAnchor([0, 2, 2], [0.17, 0.17, 0], 0.1**2),
-    RangePoseToAnchor([0, 2, 2], [-0.17, 0.17, 0], 0.1**2),
-]
-
-# ##############################################################################
-# Data Generation
-dg = DataGenerator(process_model, input_profile, Q, 200, range_models, 10)
-state_true, input_data, meas_data = dg.generate(x0, 0, 10, noise=noise_active)
-
+data = SimulatedPoseRangingDataset(x0=x0, Q=Q, noise_active=noise_active)
+state_true = data.get_ground_truth()
+input_data = data.get_input_data()
+meas_data = data.get_meas_data()
 if noise_active:
     x0 = x0.plus(randvec(P0))
 # %% ###########################################################################
 # Run Filter
 x = StateWithCovariance(x0, P0)
 
-# Try an EKF or an IterEKF
-# ekf = ExtendedKalmanFilter(process_model)
-ukf = SigmaPointKalmanFilter(process_model, method = 'cubature', iterate_mean=True)
+ukf = SigmaPointKalmanFilter(process_model, method = 'cubature', iterate_mean=False)
 
 meas_idx = 0
 start_time = time.time()

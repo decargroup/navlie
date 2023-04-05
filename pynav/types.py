@@ -73,7 +73,7 @@ class StampedValue(Input):
         new = self.copy()
         og_shape = new.value.shape
         new.value = new.value.ravel() + w.ravel()
-        new.value.reshape(og_shape)
+        new.value = new.value.reshape(og_shape)
         return new
 
     def copy(self) -> "StampedValue":
