@@ -5,6 +5,7 @@ setup(
     version="0.0.1",
     description="A collection of common state estimation algorithms in robotics.",
     packages=find_packages(),
+    extras_require={"test": ["pytest"]},
     install_requires=[
         "numpy>=1.21.2",
         "scipy>=1.7.1",
