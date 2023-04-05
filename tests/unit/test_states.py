@@ -13,6 +13,7 @@ from pynav.types import State
 from pylie import SO3, SE3
 import numpy as np
 import pytest
+import sys
 from typing import Dict
 
 np.random.normal(0)
@@ -71,6 +72,8 @@ def test_mlg_dot(s: str):
     xdot = x.dot(x2)
     assert np.allclose(xdot.value, x.value @ x2.value, atol=1e-5)
 
+@pytest.mark.skipif('geometry_msgs' not in sys.modules,
+                    reason="requires ROS1 to be installed")
 def test_se3_ros():
     T = SE3.random()
     x = SE3State(T, stamp=1, state_id="test")
@@ -81,7 +84,8 @@ def test_se3_ros():
     assert x.state_id == x2.state_id
     assert x.state_id == x_ros.header.frame_id
 
-
+@pytest.mark.skipif('geometry_msgs' not in sys.modules,
+                    reason="requires ROS1 to be installed")
 def test_so3_ros():
     C = SO3.random()
     x = SO3State(C, stamp=1, state_id="test")
