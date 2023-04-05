@@ -8,18 +8,16 @@ from pynav.lib.models import (
 from pynav.datagen import DataGenerator
 from pynav.filters import ExtendedKalmanFilter, run_filter
 from pynav.utils import (
-    GaussianResult,
     GaussianResultList,
     MonteCarloResult,
     randvec,
 )
-from pylie import SO3
 import numpy as np
-
+import pynav as nav
 
 def generate_so3_results():
-    x0 = SO3State(SO3.random(), 0.0, direction="left")
-    P0 = 1 * np.identity(3)
+    x0 = SO3State([1,2,3], 0.0, direction="left")
+    P0 = 0.1 * np.identity(3)
     Q = 0.1**2 * np.identity(3)
 
     # Define the process model and measurement models.
@@ -33,22 +31,17 @@ def generate_so3_results():
         lambda t, x: np.array([1, 2, 3]),
         Q,
         100,
-        [mag_model, grav_model],
+        [grav_model, mag_model],
         1,
     )
     state_true, input_list, meas_list = dg.generate(x0, 0, 30, True)
 
+
     # Run the regular filter
-    x0.direction = "right"
     x0_check = x0.plus(randvec(P0))
     ekf = ExtendedKalmanFilter(process_model=process_model)
     estimate_list = run_filter(ekf, x0_check, P0, input_list, meas_list)
-    results = GaussianResultList(
-        [
-            GaussianResult(estimate_list[i], state_true[i])
-            for i in range(len(estimate_list))
-        ]
-    )
+    results = GaussianResultList.from_estimates(estimate_list, state_true)
     return results
 
 
@@ -69,3 +62,7 @@ def test_reasonable_nees_so3():
         results.average_nees < 50 * results.nees_upper_bound(0.99)
     )
     assert nees_in_correct_region / nt > 0.9999
+
+
+if __name__ == "__main__":
+    test_reasonable_nees_so3()

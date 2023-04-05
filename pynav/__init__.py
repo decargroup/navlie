@@ -6,6 +6,7 @@ from .types import (
     Input,
     StampedValue,
     StateWithCovariance,
+    Dataset,
 )
 from .filters import (
     ExtendedKalmanFilter,

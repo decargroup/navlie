@@ -1,25 +1,27 @@
 import pytest
-from pynav.filters import ExtendedKalmanFilter
-from pynav.lib.states import VectorState, SE3State
-from pynav.datagen import DataGenerator
-from pynav.types import StateWithCovariance
-from pynav.utils import GaussianResult, GaussianResultList
-from pynav.utils import randvec
+from pynav import (
+    GaussianResult,
+    GaussianResultList,
+    DataGenerator,
+    ExtendedKalmanFilter,
+    monte_carlo,
+    run_filter
+)
 
-from pynav.utils import monte_carlo
-from pynav.lib.models import SingleIntegrator, RangePointToAnchor
-from pynav.lib.models import (
+from pynav.lib import (
+    VectorState,
+    SE3State,
+    SingleIntegrator,
+    RangePointToAnchor,
     BodyFrameVelocity,
     Magnetometer,
     Gravitometer,
+    RangePoseToAnchor,
 )
-from pynav.lib.models import RangePoseToAnchor
 from pylie import SE3
 
 import numpy as np
 from typing import List
-import time
-from matplotlib import pyplot as plt
 
 # TODO. simplify this. 
 
@@ -52,7 +54,7 @@ def make_range_models_iterated_ekf(R):
     return range_models
 
 
-def make_filter_trial_prediction_noiseless(dg, x0_true, P0, t_max, kf):
+def make_filter_trial_prediction_noiseless(dg, x0_true, P0, t_max, ekf):
     def ekf_trial(trial_number: int) -> List[GaussianResult]:
 
         np.random.seed(trial_number)
@@ -60,28 +62,10 @@ def make_filter_trial_prediction_noiseless(dg, x0_true, P0, t_max, kf):
             x0_true, 0, t_max, noise=False
         )
         x0_check = x0_true.copy()
-        x = StateWithCovariance(x0_check, P0)
+        estimate_list = run_filter(ekf, x0_check, P0, input_data, meas_data)
 
-        meas_idx = 0
-        y = meas_data[meas_idx]
-        results_list = []
-        for k in range(len(input_data) - 1):
-            results_list.append(GaussianResult(x, state_true[k]))
-            u = input_data[k]
-
-            # Fuse any measurements that have occurred.
-            while y.stamp < input_data[k + 1].stamp and meas_idx < len(
-                meas_data
-            ):
-
-                x = kf.correct(x, y, u)
-                meas_idx += 1
-                if meas_idx < len(meas_data):
-                    y = meas_data[meas_idx]
-
-            dt = input_data[k + 1].stamp - x.stamp
-            x = kf.predict(x, u, dt)
-        return GaussianResultList(results_list)
+        results = GaussianResultList.from_estimates(estimate_list, state_true)
+        return results
 
     return ekf_trial
 
@@ -90,7 +74,7 @@ def make_filter_trial_prediction_noiseless(dg, x0_true, P0, t_max, kf):
     "x0, P0, input_profile, process_model, measurement_model, Q, R, input_freq, measurement_freq",
     [
         (
-            VectorState(np.array([1, 0])),
+            VectorState(np.array([1, 0]), stamp=0.0),
             np.diag([1, 1]),
             lambda t, x: np.array([np.sin(t), np.cos(t)]),
             SingleIntegrator,
@@ -101,7 +85,7 @@ def make_filter_trial_prediction_noiseless(dg, x0_true, P0, t_max, kf):
             [1, 1, 1],
         ),
         (
-            VectorState(np.array([1, 0])),
+            VectorState(np.array([1, 0]), stamp=0.0),
             np.diag([1, 1]),
             lambda t, x: np.array([np.sin(t), np.cos(t)]),
             SingleIntegrator,

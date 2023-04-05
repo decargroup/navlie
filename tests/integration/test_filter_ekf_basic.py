@@ -1,31 +1,28 @@
 import pytest
-from pynav.filters import ExtendedKalmanFilter
-from pynav.lib.states import VectorState, SO3State, SE3State
-from pynav.datagen import DataGenerator
-from pynav.types import StampedValue, StateWithCovariance
-from pynav.utils import GaussianResult, GaussianResultList, MonteCarloResult
-from pynav.utils import randvec
-from pynav.filters import run_filter
-
-from pynav.utils import monte_carlo, plot_error
-from pynav.lib.models import (
-    DoubleIntegrator,
-    OneDimensionalPositionVelocityRange,
+from pynav import (
+    GaussianResult,
+    GaussianResultList,
+    randvec,
+    run_filter,
+    DataGenerator,
+    ExtendedKalmanFilter,
+    monte_carlo
 )
-from pynav.lib.models import SingleIntegrator, RangePointToAnchor
-from pynav.lib.models import (
+
+from pynav.lib import (
+    VectorState,
+    SE3State,
+    SingleIntegrator,
+    RangePointToAnchor,
     BodyFrameVelocity,
-    InvariantMeasurement,
     Magnetometer,
     Gravitometer,
+    RangePoseToAnchor,
 )
-from pynav.lib.models import RangePoseToAnchor
-from pylie import SO3, SE3
+from pylie import SE3
 
 import numpy as np
 from typing import List
-import time
-from matplotlib import pyplot as plt
 
 
 def make_range_models_ekf_vector(R):
@@ -73,12 +70,7 @@ def make_filter_trial(dg, x0_true, P0, t_max, ekf):
         x0_check = x0_true.plus(randvec(P0))
         estimate_list = run_filter(ekf, x0_check, P0, input_list, meas_list)
 
-        results = GaussianResultList(
-            [
-                GaussianResult(estimate_list[i], state_true[i])
-                for i in range(len(estimate_list))
-            ]
-        )
+        results = GaussianResultList.from_estimates(estimate_list, state_true)
         return results
 
     return ekf_trial

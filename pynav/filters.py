@@ -124,10 +124,12 @@ class ExtendedKalmanFilter:
         # If state has no time stamp, load from measurement.
         # usually only happens on estimator start-up
         if x.state.stamp is None:
-            x.state.stamp = u.stamp
+            t_km1 = u.stamp
+        else:
+            t_km1 = x.state.stamp
 
         if dt is None:
-            dt = u.stamp - x.state.stamp
+            dt = u.stamp - t_km1
 
         if dt < 0:
             raise RuntimeError("dt is negative!")
@@ -143,7 +145,7 @@ class ExtendedKalmanFilter:
             x_new.state = self.process_model.evaluate(x.state, u, dt)
             x_new.covariance = A @ x.covariance @ A.T + Q
             x_new.symmetrize()
-            x_new.state.stamp = x.state.stamp + dt
+            x_new.state.stamp = t_km1 + dt
 
             details_dict = {"A": A, "Q": Q}
             

@@ -103,9 +103,9 @@ class MatrixLieGroupState(State):
     def plus(self, dx: np.ndarray) -> "MatrixLieGroupState":
         new = self.copy()
         if self.direction == "right":
-            new.value = new.value @ new.group.Exp(dx)
+            new.value = self.value @ self.group.Exp(dx)
         elif self.direction == "left":
-            new.value = new.group.Exp(dx) @ new.value
+            new.value = self.group.Exp(dx) @ self.value
         else:
             raise ValueError("direction must either be 'left' or 'right'.")
         return new
@@ -120,12 +120,22 @@ class MatrixLieGroupState(State):
         return diff.ravel()
 
     def copy(self) -> "MatrixLieGroupState":
-        return self.__class__(
-            self.value.copy(),
-            self.stamp,
-            self.state_id,
-            self.direction,
-        )
+        ## Check if instance of this class as opposed to a child class 
+        if type(self) == MatrixLieGroupState:
+            return MatrixLieGroupState(
+                self.value.copy(),
+                self.group,
+                self.stamp,
+                self.state_id,
+                self.direction,
+            )
+        else:
+            return self.__class__(
+                self.value.copy(),
+                self.stamp,
+                self.state_id,
+                self.direction,
+            )
 
     def plus_jacobian(self, dx: np.ndarray) -> np.ndarray:
         if self.direction == "right":
@@ -156,6 +166,11 @@ class MatrixLieGroupState(State):
         ]
         return "\n".join(s)
     
+    def dot(self, other: "MatrixLieGroupState") -> "MatrixLieGroupState":
+        new = self.copy()
+        new.value = self.value @ other.value
+        return new
+
     @property
     def attitude(self) -> np.ndarray:
         raise NotImplementedError(
@@ -191,7 +206,10 @@ class SO2State(MatrixLieGroupState):
         stamp: float = None,
         state_id=None,
         direction="right",
-    ):
+    ):  
+        # check if value is a single number
+        if isinstance(value, (int, float)):
+            value = np.array(value).reshape((1, 1))
         super().__init__(value, SO2, stamp, state_id, direction)
 
     @property
