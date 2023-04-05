@@ -43,4 +43,4 @@ from .preintegration import (
     PreintegratedLinearModel,
 )
 
-from .datasets import SimulatedPoseRanging, SimulatedInertialGPS
+from .datasets import SimulatedPoseRangingDataset, SimulatedInertialGPSDataset
