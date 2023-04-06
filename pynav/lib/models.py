@@ -632,7 +632,8 @@ class RangePoseToPose(MeasurementModel):
     """
     Range model given two absolute poses of rigid bodies, each containing a tag.
     """
-    # TODO. tag_body_positions should be optional
+    # TODO. tag_body_positions should be optional. arghh, im so stupid. this will
+    # be a breaking change since the argument order would change.
     def __init__(
         self, tag_body_position1, tag_body_position2, state_id1, state_id2, R
     ):

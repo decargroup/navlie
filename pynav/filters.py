@@ -763,6 +763,7 @@ def run_filter(
     P0: np.ndarray,
     input_data: List[Input],
     meas_data: List[Measurement],
+    disable_progress_bar: bool = False,
 ) -> List[StateWithCovariance]:
     """
     Executes a predict-correct-style filter given lists of input and measurement
@@ -805,7 +806,7 @@ def run_filter(
         y = meas_data[meas_idx]
 
     results_list = []
-    for k in tqdm(range(len(input_data) - 1)):
+    for k in tqdm(range(len(input_data) - 1), disable=disable_progress_bar):
         u = input_data[k]
         # Fuse any measurements that have occurred.
         if len(meas_data) > 0:

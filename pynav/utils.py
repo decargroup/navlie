@@ -316,10 +316,12 @@ class MonteCarloResult:
         self.average_nees: np.ndarray = np.average(
             np.array([t.nees for t in trial_results]), axis=0
         )
+        self.nees = self.average_nees
         #:numpy.ndarray with shape (N,): average EES throughout trajectory
         self.average_ees: np.ndarray = np.average(
             np.array([t.ees for t in trial_results]), axis=0
         )
+        self.ees = self.average_ees
         #:numpy.ndarray with shape (N,dof): root-mean-squared error of each component
         self.rmse: np.ndarray = np.sqrt(
             np.average(
@@ -580,6 +582,8 @@ def plot_error(
             )
         axs[i].plot(results.stamp, results.error[:, i], label=label, **kwargs)
 
+
+    fig: plt.Figure = fig # For type hinting
     return fig, axs_og
 
 def plot_nees(

@@ -184,12 +184,7 @@ ekf = ExtendedKalmanFilter(process_model)
 estimate_list = run_filter(ekf, x0, P0, input_list, invariants)
 
 # Postprocess the results and plot
-results = GaussianResultList(
-    [
-        GaussianResult(estimate_list[i], states_true[i])
-        for i in range(len(estimate_list))
-    ]
-)
+results = GaussianResultList.from_estimates(estimate_list, states_true)
 
 from pynav.utils import plot_poses
 import seaborn as sns

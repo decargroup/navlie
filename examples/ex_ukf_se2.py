@@ -1,17 +1,13 @@
-from pynav.lib import SE3State, BodyFrameVelocity
-from pynav.filters import SigmaPointKalmanFilter
-from pynav.utils import GaussianResult, GaussianResultList, plot_error, randvec
-from pynav.types import StateWithCovariance
-from pynav.lib.datasets import SimulatedPoseRangingDataset
+from pynav.lib import SE3State, BodyFrameVelocity, SimulatedPoseRangingDataset
+from pynav import SigmaPointKalmanFilter, run_filter, GaussianResultList, plot_error, randvec
 import time
-from pylie import SE3
 import numpy as np
-from typing import List
+
 np.random.seed(0)
 
 # ##############################################################################
 # Problem Setup
-x0 = SE3State(SE3.Exp([0, 0, 0, 0, 0, 0]), stamp=0.0, direction="right")
+x0 = SE3State([0, 0, 0, 0, 0, 0], stamp=0.0, direction="right")
 P0 = np.diag([0.1**2, 0.1**2, 0.1**2, 1, 1, 1])
 Q = np.diag([0.01**2, 0.01**2, 0.01**2, 0.1, 0.1, 0.1])
 noise_active = True
@@ -26,43 +22,19 @@ if noise_active:
     x0 = x0.plus(randvec(P0))
 # %% ###########################################################################
 # Run Filter
-x = StateWithCovariance(x0, P0)
 
-ukf = SigmaPointKalmanFilter(process_model, method = 'cubature', iterate_mean=False)
+ukf = SigmaPointKalmanFilter(process_model, method = 'unscented', iterate_mean=False)
 
-meas_idx = 0
 start_time = time.time()
-y = meas_data[meas_idx]
-results_list = []
-for k in range(len(input_data) - 1):
-    results_list.append(GaussianResult(x, state_true[k]))
-
-    u = input_data[k]
-    
-    # Fuse any measurements that have occurred.
-    while y.stamp < input_data[k + 1].stamp and meas_idx < len(meas_data):
-
-        x = ukf.correct(x, y, u)
-        meas_idx += 1
-        if meas_idx < len(meas_data):
-            y = meas_data[meas_idx]
-
-    dt = input_data[k + 1].stamp - x.stamp
-    x = ukf.predict(x, u, dt)
-    
-
-
+estimates = run_filter(ukf, x0, P0, input_data, meas_data)
 print("Average filter computation frequency (Hz):")
 print(1 / ((time.time() - start_time) / len(input_data)))
 
-results = GaussianResultList(results_list)
+results = GaussianResultList.from_estimates(estimates, state_true)
 
 # ##############################################################################
 # Plot
-import seaborn as sns
 import matplotlib.pyplot as plt
-
-sns.set_theme()
 fig, axs = plot_error(results)
 axs[-1][0].set_xlabel("Time (s)")
 axs[-1][1].set_xlabel("Time (s)")
