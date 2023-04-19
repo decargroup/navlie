@@ -14,6 +14,7 @@ from scipy.special import eval_hermitenorm
 import scipy.linalg as la
 from tqdm import tqdm
 
+
 def check_outlier(error: np.ndarray, covariance: np.ndarray):
     """
     Performs the Normalized-Innovation-Squared (NIS) test to identify
@@ -146,7 +147,7 @@ class ExtendedKalmanFilter:
             x_new.state.stamp = x.state.stamp + dt
 
             details_dict = {"A": A, "Q": Q}
-            
+
         if output_details:
             return x_new, details_dict
         else:
@@ -365,6 +366,10 @@ class IteratedKalmanFilter(ExtendedKalmanFilter):
                 break
 
             # Perform backtracking line search
+
+            # If line search is disabled, step must be accepted by default
+            step_accepted = True
+
             if self.line_search:
                 alpha = 1
                 cost_new = cost_old + 9999
@@ -717,7 +722,8 @@ class SigmaPointKalmanFilter:
 
         if y_check is not None:
             y_propagated = [
-                y.model.evaluate(x.state.plus(sp)).ravel() for sp in sigmapoints.T
+                y.model.evaluate(x.state.plus(sp)).ravel()
+                for sp in sigmapoints.T
             ]
 
             # predicted measurement mean

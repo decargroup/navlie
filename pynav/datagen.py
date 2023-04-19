@@ -45,7 +45,6 @@ class DataGenerator:
         meas_model_list: List[MeasurementModel] = [],
         meas_freq_list: Union[float, List[float]] = None,
     ):
-
         # Make input covariance a callable if it isnt
         if callable(input_covariance):
             self.input_covariance = input_covariance
@@ -55,7 +54,7 @@ class DataGenerator:
             raise ValueError("Input covariance must be a function or a matrix.")
 
         # Check meas frequencies were provided
-        if len(meas_model_list) == 0 and meas_freq_list is None:
+        if len(meas_model_list) != 0 and meas_freq_list is None:
             raise ValueError("Measurement frequency must be provided.")
 
         # If only one frequency was provided, assume it was for all the models.
@@ -101,7 +100,7 @@ class DataGenerator:
         """
 
         times = np.arange(start, stop, 1 / self.input_freq)
-        times = np.round(times,12)
+        times = np.round(times, 12)
 
         # Build large list of Measurement objects with the correct stamps,
         # but empty values, which we will fill later.
@@ -109,7 +108,7 @@ class DataGenerator:
         for model_and_freq in self._meas_model_and_freq:
             model, freq = model_and_freq
             stamps = np.arange(times[0], times[-1], 1 / freq)
-            stamps = np.round(stamps,12)
+            stamps = np.round(stamps, 12)
             temp = [Measurement(None, stamp, model) for stamp in stamps]
             meas_list.extend(temp)
 
@@ -130,7 +129,6 @@ class DataGenerator:
         input_list: List[Input] = []
 
         for k in range(0, len(times) - 1):
-
             # Check if the provided input profile is an object with a stamp
             # or is just the raw value
             u = self.input_func(times[k], x)
@@ -142,7 +140,6 @@ class DataGenerator:
             # Generate measurements if it is time to do so
             if not meas_generated:
                 while times[k + 1] > meas.stamp and not meas_generated:
-
                     # Propagate state to measurement time
                     dt = meas.stamp - x.stamp
                     x = self.process_model.evaluate(x.copy(), u, dt)
