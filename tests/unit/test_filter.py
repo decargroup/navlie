@@ -1,57 +1,66 @@
-from pynav.lib.models import (
-    SingleIntegrator,
-    RangePointToAnchor,
-)
-from pynav.lib.states import VectorState
-from pynav import DataGenerator, StateWithCovariance
-from pynav.filters import IteratedKalmanFilter, run_filter
-from pynav.utils import randvec
+import pynav as nav
 import numpy as np
 
+def test_iterated_ekf():
+    """
+    Check if we can run the filter with the default options.
+    """
 
-def test_iteratedEKF_no_line_search():
-    # Check if we can run the filter without line search
-    # ##############################################################################
-    # Problem Setup
-
-    x0 = VectorState(np.array([1, 0]), stamp=0)
-    P0 = np.diag([1, 1])
+    x = nav.lib.VectorState([1, 0], stamp=0.0)
+    P = np.diag([1, 1])
     R = 0.1**2
     Q = 0.1 * np.identity(2)
-    range_models = [
-        RangePointToAnchor([0, 4], R),
-    ]
-    range_freqs = [2]
-    process_model = SingleIntegrator(Q)
-    input_profile = lambda t, x: np.array([np.sin(t), np.cos(t)])
-    input_covariance = Q
-    input_freq = 10
-    noise_active = True
-    # ##############################################################################
-    # Data Generation
+    range_model =  nav.lib.RangePointToAnchor([0, 4], R)
+    process_model = nav.lib.SingleIntegrator(Q)
+    y = nav.generate_measurement(x, range_model)
+    u = nav.StampedValue([1,2], stamp=0.0)
+    
+    x = nav.StateWithCovariance(x, P)
+    kf = nav.IteratedKalmanFilter(process_model)
+    x = kf.correct(x, y, u)
+    x = kf.predict(x, u, dt=0.1)
 
-    dg = DataGenerator(
-        process_model,
-        input_profile,
-        input_covariance,
-        input_freq,
-        range_models,
-        range_freqs,
-    )
 
-    gt_data, input_data, meas_data = dg.generate(x0, 0, 1, noise=noise_active)
+def test_iterated_ekf_no_line_search():
+    """
+    Check if we can run the filter without line search
+    """
 
-    # ##############################################################################
-    # Run Filter
-    if noise_active:
-        x0 = x0.plus(randvec(P0))
+    x = nav.lib.VectorState([1, 0], stamp=0.0)
+    P = np.diag([1, 1])
+    R = 0.1**2
+    Q = 0.1 * np.identity(2)
+    range_model =  nav.lib.RangePointToAnchor([0, 4], R)
+    process_model = nav.lib.SingleIntegrator(Q)
+    y = nav.generate_measurement(x, range_model)
+    u = nav.StampedValue([1,2], stamp=0.0)
+    
+    x = nav.StateWithCovariance(x, P)
+    kf = nav.IteratedKalmanFilter(process_model, line_search=False)
+    x = kf.correct(x, y, u)
+    x = kf.predict(x, u, dt=0.1)
 
-    x = StateWithCovariance(x0, P0)
-    try:
-        filter = IteratedKalmanFilter(process_model, line_search=False)
-        run_filter(filter, x0, P0, input_data, meas_data)
-    except Exception as e:
-        print(e)
-        assert False
-    else:
-        assert True
+def test_iterated_ekf_equivalence():
+    """
+    With a single iteration, the iterated EKF should be equivalent to the
+    standard EKF. Note that the covariance will be different, because the
+    iterated EKF calculates the covariance using the posterior jacobians as
+    opposed to the prior jacobians.
+    """
+    x = nav.lib.VectorState([1, 0], stamp=0.0)
+    P = np.diag([1, 1])
+    R = 0.1**2
+    Q = 0.1 * np.identity(2)
+    range_model =  nav.lib.RangePointToAnchor([0, 4], R)
+    process_model = nav.lib.SingleIntegrator(Q)
+    y = nav.generate_measurement(x, range_model)
+    u = nav.StampedValue([1,2], stamp=0.0)
+    
+    x = nav.StateWithCovariance(x, P)
+    kf = nav.IteratedKalmanFilter(process_model, max_iters=1, line_search=False)
+    ekf = nav.ExtendedKalmanFilter(process_model)
+    x1 = kf.correct(x, y, u)
+    x1 = kf.predict(x1, u, dt=0.1)
+    x2 = ekf.correct(x, y, u)
+    x2 = ekf.predict(x2, u, dt=0.1)
+    assert np.allclose(x1.state.value, x2.state.value)
