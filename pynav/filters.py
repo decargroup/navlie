@@ -433,42 +433,6 @@ class IteratedKalmanFilter(ExtendedKalmanFilter):
 
         return x
 
-    def _get_cost_and_info(
-        self,
-        x_op: State,
-        x_check: StateWithCovariance,
-        y: Measurement,
-        x_jac,
-    ) -> float:
-        if x_jac is not None:
-            x_op_jac = x_jac
-        else:
-            x_op_jac = x_op
-        R = np.atleast_2d(y.model.covariance(x_op))
-        G = np.atleast_2d(y.model.jacobian(x_op_jac))
-        y_check = y.model.evaluate(x_op)
-        z = y.minus(y_check)
-        e = x_op.minus(x_check.state).reshape((-1, 1))
-        J = x_op.plus_jacobian(e)
-        P = J @ x_check.covariance @ J.T
-        P = 0.5 * (P + P.T)
-        cost_prior = np.ndarray.item(
-            0.5 * e.T @ np.linalg.solve(x_check.covariance, e)
-        )
-        cost_meas = np.ndarray.item(0.5 * z.T @ np.linalg.solve(R, z))
-
-        out = {
-            "cost": cost_prior + cost_meas,
-            "z": z,
-            "G": G,
-            "J": J,
-            "P": P,
-            "e": e,
-            "R": R,
-        }
-        return out
-
-
 def generate_sigmapoints(
     dof: int, method: str
 ) -> Tuple[np.ndarray, np.ndarray]:
