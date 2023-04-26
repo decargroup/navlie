@@ -352,7 +352,7 @@ class IteratedKalmanFilter(ExtendedKalmanFilter):
 
             P_inv = np.linalg.inv(x.covariance)
             R_inv = np.linalg.inv(R)
-            cost_old = np.asscalar(0.5 * (e.T @ P_inv @ e + z.T @ R_inv @ z))
+            cost_old = np.ndarray.item(0.5 * (e.T @ P_inv @ e + z.T @ R_inv @ z))
             P = J @ x.covariance @ J.T
 
             # Compute covariance of innovation
@@ -384,7 +384,7 @@ class IteratedKalmanFilter(ExtendedKalmanFilter):
                     y_check = y.model.evaluate(x_new)
                     z_new = y.minus(y_check)
                     e_new = x_new.minus(x.state).reshape((-1, 1))
-                    cost_new = np.asscalar(
+                    cost_new = np.ndarray.item(
                         0.5
                         * (e_new.T @ P_inv @ e_new + z_new.T @ R_inv @ z_new)
                     )
