@@ -342,12 +342,16 @@ class CompositeInput(Input):
         """
         return [x.state_id for x in self.input_list].index(state_id)
 
-    def add_input(self, input: Input, stamp: float = None, state_id=None):
-        """Adds an input and its corresponding slice to the composite input."""
+    def add_input(self, input: Input):
+        """
+        Adds an input to the composite input.
+        """
         self.input_list.append(input)
 
     def remove_input_by_id(self, state_id):
-        """Removes a given input by ID."""
+        """
+        Removes a given input by ID.
+        """
         idx = self.get_index_by_id(state_id)
         self.input_list.pop(idx)
 
@@ -374,7 +378,7 @@ class CompositeInput(Input):
 
     def set_stamp_by_id(self, stamp: float, state_id):
         """
-        Set the timestamp of a sub-state by id.
+        Set the timestamp of a sub-input by id.
         """
         idx = self.get_index_by_id(state_id)
         self.input_list[idx].stamp = stamp
@@ -395,7 +399,7 @@ class CompositeInput(Input):
 
     def to_list(self):
         """
-        Converts the CompositeInput object back into a list of states.
+        Converts the CompositeInput object back into a list of inputs.
         """
         return self.input_list
 

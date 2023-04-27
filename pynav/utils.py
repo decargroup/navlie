@@ -1053,14 +1053,31 @@ def state_interp(
     return out
 
 def schedule_sequential_measurements(model_list, freq):
-    # TODO: Add documentation and tests 
+    """Schedules sequential measurements from a list of MeasurementModels
+    that cannot generate measurements at the same time. This allows
+    looping through the measurement model list one at a time. 
+
+    Parameters
+    ----------
+    model_list: List[Measurement]
+        The list of sequential MeasurementModels.
+    freq: float
+        The frequency in which all the measurements 
+
+    Returns
+    -------
+    List[float]
+        The list of initial offsets associated with each MeasurementModel.
+    float
+        The reduced frequency so that MeasurementModels run in sequence.
+    """
     n_models = len(model_list)
-    offset_list = [None]*n_models
-    offset_step = (1/freq)
+    offset_list = [None] * n_models
+    offset_step = (1 / freq)
     new_freq = freq / n_models
     
     for i in range(n_models):
-        offset_list[i] = i*offset_step 
+        offset_list[i] = i * offset_step
 
     return offset_list, new_freq 
 
