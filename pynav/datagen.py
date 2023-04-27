@@ -84,7 +84,7 @@ class DataGenerator:
             elif len(meas_offset_list) != len(meas_model_list):
                 raise ValueError("The number of offsets and \
                                  measurement models should be the same.")
-        elif meas_offset_list is not None:
+        else:
             raise ValueError("Offsets should be provided as a float or a list of floats.")
 
         self.process_model = process_model
