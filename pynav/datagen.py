@@ -49,7 +49,7 @@ class DataGenerator:
         input_freq: float,
         meas_model_list: List[MeasurementModel] = [],
         meas_freq_list: Union[float, List[float]] = None,
-        meas_offset_list: Union[float, List[float]] = None,
+        meas_offset_list: Union[float, List[float]] = [],
     ):
         
         # Make input covariance a callable if it isnt
@@ -65,7 +65,7 @@ class DataGenerator:
             raise ValueError("Measurement frequency must be provided.")
         
         # If meas model provided but no offsets, set offsets to 0
-        if (len(meas_model_list) != 0) and (meas_offset_list is None):
+        if (len(meas_model_list) != 0) and (len(meas_offset_list) == 0):
             meas_offset_list = [0.0]
 
         # If only one frequency was provided, assume it was for all the models.
@@ -84,7 +84,7 @@ class DataGenerator:
             elif len(meas_offset_list) != len(meas_model_list):
                 raise ValueError("The number of offsets and \
                                  measurement models should be the same.")
-        else:
+        elif meas_offset_list is not None:
             raise ValueError("Offsets should be provided as a float or a list of floats.")
 
         self.process_model = process_model

@@ -1,14 +1,21 @@
-from pynav.utils import GaussianResult, GaussianResultList
+from pynav.utils import (
+    GaussianResult, GaussianResultList, schedule_sequential_measurements
+)
 from pynav.types import StateWithCovariance
-from pynav.lib.states import SE23State
-from pylie import SE23
+from pynav.lib.states import (
+    SE23State,
+    SE3State,
+    SO3State,
+)
+from pylie import (
+    SE23, SE3, SO3
+)
 import numpy as np
 
 from pynav.utils import jacobian
 import numpy as np
 import pytest
-from pylie import SO3
-from pynav.lib.states import SO3State
+from pynav.lib.models import RangePoseToAnchor
 
 
 def test_gaussian_result_indexing():
@@ -108,7 +115,20 @@ def test_jacobian_x2():
 
     assert np.allclose(J_test, 2*x.T)
 
+def test_meas_scheduling():
+    x = SE3State(
+        SE3.random(),
+    )
+    model = RangePoseToAnchor([1, 2, 0], [0.3, 0.1, 0], 1)
+    model_list = [model]*5
 
+    freq = 50
+
+    offset_list, new_freq = \
+        schedule_sequential_measurements(model_list, freq)
+
+    assert new_freq == 10
+    assert (np.array(offset_list) == np.array([0,1,2,3,4])/freq).all()
 
 if __name__=="__main__":
     # just for debugging purposes

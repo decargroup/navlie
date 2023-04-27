@@ -322,10 +322,6 @@ class LinearMeasurement(MeasurementModel):
 class CompositeInput(Input):
     # TODO: add tests to new methods
     def __init__(self, input_list: List[Input]) -> None:
-        
-        # TODO: maybe this should be called "value" for consistency with
-        # CompositeState. Why does the Input class not have a "value"
-        # attribute?
         self.input_list = input_list
 
     @property
