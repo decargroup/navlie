@@ -338,15 +338,24 @@ class IteratedKalmanFilter(ExtendedKalmanFilter):
             # Load a dedicated state evaluation point for jacobian
             # if the user supplied it.
 
-            info = self._get_cost_and_info(x_op, x, y, x_jac)
-            J = info["J"]
-            G = info["G"]
-            R = info["R"]
-            P = info["P"]
-            e = info["e"]
-            z = info["z"]
-            cost_old = info["cost"]
+            if x_jac is not None:
+                x_op_jac = x_jac
+            else:
+                x_op_jac = x_op
 
+            R = np.atleast_2d(y.model.covariance(x_op))
+            G = np.atleast_2d(y.model.jacobian(x_op_jac))
+            y_check = y.model.evaluate(x_op)
+            z = y.minus(y_check)
+            e = x_op.minus(x.state).reshape((-1, 1))
+            J = x_op.plus_jacobian(e)
+
+            P_inv = np.linalg.inv(x.covariance)
+            R_inv = np.linalg.inv(R)
+            cost_old = np.ndarray.item(0.5 * (e.T @ P_inv @ e + z.T @ R_inv @ z))
+            P = J @ x.covariance @ J.T
+
+            # Compute covariance of innovation
             S = G @ P @ G.T + R
             S = 0.5 * (S + S.T)
 
@@ -355,88 +364,74 @@ class IteratedKalmanFilter(ExtendedKalmanFilter):
             if reject_outlier:
                 outlier = check_outlier(z, S)
 
-            # If not outlier, compute step direction
-            # Otherwise, exit loop.
-            if not outlier:
-                K = np.linalg.solve(S.T, (P @ G.T).T).T
-                dx = -J @ e + K @ (z + G @ J @ e)
-            else:
+            # If outlier, immediately exit.
+            if outlier:
                 break
+
+            K = np.linalg.solve(S.T, (P @ G.T).T).T
+            dx = -J @ e + K @ (z + G @ J @ e)
 
             # If step direction is small already, exit loop.
             if np.linalg.norm(dx) < self.step_tol:
                 break
 
             # Perform backtracking line search
-
-            # If line search is disabled, step must be accepted by default
-            step_accepted = True
-
             if self.line_search:
                 alpha = 1
-                cost_new = cost_old + 9999
                 step_accepted = False
                 while not step_accepted and alpha > self.step_tol:
                     x_new = x_op.plus(alpha * dx)
-                    cost_new = self._get_cost_and_info(x_new, x, y, x_jac)[
-                        "cost"
-                    ]
+                    y_check = y.model.evaluate(x_new)
+                    z_new = y.minus(y_check)
+                    e_new = x_new.minus(x.state).reshape((-1, 1))
+                    cost_new = np.ndarray.item(
+                        0.5
+                        * (e_new.T @ P_inv @ e_new + z_new.T @ R_inv @ z_new)
+                    )
                     if cost_new < cost_old:
                         step_accepted = True
+
                     else:
                         alpha *= 0.9
             else:
+                # If line search is disabled, step is accepted by default.
+                # Take full step.
+                step_accepted = True
                 x_new = x_op.plus(dx)
-                cost_new = cost_old
 
-            # If step was not accepted, exit loop and do not update step
-            if not step_accepted:
+            # If step accepted, set new operating point. Otherwise,
+            # immediately halt iterations, x_op will be the latest valid step.
+            if step_accepted:
+                x_op = x_new
+            else:
                 break
 
-            x_op = x_new
             count += 1
 
-        x.state = x_op
         if not outlier:
-            x.covariance = (np.identity(x.state.dof) - K @ G) @ (J @ P @ J.T)
+            # We need to recompute some stuff for covariance
+            # calculation purposes.
+            if x_jac is not None:
+                x_op_jac = x_jac
+            else:
+                x_op_jac = x_op
+
+            # Re-evaluate the jacobians at our latest operating point
+            G = np.atleast_2d(y.model.jacobian(x_op_jac))
+            e = x_op.minus(x.state).reshape((-1, 1))
+            J = x_op.plus_jacobian(e)
+            P = J @ x.covariance @ J.T
+            S = G @ P @ G.T + R
+            S = 0.5 * (S + S.T)
+            K = np.linalg.solve(S.T, (P @ G.T).T).T
+            x.state = x_op
+            x.covariance = (np.identity(x.state.dof) - K @ G) @ (
+                J @ x.covariance @ J.T
+            )
 
         x.symmetrize()
 
         return x
-
-    def _get_cost_and_info(
-        self,
-        x_op: State,
-        x_check: StateWithCovariance,
-        y: Measurement,
-        x_jac,
-    ) -> float:
-        if x_jac is not None:
-            x_op_jac = x_jac
-        else:
-            x_op_jac = x_op
-        R = np.atleast_2d(y.model.covariance(x_op_jac))
-        G = np.atleast_2d(y.model.jacobian(x_op_jac))
-        y_check = y.model.evaluate(x_op)
-        z = y.minus(y_check)
-        e = x_op.minus(x_check.state).reshape((-1, 1))
-        J = x_op.plus_jacobian(e)
-        P = J @ x_check.covariance @ J.T
-        P = 0.5 * (P + P.T)
-        cost_prior = np.ndarray.item(0.5 * e.T @ np.linalg.solve(P, e))
-        cost_meas = np.ndarray.item(0.5 * z.T @ np.linalg.solve(R, z))
-
-        out = {
-            "cost": cost_prior + cost_meas,
-            "z": z,
-            "G": G,
-            "J": J,
-            "P": P,
-            "e": e,
-            "R": R,
-        }
-        return out
-
 
 def generate_sigmapoints(
     dof: int, method: str
@@ -761,6 +756,49 @@ class SigmaPointKalmanFilter:
                 x.symmetrize()
 
         return x
+
+
+class UnscentedKalmanFilter(SigmaPointKalmanFilter):
+    def __init__(
+        self,
+        process_model: ProcessModel,
+        reject_outliers=False,
+        iterate_mean=True,
+    ):
+        super().__init__(
+            process_model=process_model,
+            method="unscented",
+            reject_outliers=reject_outliers,
+            iterate_mean=iterate_mean,
+        )
+
+class CubatureKalmanFilter(SigmaPointKalmanFilter):
+    def __init__(
+        self,
+        process_model: ProcessModel,
+        reject_outliers=False,
+        iterate_mean=True,
+    ):
+        super().__init__(
+            process_model=process_model,
+            method="cubature",
+            reject_outliers=reject_outliers,
+            iterate_mean=iterate_mean,
+        )
+
+class GaussHermiteKalmanFilter(SigmaPointKalmanFilter):
+    def __init__(
+        self,
+        process_model: ProcessModel,
+        reject_outliers=False,
+        iterate_mean=True,
+    ):
+        super().__init__(
+            process_model=process_model,
+            method="gh",
+            reject_outliers=reject_outliers,
+            iterate_mean=iterate_mean,
+        )
 
 
 def run_filter(
