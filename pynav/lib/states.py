@@ -36,7 +36,7 @@ class VectorState(State):
             new.value: np.ndarray = new.value.ravel() + dx.ravel()
             return new
         else:
-            raise AssertionError("Array of mismatched size added to VectorState.")
+            raise ValueError("Array of mismatched size added to VectorState.")
 
     def minus(self, x: "VectorState") -> np.ndarray:
         og_shape = self.value.shape
