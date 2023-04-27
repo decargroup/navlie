@@ -9,15 +9,21 @@ from abc import ABC, abstractmethod
 
 
 class Input(ABC):
+    __slots__ = ["stamp", "dof", "covariance", "state_id"]
 
-    __slots__ = ["stamp", "dof"]
-
-    def __init__(self, dof: int, stamp: float = None, state_id: Any = None):
+    def __init__(
+        self,
+        dof: int,
+        stamp: float = None,
+        state_id: Any = None,
+        covariance: np.ndarray = None,
+    ):
         self.stamp = stamp  #:float: Timestamp
         self.dof = dof  #:int: Degrees of freedom of the object
 
         #:Any: Arbitrary optional identifier, possible to "assign" to a state.
         self.state_id = state_id
+        self.covariance = covariance
 
     @abstractmethod
     def plus(self, w: np.ndarray) -> "Input":
@@ -33,10 +39,14 @@ class StampedValue(Input):
     Generic data container for timestamped information.
     """
 
-    __slots__ = ["value", "state_id"]
+    __slots__ = ["value"]
 
     def __init__(
-        self, value: np.ndarray, stamp: float = None, state_id: Any = None
+        self,
+        value: np.ndarray,
+        stamp: float = None,
+        state_id: Any = None,
+        covariance=None,
     ):
         if not isinstance(value, np.ndarray):
             value = np.array(value, dtype=np.float64)
@@ -44,7 +54,12 @@ class StampedValue(Input):
         #:numpy.ndarray:  Variable containing the data values
         self.value = value
 
-        super().__init__(value.size, stamp, state_id)
+        super().__init__(
+            dof=value.size,
+            stamp=stamp,
+            state_id=state_id,
+            covariance=covariance,
+        )
 
     def plus(self, w: np.ndarray) -> "StampedValue":
         """
@@ -58,17 +73,18 @@ class StampedValue(Input):
         new = self.copy()
         og_shape = new.value.shape
         new.value = new.value.ravel() + w.ravel()
-        new.value.reshape(og_shape)
+        new.value = new.value.reshape(og_shape)
         return new
 
     def copy(self) -> "StampedValue":
         """
         Returns a copy of the instance with fully seperate memory.
         """
-        return StampedValue(self.value.copy(), self.stamp, self.state_id)
+        return StampedValue(
+            self.value.copy(), self.stamp, self.state_id, self.covariance
+        )
 
     def __repr__(self):
-
         value_str = str(self.value).split("\n")
         value_str = "\n".join(["    " + s for s in value_str])
         s = [
@@ -177,7 +193,6 @@ class State(ABC):
         return jac_fd
 
     def __repr__(self):
-
         value_str = str(self.value).split("\n")
         value_str = "\n".join(["    " + s for s in value_str])
         s = [
@@ -236,6 +251,13 @@ class MeasurementModel(ABC):
             jac_fd[:, i] = (self.evaluate(x_temp) - y).flatten() / step_size
 
         return jac_fd
+
+    def __repr__(self):
+        return f"{self.__class__.__name__}"
+
+    def sqrt_information(self, x: State):
+        R = np.atleast_2d(self.covariance(x))
+        return np.linalg.cholesky(np.linalg.inv(R))
 
 
 class ProcessModel(ABC):
@@ -353,6 +375,13 @@ class ProcessModel(ABC):
 
         return jac_fd
 
+    def __repr__(self):
+        return f"{self.__class__.__name__} at {hex(id(self))}"
+
+    def sqrt_information(self, x: State, u: Input, dt: float) -> np.ndarray:
+        Q = np.atleast_2d(self.covariance(x, u, dt))
+        return np.linalg.cholesky(np.linalg.inv(Q))
+
 
 class Measurement:
     """
@@ -369,6 +398,18 @@ class Measurement:
         model: MeasurementModel = None,
         state_id: Any = None,
     ):
+        """
+        Parameters
+        ----------
+        value : np.ndarray
+            the value of the measurement reading
+        stamp : float, optional
+            timestamp, by default None
+        model : MeasurementModel, optional
+            model for this measurement, by default None
+        state_id : Any, optional
+            optional state ID, by default None
+        """
         #:numpy.ndarray: Container for the measurement value
         self.value = np.array(value) if np.isscalar(value) else value
         #:float: Timestamp
@@ -379,16 +420,25 @@ class Measurement:
         self.state_id = state_id
 
     def __repr__(self):
-
         value_str = str(self.value).split("\n")
         value_str = "\n".join(["    " + s for s in value_str])
 
         s = [
             f"Measurement(stamp={self.stamp}, state_id={self.state_id})"
-            + f" of {self.model.__class__.__name__}",
+            + f" of {self.model}",
             value_str,
         ]
         return "\n".join(s)
+
+    def minus(self, y_check: np.ndarray) -> np.ndarray:
+        """Evaluates the difference between the current measurement
+        and a predicted measurement.
+
+        By default, assumes that the measurement is a column vector,
+        and thus, the `minus` operator is simply vector subtraction.
+        """
+
+        return self.value.reshape((-1, 1)) - y_check.reshape((-1, 1))
 
 
 class StateWithCovariance:
@@ -399,7 +449,6 @@ class StateWithCovariance:
     __slots__ = ["state", "covariance"]
 
     def __init__(self, state: State, covariance: np.ndarray):
-
         if covariance.shape[0] != covariance.shape[1]:
             raise ValueError("covariance must be an n x n array.")
 
@@ -433,3 +482,29 @@ class StateWithCovariance:
 
     def __repr__(self):
         return f"StateWithCovariance(stamp={self.stamp})"
+
+
+class Dataset(ABC):
+    """A container to store a dataset.
+
+    Contains abstract methods to get the groundtruth data,
+    the input data, and measurement data.
+    """
+
+    def __init__(self):
+        pass
+
+    @abstractmethod
+    def get_ground_truth(self) -> List[State]:
+        """Returns a list of groundtruth states."""
+        pass
+
+    @abstractmethod
+    def get_input_data(self) -> List[Input]:
+        """Retruns a list of inputs."""
+        pass
+
+    @abstractmethod
+    def get_meas_data(self) -> List[Measurement]:
+        """Returns a list of measurements."""
+        pass

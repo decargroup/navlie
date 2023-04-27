@@ -1,7 +1,7 @@
-from typing import Callable, List, Union
+from typing import Callable, List, Union, Any
 import numpy as np
-from .utils import randvec
-from .types import (
+from pynav.utils import randvec
+from pynav.types import (
     State,
     ProcessModel,
     MeasurementModel,
@@ -123,7 +123,7 @@ class DataGenerator:
         """
 
         times = np.arange(start, stop, 1 / self.input_freq)
-        times = np.round(times,12)
+        times = np.round(times, 12)
 
         # Build large list of Measurement objects with the correct stamps,
         # but empty values, which we will fill later.
@@ -152,19 +152,22 @@ class DataGenerator:
         input_list: List[Input] = []
 
         for k in range(0, len(times) - 1):
-
             # Check if the provided input profile is an object with a stamp
             # or is just the raw value
             u = self.input_func(times[k], x)
+            Q = np.atleast_2d(self.input_covariance(times[k]))
 
             # If just the raw value, converted to a StampedValue object
             if not hasattr(u, "stamp"):
-                u = StampedValue(self.input_func(times[k], x), times[k])
+                u = StampedValue(
+                    value=self.input_func(times[k], x),
+                    stamp=times[k],
+                    covariance=Q,
+                )
 
             # Generate measurements if it is time to do so
             if not meas_generated:
                 while times[k + 1] > meas.stamp and not meas_generated:
-
                     # Propagate state to measurement time
                     dt = meas.stamp - x.stamp
                     x = self.process_model.evaluate(x.copy(), u, dt)
@@ -185,11 +188,10 @@ class DataGenerator:
             # Propagate forward
             dt = times[k + 1] - x.stamp
             x = self.process_model.evaluate(x.copy(), u, dt)
-            x.stamp = times[k+1]
-            
+            x.stamp = times[k + 1]
+
             # Add noise to input if requested.
             if noise:
-                Q = np.atleast_2d(self.input_covariance(times[k]))
                 u = u.plus(randvec(Q))
 
             state_list.append(x.copy())
@@ -202,11 +204,15 @@ class DataGenerator:
 
 
 def generate_measurement(
-    state: Union[State, List[State]], model: MeasurementModel, noise=True
+    state: Union[State, List[State]],
+    model: MeasurementModel,
+    noise=True,
+    state_id: Any = None,
 ) -> Union[Measurement, List[Measurement]]:
     """
     Generates a `Measurement` object given a measurement model and corresponding
-    ground truth state value. Optionally add noise.
+    ground truth `State` objects. If a list of ground truth state objects is
+    provided, a measurement will be generated for each state.
 
     Parameters
     ----------
@@ -216,6 +222,8 @@ def generate_measurement(
         measurement model that will be evaluated to generate the measurement
     noise : bool, optional
         flag whether to add noise to measurement, by default True
+    state_id : Any, optional
+        value to be given to the state_id field of the `Measurement` object
 
     Returns
     -------
@@ -240,7 +248,9 @@ def generate_measurement(
         if noise:
             y = y.reshape((-1, 1)) + randvec(R)
 
-        meas_list.append(Measurement(y.reshape(og_shape), x.stamp, model))
+        meas_list.append(
+            Measurement(y.reshape(og_shape), x.stamp, model, state_id)
+        )
 
     if not received_list:
         meas_list = meas_list[0]

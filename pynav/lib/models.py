@@ -12,7 +12,7 @@ from pynav.lib.states import (
 )
 from pylie import SO2, SO3
 import numpy as np
-from typing import List
+from typing import List, Any
 from scipy.linalg import block_diag
 
 
@@ -78,7 +78,7 @@ class DoubleIntegrator(ProcessModel):
         Ld = self.input_jacobian(dt)
         u = np.atleast_1d(u.value)
         x_new.value = (
-            Ad @ x.value.reshape((-1, 1)) + Ld @ u[:self.dim].reshape((-1, 1))
+            Ad @ x.value.reshape((-1, 1)) + Ld @ u[: self.dim].reshape((-1, 1))
         ).ravel()
         return x_new
 
@@ -86,7 +86,7 @@ class DoubleIntegrator(ProcessModel):
         """
         Discrete-time state Jacobian
         """
-        
+
         Ad = np.identity(2 * self.dim)
         Ad[0 : self.dim, self.dim :] = dt * np.identity(self.dim)
         return Ad
@@ -103,7 +103,6 @@ class DoubleIntegrator(ProcessModel):
         """
         Discrete-time input Jacobian
         """
-        # TODO. make these public
         Ld = np.zeros((2 * self.dim, self.dim))
         Ld[0 : self.dim, :] = 0.5 * dt**2 * np.identity(self.dim)
         Ld[self.dim :, :] = dt * np.identity(self.dim)
@@ -152,19 +151,19 @@ class DoubleIntegratorWithBias(DoubleIntegrator):
 
         pv = x.value[0 : 2 * self.dim].reshape((-1, 1))
         bias = x.value[2 * self.dim :].reshape((-1, 1))
-        accel = u.value[:self.dim].reshape((-1, 1)) - bias
+        accel = u.value[: self.dim].reshape((-1, 1)) - bias
 
         # If the input contains extra dimensions, we assume that they are the
         # random walk input being used for data generation.
         if u.value.size > self.dim:
-            walk = u.value[self.dim:].reshape((-1,1))
+            walk = u.value[self.dim :].reshape((-1, 1))
         else:
             walk = np.zeros((self.dim, 1))
 
         # TODO. just augment these as matrices
         pv = (Ad @ pv + Ld @ accel).ravel()
         x.value[0 : 2 * self.dim] = pv
-        x.value[2*self.dim:] = (bias + walk * dt).ravel()
+        x.value[2 * self.dim :] = (bias + walk * dt).ravel()
         return x
 
     def jacobian(self, x, u, dt) -> np.ndarray:
@@ -197,6 +196,7 @@ class DoubleIntegratorWithBias(DoubleIntegrator):
         L[2 * self.dim :, self.dim :] = dt * np.identity(self.dim)
         return L
 
+
 class OneDimensionalPositionVelocityRange(MeasurementModel):
     """
     A 1D range measurement for a state consisting of position and velocity
@@ -222,6 +222,9 @@ class BodyFrameVelocity(ProcessModel):
     The body-frame velocity process model assumes that the input contains
     both translational and angular velocity measurements, both relative to
     a local reference frame, but resolved in the robot body frame.
+
+    .. math::
+        \mathbf{T}_k = \mathbf{T}_{k-1} \exp(\Delta t \mathbf{u}_{k-1}^\wedge)
 
     This is commonly the process model associated with SE(n).
     """
@@ -299,6 +302,7 @@ class RelativeBodyFrameVelocity(ProcessModel):
                 "TODO: left covariance not yet implemented."
             )
 
+
 class LinearMeasurement(MeasurementModel):
     def __init__(self, C: np.ndarray, R: np.ndarray):
         # TODO. add tests
@@ -306,11 +310,11 @@ class LinearMeasurement(MeasurementModel):
         self._R = R
 
     def evaluate(self, x: VectorState) -> np.ndarray:
-        return self._C @ x.value.reshape((-1,1))
-    
+        return self._C @ x.value.reshape((-1, 1))
+
     def jacobian(self, x: VectorState) -> np.ndarray:
         return self._C
-    
+
     def covariance(self, x: VectorState) -> np.ndarray:
         return self._R
 
@@ -400,9 +404,10 @@ class CompositeInput(Input):
 
     def plus(self, w: np.ndarray):
         new = self.copy()
+        temp = w
         for i, input in enumerate(self.input_list):
-            new.input_list[i] = input.plus(w[: input.dof])
-            w = w[input.dof :]
+            new.input_list[i] = input.plus(temp[: input.dof])
+            temp = temp[input.dof :]
 
         return new
 
@@ -412,18 +417,19 @@ class CompositeProcessModel(ProcessModel):
     Should this be called a StackedProcessModel?
     # TODO: Add documentation and tests
     """
+
     # TODO: This needs to be expanded and/or changed. We have come across the
     # following use cases:
     # 1. Applying a completely seperate process model to each sub-state.
     # 2. Applying a single process model to each sub-state (seperately).
     # 3. Applying a single process model to one sub-state, and leaving the rest
     #    unchanged.
-    # 4. Applying process model A to some sub-states, and process model B to 
+    # 4. Applying process model A to some sub-states, and process model B to
     #    other sub-states
-    # 5. Receiving a CompositeInput, which is a list of synchronously-received 
+    # 5. Receiving a CompositeInput, which is a list of synchronously-received
     #    inputs, and applying each input to the corresponding sub-state.
     # 6. Receiving the state-specific input asynchronously, applying to the
-    #    corresponding sub-state, and leaving the rest unchanged. Typically happens 
+    #    corresponding sub-state, and leaving the rest unchanged. Typically happens
     #    with case 3.
 
     # What they all have in common: list of decoupled process models, one per
@@ -497,6 +503,9 @@ class CompositeMeasurementModel(MeasurementModel):
         self.model = model
         self.state_id = state_id
 
+    def __repr__(self):
+        return f"{self.model}(of substate {self.state_id})"
+
     def evaluate(self, x: CompositeState) -> np.ndarray:
         return self.model.evaluate(x.get_state_by_id(self.state_id))
 
@@ -511,6 +520,26 @@ class CompositeMeasurementModel(MeasurementModel):
     def covariance(self, x: CompositeState) -> np.ndarray:
         x_sub = x.get_state_by_id(self.state_id)
         return self.model.covariance(x_sub)
+
+
+class CompositeMeasurement(Measurement):
+    def __init__(self, y: Measurement, state_id: Any):
+        """
+        Converts a standard Measurement into a CompositeMeasurement, which
+        replaces the model with a CompositeMeasurementModel.
+
+        Parameters
+        ----------
+        y : Measurement
+            Measurement to be converted.
+        state_id : Any
+            ID of the state that the measurement will be assigned to,
+            as per the CompositeMeasurementModel.
+        """
+        model = CompositeMeasurementModel(y.model, state_id)
+        super().__init__(
+            value=y.value, stamp=y.stamp, model=model, state_id=y.state_id
+        )
 
 
 class RangePointToAnchor(MeasurementModel):
@@ -695,7 +724,7 @@ class RangePoseToPose(MeasurementModel):
     """
     Range model given two absolute poses of rigid bodies, each containing a tag.
     """
-
+    # TODO. tag_body_positions should be optional
     def __init__(
         self, tag_body_position1, tag_body_position2, state_id1, state_id2, R
     ):
@@ -773,12 +802,39 @@ class RangePoseToPose(MeasurementModel):
 
 class RangeRelativePose(CompositeMeasurementModel):
     """
-    Range model given a pose of another body relative to current pose.
+    Range model given a pose of another body relative to current pose. This
+    model operates on a CompositeState where it is assumed that the neighbor
+    relative pose is stored as a substate somewhere inside the composite state
+    with a state_id matching the `nb_state_id` supplied to this model.
     """
 
-    def __init__(self, tag_body_position, nb_tag_body_position, nb_state_id, R):
+    def __init__(
+        self,
+        tag_body_position: np.ndarray,
+        nb_tag_body_position: np.ndarray,
+        nb_state_id: Any,
+        R: np.ndarray,
+    ):
+        """
+
+        Parameters
+        ----------
+        tag_body_position : numpy.ndarray
+            Position of tag in body frame of Robot 1.
+        nb_tag_body_position : numpy.ndarray
+            Position of 2nd tag in body frame of Robot 2.
+        nb_state_id : Any
+            State ID of Robot 2.
+        R : float or numpy.ndarray
+            covariance associated with range measurement
+        """
+
         model = RangePoseToAnchor(tag_body_position, nb_tag_body_position, R)
         super(RangeRelativePose, self).__init__(model, nb_state_id)
+
+    def __repr__(self):
+        return f"RangeRelativePose (of substate {self.state_id})"
+
 
 
 class GlobalPosition(MeasurementModel):
@@ -815,7 +871,23 @@ class GlobalPosition(MeasurementModel):
 
 
 class Altitude(MeasurementModel):
-    def __init__(self, R: np.ndarray, minimum=None, bias=0.1):
+    """
+    A model that returns that z component of a position vector.
+    """
+
+    def __init__(self, R: np.ndarray, minimum=None, bias=0.0):
+        """
+
+        Parameters
+        ----------
+        R : np.ndarray
+            variance associated with the measurement
+        minimum : float, optional
+            Minimal height for the measurement to be valid, by default None
+        bias : float, optional
+            Fixed sensor bias, by default 0.0. This bias will be added to the
+            z component of position to create the modelled measurement.
+        """
         self.R = R
         if minimum is None:
             minimum = -np.inf
@@ -854,7 +926,7 @@ class Gravitometer(MeasurementModel):
     """
 
     def __init__(
-        self, R: np.ndarray, gravity_vector: List[float] = [0, 0, -9.80665]
+        self, R: np.ndarray, gravity_vector: List[float] = None
     ):
         """
         Parameters
@@ -864,6 +936,9 @@ class Gravitometer(MeasurementModel):
         gravity_vector : list[float] or numpy.ndarray, optional
             local magnetic field vector, by default [0, 0, -9.80665]
         """
+        if gravity_vector is None:
+            gravity_vector = [0, 0, -9.80665]
+
         self.R = R
         self._g_a = np.array(gravity_vector).reshape((-1, 1))
 
@@ -882,7 +957,10 @@ class Gravitometer(MeasurementModel):
             )
 
     def covariance(self, x: MatrixLieGroupState) -> np.ndarray:
-        return self.R
+        if np.isscalar(self.R):
+            return self.R * np.identity(x.position.size)
+        else:
+            return self.R
 
 
 class Magnetometer(MeasurementModel):
@@ -896,7 +974,7 @@ class Magnetometer(MeasurementModel):
     where :math:`\mathbf{m}_a` is the magnetic field vector in a world frame `a`.
     """
 
-    def __init__(self, R: np.ndarray, magnetic_vector: List[float] = [1, 0, 0]):
+    def __init__(self, R: np.ndarray, magnetic_vector: List[float] = None):
         """
 
         Parameters
@@ -906,6 +984,9 @@ class Magnetometer(MeasurementModel):
         magnetic_vector : list[float] or numpy.ndarray, optional
             local magnetic field vector, by default [1, 0, 0]
         """
+        if magnetic_vector is None:
+            magnetic_vector = [1, 0, 0]
+
         self.R = R
         self._m_a = np.array(magnetic_vector).reshape((-1, 1))
 
@@ -924,7 +1005,10 @@ class Magnetometer(MeasurementModel):
             )
 
     def covariance(self, x: MatrixLieGroupState) -> np.ndarray:
-        return self.R
+        if np.isscalar(self.R):
+            return self.R * np.identity(x.position.size)
+        else:
+            return self.R
 
 
 class _InvariantInnovation(MeasurementModel):
@@ -939,9 +1023,10 @@ class _InvariantInnovation(MeasurementModel):
         y_hat = self.measurement_model.evaluate(x)
         e: np.ndarray = y_hat.ravel() - self.y.ravel()
 
-        if self.direction == "left":
+        direction = self._compute_direction(x)
+        if direction == "left":
             z = x.attitude.T @ e
-        elif self.direction == "right":
+        elif direction == "right":
             z = x.attitude @ e
 
         return z
@@ -949,9 +1034,10 @@ class _InvariantInnovation(MeasurementModel):
     def jacobian(self, x: MatrixLieGroupState) -> np.ndarray:
         G = self.measurement_model.jacobian(x)
 
-        if self.direction == "left":
+        direction = self._compute_direction(x)
+        if direction == "left":
             jac = x.attitude.T @ G
-        elif self.direction == "right":
+        elif direction == "right":
             jac = x.attitude @ G
 
         return jac
@@ -960,13 +1046,30 @@ class _InvariantInnovation(MeasurementModel):
 
         R = np.atleast_2d(self.measurement_model.covariance(x))
 
-        if self.direction == "left":
+        direction = self._compute_direction(x)
+        if direction == "left":
             M = x.attitude.T
             cov = M @ R @ M.T
-        elif self.direction == "right":
+        elif direction == "right":
             M = x.attitude
             cov = M @ R @ M.T
         return cov
+
+    def _compute_direction(self, x: MatrixLieGroupState) -> str:
+        if self.direction == "left":
+            direction = self.direction
+        elif self.direction == "right":
+            direction = self.direction
+        elif self.direction == "auto":
+            if x.direction == "left":
+                direction = "right"
+            elif x.direction == "right":
+                direction = "left"
+        else:
+            raise ValueError(
+                "Invalid direction. Must be 'left', 'right' or 'auto'"
+            )
+        return direction
 
 
 class InvariantMeasurement(Measurement):
@@ -1003,14 +1106,16 @@ class InvariantMeasurement(Measurement):
     :math:`\mathbf{z}`.
     """
 
-    def __init__(self, meas: Measurement, direction, model=None):
+    def __init__(self, meas: Measurement, direction="auto", model=None):
         """
         Parameters
         ----------
         meas : Measurement
             Measurement value
-        direction : "left" or "right", optional
-            whether to form a left- or right-invariant innovation, by default "right"
+        direction : "left" or "right" or "auto"
+            whether to form a left- or right-invariant innovation, by default "auto".
+            If "auto" is chosen, the direction will be chosen to be the opposite of
+            the direction of the state.
         model : MeasurementModel, optional
             a measurement model that directly returns the innovation and
             Jacobian and covariance of the innovation. If none is supplied,
@@ -1025,4 +1130,5 @@ class InvariantMeasurement(Measurement):
             value=np.zeros((meas.value.size,)),
             stamp=meas.stamp,
             model=model,
+            state_id=meas.state_id,
         )

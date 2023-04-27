@@ -1,8 +1,8 @@
 from pylie import SO3, SE23
 import numpy as np
-from ..types import ProcessModel, Input
+from pynav.types import ProcessModel, Input
 from typing import Any, List, Tuple
-from .states import CompositeState, VectorState, SE23State
+from pynav.lib.states import CompositeState, VectorState, SE23State
 from math import factorial
 
 
@@ -16,29 +16,28 @@ class IMU(Input):
         gyro: np.ndarray,
         accel: np.ndarray,
         stamp: float,
-        bias_gyro_walk: np.ndarray=[0, 0, 0],
-        bias_accel_walk: np.ndarray=[0, 0, 0],
+        bias_gyro_walk: np.ndarray = [0, 0, 0],
+        bias_accel_walk: np.ndarray = [0, 0, 0],
         state_id: Any = None,
+        covariance: np.ndarray = None,
     ):
-        super().__init__(dof=12, stamp=stamp)
+        super().__init__(dof=12, stamp=stamp, covariance=covariance)
         self.gyro = np.array(gyro).ravel()  #:np.ndarray: Gyro reading
         self.accel = np.array(
             accel
         ).ravel()  #:np.ndarray: Accelerometer reading
 
         if bias_accel_walk is None:
-            bias_accel_walk = np.zeros((3,1))
+            bias_accel_walk = np.zeros((3, 1))
         else:
             #:np.ndarray: driving input for gyro bias random walk
             self.bias_gyro_walk = np.array(bias_gyro_walk).ravel()
 
         if bias_gyro_walk is None:
-            bias_gyro_walk = np.zeros((3,1))
-        else: 
+            bias_gyro_walk = np.zeros((3, 1))
+        else:
             #:np.ndarray: driving input for accel bias random walk
             self.bias_accel_walk = np.array(bias_accel_walk).ravel()
-
-
 
         self.state_id = state_id  #:Any: State ID associated with the reading
 
@@ -62,6 +61,10 @@ class IMU(Input):
         return new
 
     def copy(self):
+        if self.covariance is None:
+            cov_copy = None 
+        else:
+            cov_copy = self.covariance.copy()
         return IMU(
             self.gyro.copy(),
             self.accel.copy(),
@@ -69,6 +72,7 @@ class IMU(Input):
             self.bias_gyro_walk.copy(),
             self.bias_accel_walk.copy(),
             self.state_id,
+            cov_copy,
         )
 
     def __repr__(self):
@@ -134,7 +138,6 @@ class IMUState(CompositeState):
 
         state_list = [nav_state, bias_gyro, bias_accel]
         super().__init__(state_list, stamp, state_id)
-        self.direction = direction
 
         # Just for type hinting
         self.value: List[SE23State, VectorState, VectorState] = self.value
@@ -204,6 +207,14 @@ class IMUState(CompositeState):
     @pose.setter
     def pose(self, pose):
         self.value[0].pose = pose
+
+    @property
+    def direction(self) -> str:
+        return self.value[0].direction
+
+    @direction.setter
+    def direction(self, direction: str) -> None:
+        self.value[0].direction = direction
 
     def copy(self):
         """
@@ -547,7 +558,6 @@ class IMUKinematics(ProcessModel):
         return x.jacobian_from_blocks(**jac_kwargs)
 
     def covariance(self, x: IMUState, u: IMU, dt: float) -> np.ndarray:
-
         # Jacobian of pose wrt to noise
         L_pn = self._get_input_jacobian(x, u, dt)
 

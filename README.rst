@@ -1,19 +1,28 @@
 pynav
 =====
+.. image:: https://github.com/decargroup/pynav/actions/workflows/test_package.yml/badge.svg
+    :target: https://github.com/decargroup/pynav/actions/workflows/test_package.yml
+    :alt: Tests
+    
 An on-manifold state estimation library for robotics.
 
-The core idea behind this project is to abstract-away the state definition such that a single estimator implementation can operate on a variety of state manifolds, such as the usual vector space, and any Lie group. 
+The core idea behind this project is to abstract-away the state definition such that a single estimator implementation can operate on a variety of state manifolds, such as the usual vector space, and any Lie group. At the moment, algorithms and features of this package include:
 
-Documentation can be found by https://decargroup.github.io/pynav
+- Extended Kalman Filter
+- Iterated Extended Kalman Filter
+- Sigmapoint Kalman Filters (Unscented, Spherical Cubature, Gauss-Hermite)
+- Interacting Multiple Model Filter
+- Batch MAP Estimation
+- A large collection of common process and measurement models
+- Out-of-the-box on-manifold numerical jacobian using finite differencing
+- Various utils for plotting, error, and consistency evaluation
+- Monte Carlo experiment executor with result aggregation
+- A preintegration module for linear, wheel odometry, and IMU process models
+
+By implementing a few classes, the user can model almost any problem. Documentation can be found by https://decargroup.github.io/pynav
 
 Setup
 -----
-
-Dependencies
-^^^^^^^^^^^^
-- python3.6+
-- `pylie` Clone and install https://github.com/decarsg/pylie by following the README.
-- All other dependencies should get installed automatically by `pip`
 
 Installation
 ^^^^^^^^^^^^
@@ -23,6 +32,8 @@ Clone this repo, change to its directory, and execute
 .. code-block:: bash
 
     pip install -e .
+
+This command should automatically install all dependencies, including our package `pylie` (found at https://github.com/decargroup/pylie) for back-end Lie group mathematical operations.
 
 Examples
 ^^^^^^^^
@@ -34,9 +45,9 @@ To run integration tests,
 
 .. code-block:: bash
 
-    pytest -ra tests/integration/
+    pytest tests
 
-or, to run tests on a specific integration test file, 
+or, to run tests on a specific test file, 
 
 .. code-block:: bash
 

@@ -1,10 +1,9 @@
 from pynav.lib.states import SE3State
-from pynav.lib.models import BodyFrameVelocity, GlobalPosition, RangePoseToAnchor
+from pynav.lib.models import BodyFrameVelocity, GlobalPosition
 from pynav.datagen import DataGenerator
 from pynav.filters import ExtendedKalmanFilter, IteratedKalmanFilter
 from pynav.utils import GaussianResult, GaussianResultList, randvec, monte_carlo
 from pynav.types import StateWithCovariance, State
-import time
 from pylie import SE3
 import numpy as np
 from typing import List

@@ -349,6 +349,7 @@ class BodyVelocityIncrement(RelativeMotionIncrement):
         \Delta \mathbf{U}_{ij} = \prod_{k=i}^{j-1} \exp(\Delta t \mathbf{u}_{k}^\wedge).
     """
     # TODO. add bias update tests
+    # TODO. add ability to also propagate bias uncertainty. 
     def __init__(
         self,
         group: MatrixLieGroup,
@@ -366,10 +367,11 @@ class BodyVelocityIncrement(RelativeMotionIncrement):
         self.stamps = [None, None]
         self.state_id = state_id
 
-        bias = np.array(bias).ravel()
         if bias is None:
-            self.bias = np.zeros((group.dof))
+            bias = np.zeros((group.dof))
 
+        bias = np.array(bias).ravel()
+        self.bias = bias
         self.new_bias = bias
 
     def increment(self, u: StampedValue, dt):
@@ -490,6 +492,8 @@ class PreintegratedBodyVelocity(ProcessModel):
         self, x: MatrixLieGroupState, rmi: BodyVelocityIncrement, dt=None
     ) -> MatrixLieGroupState:
         x = x.copy()
+        if rmi.stamps[-1] is not None and rmi.stamps[0] is not None:
+            x.stamp = rmi.stamps[-1]
         x.value = x.value @ rmi.value
         return x
 
@@ -521,7 +525,7 @@ class PreintegratedBodyVelocity(ProcessModel):
         return A
 
     def covariance(
-        self, x: MatrixLieGroupState, rmi: BodyVelocityIncrement, dt: float
+        self, x: MatrixLieGroupState, rmi: BodyVelocityIncrement, dt=None
     ) -> np.ndarray:
         dof = x.dof
         if rmi.input_covariance.shape[0] == dof:
@@ -562,6 +566,18 @@ class AngularVelocityIncrement(BodyVelocityIncrement):
     def __init__(self, Q: np.ndarray, bias: np.ndarray = None, state_id=None):
         super().__init__(SO3, Q, bias, state_id=state_id)
 
+    def new(self) -> "AngularVelocityIncrement":
+        """
+        Returns
+        -------
+        AngularVelocityIncrement
+            A new AngularVelocityIncrement with reinitialized values
+        """
+        new = self.__class__(
+            self.input_covariance, self.bias, self.state_id
+        )
+        return new
+
 
 class WheelOdometryIncrement(BodyVelocityIncrement):
     """
@@ -590,6 +606,18 @@ class WheelOdometryIncrement(BodyVelocityIncrement):
             raise ValueError("Input covariance has incorrect shape")
 
         super().__init__(group, Q, bias, state_id=state_id)
+
+    def new(self) -> "WheelOdometryIncrement":
+        """
+        Returns
+        -------
+        WheelOdometryIncrement
+            A new WheelOdometryIncrement with reinitialized values
+        """
+        new = self.__class__(
+            self.input_covariance, self.bias, self.state_id
+        )
+        return new
 
 
 # Alternate names for classes

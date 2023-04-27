@@ -1,7 +1,7 @@
 from pylie import SO2, SO3, SE2, SE3, SE23, SL3
 from pylie.numpy.base import MatrixLieGroup
 import numpy as np
-from ..types import State
+from pynav.types import State
 from typing import Any, List
 
 try:
@@ -48,9 +48,10 @@ class VectorState(State):
 
 class MatrixLieGroupState(State):
     """
-    The MatrixLieGroupState class.
+    The MatrixLieGroupState class. Although this class can be used directly,
+    it is recommended to use one of the subclasses, such as SE2State or SO3State.
     """
-
+    # TODO. Add identity() and random() functions to this
     __slots__ = ["group", "direction"]
 
     def __init__(
@@ -58,9 +59,43 @@ class MatrixLieGroupState(State):
         value: np.ndarray,
         group: MatrixLieGroup,
         stamp: float = None,
-        state_id=None,
+        state_id: Any=None,
         direction="right",
     ):
+        """
+        Parameters
+        ----------
+        value : np.ndarray
+            Value of of the state. If the value has as many elements as the 
+            DOF of the group, then it is assumed to be a vector of exponential
+            coordinates. Otherwise, the value must be a 2D numpy array representing
+            a direct element of the group in matrix form.
+        group : MatrixLieGroup
+            A `pylie.MatrixLieGroup` class, such as `pylie.SE2` or `pylie.SO3`.
+        stamp : float, optional
+            timestamp, by default None
+        state_id : Any, optional
+            optional state ID, by default None
+        direction : str, optional
+            either "left" or "right", by default "right". Defines the perturbation
+            :math:`\\delta \mathbf{x}` as either 
+
+            .. math::
+                \mathbf{X} = \mathbf{X} \exp(\delta \mathbf{x}^\wedge) \text{ (right)}
+
+                \mathbf{X} = \exp(\delta \mathbf{x}^\wedge) \mathbf{X} \text{ (left)}
+        """
+        if isinstance(value, list):
+            value = np.array(value)
+
+        if value.size == group.dof:
+            value = group.Exp(value)
+        elif value.shape[0] != value.shape[1]:
+            raise ValueError(
+                f"value must either be a {group.dof}-length vector of exponential"
+                "coordinates or a matrix direct element of the group."
+            )
+
         self.direction = direction
         self.group = group
         super(MatrixLieGroupState, self).__init__(
@@ -71,9 +106,9 @@ class MatrixLieGroupState(State):
     def plus(self, dx: np.ndarray) -> "MatrixLieGroupState":
         new = self.copy()
         if self.direction == "right":
-            new.value = new.value @ new.group.Exp(dx)
+            new.value = self.value @ self.group.Exp(dx)
         elif self.direction == "left":
-            new.value = new.group.Exp(dx) @ new.value
+            new.value = self.group.Exp(dx) @ self.value
         else:
             raise ValueError("direction must either be 'left' or 'right'.")
         return new
@@ -88,12 +123,22 @@ class MatrixLieGroupState(State):
         return diff.ravel()
 
     def copy(self) -> "MatrixLieGroupState":
-        return self.__class__(
-            self.value.copy(),
-            self.stamp,
-            self.state_id,
-            self.direction,
-        )
+        ## Check if instance of this class as opposed to a child class 
+        if type(self) == MatrixLieGroupState:
+            return MatrixLieGroupState(
+                self.value.copy(),
+                self.group,
+                self.stamp,
+                self.state_id,
+                self.direction,
+            )
+        else:
+            return self.__class__(
+                self.value.copy(),
+                self.stamp,
+                self.state_id,
+                self.direction,
+            )
 
     def plus_jacobian(self, dx: np.ndarray) -> np.ndarray:
         if self.direction == "right":
@@ -123,6 +168,11 @@ class MatrixLieGroupState(State):
             f"{value_str}",
         ]
         return "\n".join(s)
+    
+    def dot(self, other: "MatrixLieGroupState") -> "MatrixLieGroupState":
+        new = self.copy()
+        new.value = self.value @ other.value
+        return new
 
     @property
     def attitude(self) -> np.ndarray:
@@ -159,7 +209,10 @@ class SO2State(MatrixLieGroupState):
         stamp: float = None,
         state_id=None,
         direction="right",
-    ):
+    ):  
+        # check if value is a single number
+        if isinstance(value, (int, float)):
+            value = np.array(value).reshape((1, 1))
         super().__init__(value, SO2, stamp, state_id, direction)
 
     @property
@@ -265,6 +318,14 @@ class SE2State(MatrixLieGroupState):
     @position.setter
     def position(self, r):
         self.value[0:2, 2] = r
+
+    @property
+    def pose(self) -> np.ndarray:
+        return self.value
+
+    @pose.setter
+    def pose(self, T):
+        self.value = T
 
     @staticmethod
     def jacobian_from_blocks(
@@ -399,13 +460,10 @@ class SE23State(MatrixLieGroupState):
         state_id=None,
         direction="right",
     ):
-        if value.shape != (5, 5):
-            raise ValueError("Value must be a 5x5 matrix")
-
         super().__init__(value, SE23, stamp, state_id, direction)
 
     @property
-    def pose(self):
+    def pose(self)  -> np.ndarray:
         return self.value[0:5, 0:5]
 
     @pose.setter
@@ -413,7 +471,7 @@ class SE23State(MatrixLieGroupState):
         self.value[0:5, 0:5] = T
 
     @property
-    def attitude(self):
+    def attitude(self)  -> np.ndarray:
         return self.value[0:3, 0:3]
 
     @attitude.setter
@@ -421,7 +479,7 @@ class SE23State(MatrixLieGroupState):
         self.value[0:3, 0:3] = C
 
     @property
-    def position(self):
+    def position(self)  -> np.ndarray:
         return self.value[0:3, 4]
 
     @position.setter
@@ -429,12 +487,12 @@ class SE23State(MatrixLieGroupState):
         self.value[0:3, 4] = r.ravel()
 
     @property
-    def velocity(self):
+    def velocity(self) -> np.ndarray:
         return self.value[0:3, 3]
 
     @velocity.setter
-    def velocity(self, v):
-        self.value[0:3, 3] = v.ravel()
+    def velocity(self, v)  -> np.ndarray:
+        self.value[0:3, 3] = v
 
     @staticmethod
     def jacobian_from_blocks(
@@ -486,8 +544,6 @@ class CompositeState(State):
     It is possible to access sub-states in the composite states both by index
     and by ID.
     """
-
-    __slots__ = ["state_id"]
 
     def __init__(
         self, state_list: List[State], stamp: float = None, state_id=None
@@ -768,7 +824,7 @@ class CompositeState(State):
             jac[
                 counter : counter + state.dof,
                 counter : counter + state.dof,
-            ] = state.plus_jacobian(dx)
+            ] = state.plus_jacobian(dx[: state.dof])
             dx = dx[state.dof :]
             counter += state.dof
 
