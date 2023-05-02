@@ -93,9 +93,11 @@ class Camera:
         self.camera_id = camera_id
 
     @staticmethod
-    def get_enu_to_cam() -> np.ndarray:
+    def get_cam_to_enu() -> np.ndarray:
         """Returns a DCM that relates the "ENU frame to the camera frame,
         where the camera z-axis points forward.
+        Camera frame: x right, y down, z forward
+        ENU frame: x forward, y left, z up
         """
         return np.array([[0, 0, 1], [-1, 0, 0], [0, -1, 0]])
 
@@ -160,9 +162,7 @@ class Camera:
             and (uv[0] < self.image_width)
         )
 
-    def is_landmark_in_front_of_cam(
-        self, pose: SE3State, r_pw_a: np.ndarray
-    ) -> bool:
+    def is_landmark_in_front_of_cam(self, pose: SE3State, r_pw_a: np.ndarray) -> bool:
         """Checks if a given landmark is in front of the camera."""
         r_pc_c: np.ndarray = self.resolve_landmark_in_cam_frame(pose, r_pw_a)
         r_pc_c = r_pc_c.ravel()

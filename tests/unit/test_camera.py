@@ -5,7 +5,7 @@ from pylie import SE3
 
 def test_valid_measurements():
     # Create camera with its z-axis pointing forward
-    C_bc = Camera.get_enu_to_cam()
+    C_bc = Camera.get_cam_to_enu()
     T_bc = PoseMatrix(SE3.from_components(C_bc, np.array([0, 0, 0])))
     camera = Camera(385, 385, 323, 236, 480, 640, 0.1, T_bc)
 
