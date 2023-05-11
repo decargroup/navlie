@@ -6,6 +6,7 @@ from pynav.lib.states import (
     SE23State,
     CompositeState,
 )
+from pynav.lib.imu import IMUState
 from pynav.lib.models import (
     Altitude,
     GlobalPosition,
@@ -15,6 +16,7 @@ from pynav.lib.models import (
     RangePoseToAnchor,
     RangePoseToPose,
     Gravitometer,
+    GlobalVelocity,
 )
 from pynav.types import Measurement, MeasurementModel
 from pylie import SO3, SE3, SE2, SE3, SE23
@@ -134,6 +136,30 @@ def test_global_position_se23(direction):
         direction=direction,
     )
     model = GlobalPosition(np.identity(3))
+    _jacobian_test(x, model, atol=1e-5)
+
+@pytest.mark.parametrize("direction", ["right", "left"])
+def test_global_velocity_se23(direction):
+    x = SE23State(
+        SE23.Exp([1, 2, 3, 4, 5, 6, 7, 8, 9]),
+        stamp=0.0,
+        state_id=2,
+        direction=direction,
+    )
+    model = GlobalVelocity(np.identity(3))
+    _jacobian_test(x, model, atol=1e-5)
+
+@pytest.mark.parametrize("direction", ["right", "left"])
+def test_global_velocity_imu_state(direction):
+    x = IMUState(
+        SE23.Exp([1, 2, 3, 4, 5, 6, 7, 8, 9]),
+        [0, 0, 0],
+        [1, 2, 3],
+        stamp=0.0,
+        state_id=2,
+        direction=direction,
+    )
+    model = GlobalVelocity(np.identity(3))
     _jacobian_test(x, model, atol=1e-5)
 
 

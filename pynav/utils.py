@@ -277,7 +277,6 @@ class GaussianResultList:
         """
         stamps = [r.stamp for r in estimate_list]
 
-        # TODO: dont do interpolation by default
         state_true_list = state_interp(stamps, state_true_list, method=method)
         return GaussianResultList(
             [
@@ -820,7 +819,8 @@ def plot_poses(
     step: int = 5,
     label: str = None,
 ):
-    """Plots position trajectory in 3D
+    """
+    Plots position trajectory in 3D
     and poses along the trajectory as triads.
 
     Parameters
@@ -955,7 +955,7 @@ def state_interp(
     TypeError
         If query point is not a float or object with a `stamp` attribute.
     """
-    # TODO: add tests
+    
     # Handle input
     if isinstance(query_stamps, list):
         single_query = False

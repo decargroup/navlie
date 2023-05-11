@@ -53,5 +53,5 @@ Thumbs.db
 *.egg-info
 docs/build/
 docs/_build/
-*.egg-info
 docs/source/_autosummary
+dev/
