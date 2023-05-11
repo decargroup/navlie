@@ -38,7 +38,13 @@ class VectorState(State):
     def minus(self, x: "VectorState") -> np.ndarray:
         og_shape = self.value.shape
         return (self.value.ravel() - x.value.ravel()).reshape(og_shape)
-
+    
+    def plus_jacobian(self, dx: np.ndarray) -> np.ndarray:
+        return np.identity(self.dof)
+    
+    def minus_jacobian(self, x: State) -> np.ndarray:
+        return np.identity(self.dof)
+    
     def copy(self) -> "VectorState":
         return VectorState(self.value.copy(), self.stamp, self.state_id)
 
