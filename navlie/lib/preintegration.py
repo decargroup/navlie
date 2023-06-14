@@ -78,6 +78,7 @@ class IMUIncrement(RelativeMotionIncrement):
         "gravity",
         "state_id",
         "_estimating_bias",
+        "covariance_prop_method",
     ]
 
     def __init__(
@@ -87,6 +88,7 @@ class IMUIncrement(RelativeMotionIncrement):
         accel_bias: np.ndarray,
         state_id: Any = None,
         gravity=None,
+        covariance_prop_method: str = "discrete",
     ):
         """
         Initializes an "identity" IMU RMI.
@@ -124,6 +126,7 @@ class IMUIncrement(RelativeMotionIncrement):
         self.gravity = np.array(gravity).ravel()
         self.state_id = state_id
         self.new_bias = self.original_bias
+        self.covariance_prop_method = covariance_prop_method
 
     @property
     def gyro_bias(self):
@@ -154,6 +157,73 @@ class IMUIncrement(RelativeMotionIncrement):
         U = U_matrix(unbiased_gyro, unbiased_accel, dt)
         self.original_value = self.original_value @ U
 
+        if self.covariance_prop_method == "discrete":
+            jac_info = self.propagate_covariance_discrete(
+                U, unbiased_gyro, unbiased_accel, dt
+            )
+            A = jac_info["A"]
+            L = jac_info["L"]
+            self.bias_jacobian = A @ self.bias_jacobian - L
+        if self.covariance_prop_method == "continuous":
+            jac_info = self.propagate_covariance_continuous(dt)
+            A_full = jac_info["A_full"]
+            L_full = jac_info["L_full"]
+
+            A = A_full[0:9, 0:9]
+            L = L_full[0:9, 0:6]
+
+            self.bias_jacobian = A @ self.bias_jacobian - L
+
+    def propagate_covariance_continuous(self, dt):
+        """Propagate the covariance on the RMI by first linearizing the
+        continuous-time RMI dynamics, and then discretizing the linearized
+        system."""
+
+        # Extract relevant info from RMI
+        delta_C, delta_v, delta_r = SE23.to_components(self.original_value)
+
+        # Continuous-time F_r
+        F_ct = np.zeros((15, 15))
+        F_ct[0:3, 9:12] = -delta_C
+        F_ct[3:6, 9:12] = -SO3.cross(delta_v) @ delta_C
+        F_ct[3:6, 12:15] = -delta_C
+        F_ct[6:9, 3:6] = np.identity(3)
+        F_ct[6:9, 9:12] = -SO3.cross(delta_r) @ delta_C
+        # Continuous-time L
+        L_ct = np.zeros((15, 12))
+        L_ct[0:3, 0:3] = delta_C
+        L_ct[3:6, 0:3] = SO3.cross(delta_v) @ delta_C
+        L_ct[3:6, 3:6] = delta_C
+        L_ct[6:9, 0:3] = SO3.cross(delta_r) @ delta_C
+        L_ct[9:12, 6:9] = np.identity(3)
+        L_ct[12:15, 9:12] = np.identity(3)
+
+        # Discretize the system
+        Fdt = F_ct * dt
+        Fdt_square = Fdt @ Fdt
+        Fdt_cube = Fdt_square @ Fdt
+
+        A_d = np.identity(15) + Fdt + Fdt_square / 2.0 + Fdt_cube / 6.0
+        L_d = L_ct * dt
+        Q_d = L_d @ self.input_covariance @ L_d.T
+
+        # Propagate the covariance
+        self.covariance = A_d @ self.covariance @ A_d.T + Q_d
+
+        jac_info = {
+            "A_full": A_d,
+            "L_full": L_d,
+        }
+
+        return jac_info
+
+    def propagate_covariance_discrete(
+        self,
+        U: np.ndarray,
+        unbiased_gyro: np.ndarray,
+        unbiased_accel: np.ndarray,
+        dt: float,
+    ):
         U_inv = inverse_IE3(U)
         A = adjoint_IE3(U_inv)
         L = L_matrix(unbiased_gyro, unbiased_accel, dt)
@@ -175,8 +245,16 @@ class IMUIncrement(RelativeMotionIncrement):
         self.covariance = (
             A_full @ self.covariance @ A_full.T + L_full @ Q @ L_full.T
         )
-        self.bias_jacobian = A @ self.bias_jacobian - L
+        jac_info = {
+            "A": A,
+            "A_full": A_full,
+            "L": L,
+            "L_full": L_full,
+        }
+
         self.symmetrize()
+
+        return jac_info
 
     def update_bias(self, new_bias: np.ndarray):
         """

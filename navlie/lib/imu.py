@@ -460,7 +460,12 @@ class IMUKinematics(ProcessModel):
 
     """
 
-    def __init__(self, Q: np.ndarray, gravity=None):
+    def __init__(
+        self,
+        Q: np.ndarray,
+        gravity=None,
+        jacobian_method="discrete",
+    ):
         """
         Parameters
         ----------
@@ -476,6 +481,7 @@ class IMUKinematics(ProcessModel):
             gravity = np.array([0, 0, -9.80665])
 
         self._gravity = np.array(gravity).ravel()
+        self.jacobian_method = jacobian_method
 
     def evaluate(self, x: IMUState, u: IMU, dt: float) -> IMUState:
         """
@@ -523,6 +529,59 @@ class IMUKinematics(ProcessModel):
         to the full state
         """
 
+        if self.jacobian_method == "discrete":
+            jac = self.compute_discrete_Jacobian(x, u, dt)
+        if self.jacobian_method == "continuous":
+            jac = self.compute_continuous_jacobian(x, u, dt)
+
+        return jac
+
+    def compute_continuous_jacobian(
+        self,
+        x: IMUState,
+        u: IMU,
+        dt: float,
+    ) -> np.ndarray:
+        """Computes the continuous-time Jacobian, and then discretizes the
+        system."""
+        if x.direction == "right":
+            print("Right Jacobian not implemented!")
+            return
+        # Extract relevant info from RMI
+        C = x.attitude
+        v = x.velocity
+        r = x.position
+
+        # Continuous-time F_r
+        F_ct = np.zeros((15, 15))
+        F_ct[0:3, 9:12] = -C
+        F_ct[3:6, 0:3] = SO3.cross(self._gravity)
+        F_ct[3:6, 9:12] = -SO3.cross(v) @ C
+        F_ct[3:6, 12:15] = -C
+        F_ct[6:9, 3:6] = np.identity(3)
+        F_ct[6:9, 9:12] = -SO3.cross(r) @ C
+
+        # Continuous-time L
+        L_ct = np.zeros((15, 12))
+        L_ct[0:3, 0:3] = C
+        L_ct[3:6, 0:3] = SO3.cross(v) @ C
+        L_ct[3:6, 3:6] = C
+        L_ct[6:9, 0:3] = SO3.cross(r) @ C
+        L_ct[9:12, 6:9] = np.identity(3)
+        L_ct[12:15, 9:12] = np.identity(3)
+
+        # Discretize the system
+        Fdt = F_ct * dt
+        Fdt_square = Fdt @ Fdt
+        Fdt_cube = Fdt_square @ Fdt
+
+        A_d = np.identity(15) + Fdt + Fdt_square / 2.0 + Fdt_cube / 6.0
+        return A_d
+
+    def compute_discrete_Jacobian(
+        self, x: IMUState, u: IMU, dt: float
+    ) -> np.ndarray:
+        """Linearize the discrete system directly."""
         # Get unbiased inputs
         u_no_bias = get_unbiased_imu(x, u)
 
