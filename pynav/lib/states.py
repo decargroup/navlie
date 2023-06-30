@@ -205,7 +205,9 @@ class MatrixLieGroupState(State):
         raise NotImplementedError()
 
 
+
 class SO2State(MatrixLieGroupState):
+    group = SO2
     def __init__(
         self,
         value: np.ndarray,
@@ -216,7 +218,7 @@ class SO2State(MatrixLieGroupState):
         # check if value is a single number
         if isinstance(value, (int, float)):
             value = np.array(value).reshape((1, 1))
-        super().__init__(value, SO2, stamp, state_id, direction)
+        super().__init__(value, self.group, stamp, state_id, direction)
 
     @property
     def attitude(self):
@@ -226,8 +228,13 @@ class SO2State(MatrixLieGroupState):
     def attitude(self, C):
         self.value = C
 
+    @staticmethod
+    def random(stamp: float = None, state_id=None, direction="right"):
+        return SO2State(SO2.random(), stamp=stamp, state_id=state_id, direction=direction)
+
 
 class SO3State(MatrixLieGroupState):
+    group=SO3
     def __init__(
         self,
         value: np.ndarray,
@@ -235,7 +242,7 @@ class SO3State(MatrixLieGroupState):
         state_id=None,
         direction="right",
     ):
-        super().__init__(value, SO3, stamp, state_id, direction)
+        super().__init__(value, self.group, stamp, state_id, direction)
 
     @property
     def attitude(self):
@@ -295,8 +302,12 @@ class SO3State(MatrixLieGroupState):
         msg.quaternion = SO3.to_ros(self.attitude)
         return msg
 
+    @staticmethod
+    def random(stamp: float = None, state_id=None, direction="right"):
+        return SO3State(SO3.random(), stamp=stamp, state_id=state_id, direction=direction)
 
 class SE2State(MatrixLieGroupState):
+    group=SE2
     def __init__(
         self,
         value: np.ndarray,
@@ -304,7 +315,7 @@ class SE2State(MatrixLieGroupState):
         state_id=None,
         direction="right",
     ):
-        super().__init__(value, SE2, stamp, state_id, direction)
+        super().__init__(value, self.group, stamp, state_id, direction)
 
     @property
     def attitude(self) -> np.ndarray:
@@ -345,9 +356,14 @@ class SE2State(MatrixLieGroupState):
             position = np.zeros((dim, 2))
 
         return np.block([attitude, position])
+    
+    @staticmethod
+    def random(stamp: float = None, state_id=None, direction="right"):
+        return SE2State(SE2.random(), stamp=stamp, state_id=state_id, direction=direction)
 
 
 class SE3State(MatrixLieGroupState):
+    group=SE3
     def __init__(
         self,
         value: np.ndarray,
@@ -355,7 +371,7 @@ class SE3State(MatrixLieGroupState):
         state_id=None,
         direction="right",
     ):
-        super().__init__(value, SE3, stamp, state_id, direction)
+        super().__init__(value, self.group, stamp, state_id, direction)
 
     @property
     def attitude(self) -> np.ndarray:
@@ -453,9 +469,15 @@ class SE3State(MatrixLieGroupState):
         msg.pose = SE3.to_ros(self.value)
 
         return msg
+    
+
+    @staticmethod
+    def random(stamp: float = None, state_id=None, direction="right"):
+        return SE2State(SE2.random(), stamp=stamp, state_id=state_id, direction=direction)
 
 
 class SE23State(MatrixLieGroupState):
+    group=SE23
     def __init__(
         self,
         value: np.ndarray,
@@ -463,7 +485,7 @@ class SE23State(MatrixLieGroupState):
         state_id=None,
         direction="right",
     ):
-        super().__init__(value, SE23, stamp, state_id, direction)
+        super().__init__(value, self.group, stamp, state_id, direction)
 
     @property
     def pose(self)  -> np.ndarray:
@@ -517,7 +539,12 @@ class SE23State(MatrixLieGroupState):
         return np.block([attitude, velocity, position])
 
 
+    @staticmethod
+    def random(stamp: float = None, state_id=None, direction="right"):
+        return SE23State(SE23.random(), stamp=stamp, state_id=state_id, direction=direction)
+
 class SL3State(MatrixLieGroupState):
+    group = SL3
     def __init__(
         self,
         value: np.ndarray,
@@ -525,7 +552,7 @@ class SL3State(MatrixLieGroupState):
         state_id=None,
         direction="right",
     ):
-        super().__init__(value, SL3, stamp, state_id, direction)
+        super().__init__(value, self.group, stamp, state_id, direction)
 
 
 class CompositeState(State):
