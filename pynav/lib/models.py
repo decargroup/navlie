@@ -20,10 +20,31 @@ class SingleIntegrator(ProcessModel):
     """
     The single-integrator process model is a process model of the form
 
-        x_dot = u .
+    .. math::
+
+        \dot{\mathbf{x}} = \mathbf{u} 
+
+    where :math:`\mathbf{u}\in \mathbb{R}^n` is a simple velocity input.
+    In discrete time the process model is simply
+
+    .. math::
+        \mathbf{x}_k = \mathbf{x}_{k-1} + \Delta t \mathbf{u}_{k-1}.
+    
     """
 
     def __init__(self, Q: np.ndarray):
+        """
+        Parameters
+        ----------
+        Q : np.ndarray
+            Square matrix representing the discrete-time covariance of the input 
+            noise.
+
+        Raises
+        ------
+        ValueError
+            If `Q` is not a square matrix.
+        """
 
         if Q.shape[0] != Q.shape[1]:
             raise ValueError("Q must be an n x n matrix.")
@@ -50,10 +71,11 @@ class DoubleIntegrator(ProcessModel):
     The double-integrator process model is a second-order point kinematic model
     given in continuous time by
 
-        x_dot = v
-        v_dot = u
+    .. math::
+        \dot{\mathbf{r}} = \mathbf{v}
+        \dot{\mathbf{v}} = \mathbf{u}
 
-    where `u` is the input.
+    where :math:`\mathbf{u}` is the input.
     """
 
     def __init__(self, Q: np.ndarray):

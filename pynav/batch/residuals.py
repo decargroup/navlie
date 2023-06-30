@@ -1,14 +1,17 @@
-"""A set of commonly-used residuals in batch estimation. 
+"""
+A set of commonly-used residuals in batch estimation. 
+
 These residuals are
     - the PriorResidual, to assign a prior estimate on the state,
     - the ProcessResidual, which uses a pynav `ProcessModel` to compute an error between
-    a predicted state and the actual state,
+      a predicted state and the actual state,
     - a MeasurementResidual, which uses a pynav `Measurement` to compare 
-    a true measurement to the measurement predicted by the `MeasurementModel`.
+      a true measurement to the measurement predicted by the `MeasurementModel`.
+
 """
 
 from abc import ABC, abstractmethod
-from typing import Hashable, List, Tuple, Callable, Any
+from typing import Hashable, List, Tuple
 from pynav.types import State, ProcessModel, StampedValue, Measurement
 import numpy as np
 
@@ -38,7 +41,8 @@ class Residual(ABC):
         states: List[State],
         compute_jacobian: List[bool] = None,
     ) -> Tuple[np.ndarray, List[np.ndarray]]:
-        """Evaluates the residual and Jacobians.
+        """
+        Evaluates the residual and Jacobians.
 
         Parameters
         ----------
@@ -58,7 +62,9 @@ class Residual(ABC):
 
 
 class PriorResidual(Residual):
-    """A generic prior error."""
+    """
+    A generic prior error.
+    """
 
     def __init__(
         self,
@@ -77,7 +83,8 @@ class PriorResidual(Residual):
         states: List[State],
         compute_jacobians: List[bool] = None,
     ) -> Tuple[np.ndarray, List[np.ndarray]]:
-        """Evaluates the prior error of the form
+        """
+        Evaluates the prior error of the form
 
             e = x.minus(x0),
 
@@ -100,7 +107,8 @@ class PriorResidual(Residual):
 
 
 class ProcessResidual(Residual):
-    """A generic process residual.
+    """
+    A generic process residual.
 
     Can be used with any :class:`pynav.types.ProcessModel`.
     """
@@ -120,7 +128,8 @@ class ProcessResidual(Residual):
         states: List[State],
         compute_jacobians: List[bool] = None,
     ) -> Tuple[np.ndarray, List[np.ndarray]]:
-        """Evaluates the process residual.
+        """
+        Evaluates the process residual.
 
         An input :math:`\mathbf{u}` is used to propagate the state
         :math:\mathbf{x}_{k-1}` through the process model, to generate
@@ -163,7 +172,8 @@ class ProcessResidual(Residual):
 
 
 class MeasurementResidual(Residual):
-    """A generic measurement residual.
+    """
+    A generic measurement residual.
 
     Can be used with any :class:`pynav.Measurement`.
     """
@@ -177,7 +187,8 @@ class MeasurementResidual(Residual):
         states: List[State],
         compute_jacobians: List[bool] = None,
     ) -> Tuple[np.ndarray, List[np.ndarray]]:
-        """Evaluates the measurement residual.
+        """
+        Evaluates the measurement residual.
 
         The error is computed as
 

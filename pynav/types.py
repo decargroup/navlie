@@ -1,6 +1,5 @@
 """
 This module contains the core primitive types used throughout pynav.
-
 """
 
 import numpy as np
@@ -10,6 +9,9 @@ from abc import ABC, abstractmethod
 
 class Input(ABC):
     __slots__ = ["stamp", "dof", "covariance", "state_id"]
+    """
+    An abstract data container that holds a process model input value.
+    """
 
     def __init__(
         self,
@@ -23,14 +25,23 @@ class Input(ABC):
 
         #:Any: Arbitrary optional identifier, possible to "assign" to a state.
         self.state_id = state_id
+
+        #:np.ndarray: Covariance matrix of the object. Has shape (dof, dof)
         self.covariance = covariance
 
     @abstractmethod
     def plus(self, w: np.ndarray) -> "Input":
+        """
+        Generic addition operation to modify the internal value of the input,
+        and return a new modified object.
+        """
         pass
 
     @abstractmethod
     def copy(self) -> "Input":
+        """ 
+        Creates a deep copy of the object.
+        """
         pass
 
 
