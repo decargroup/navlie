@@ -277,7 +277,6 @@ class GaussianResultList:
         """
         stamps = [r.stamp for r in estimate_list]
 
-        # TODO: dont do interpolation by default
         state_true_list = state_interp(stamps, state_true_list, method=method)
         return GaussianResultList(
             [
@@ -820,13 +819,16 @@ def plot_poses(
     step: int = 5,
     label: str = None,
 ):
-    """Plots position trajectory in 3D
+    """
+    Plots position trajectory in 3D
     and poses along the trajectory as triads.
 
     Parameters
     ----------
     poses : List[SE3State]
-        A list of SE3State poses
+        A list objects containing a `position` property (numpy array of size 3)
+        and an `attitude` (3 x 3 numpy array) property representing the rotation 
+        matrix :math:`\mathbf{C}_{ab}`.
     ax : plt.Axes, optional
         Axes to plot on, if none, 3D axes are created.
     line_color : str, optional
@@ -903,8 +905,8 @@ def plot_poses(
 
 
 def set_axes_equal(ax: plt.Axes):
-    """Sets the axes of a 3D plot to have equal scale.
-
+    """
+    Sets the axes of a 3D plot to have equal scale.
 
     Parameters
     ----------
@@ -936,6 +938,12 @@ def state_interp(
     interpolations can be performed at once in a vectorized fashion. If the
     query point is out of bounds, the end points are returned.
 
+    ..code-block:: python
+
+        x_data = [SE3State.random(stamp=i) for i in range(10)]
+        x_query = [0.2, 0.5, 10]
+        x_interp = state_interp(x_query, x_data)
+
     Parameters
     ----------
     query_stamps : float or object with `.stamp` attribute (or Lists thereof)
@@ -955,7 +963,7 @@ def state_interp(
     TypeError
         If query point is not a float or object with a `stamp` attribute.
     """
-    # TODO: add tests
+    
     # Handle input
     if isinstance(query_stamps, list):
         single_query = False
@@ -1088,7 +1096,8 @@ def associate_stamps(
     offset: float = 0.0,
     max_difference: float = 0.02,
 ) -> List[Tuple[int, int]]:
-    """Associate timestamps.
+    """
+    Associate timestamps.
 
     Returns a sorted list of matches, of length of the smallest of
     first_stamps and second_stamps.
@@ -1197,6 +1206,22 @@ def jacobian(
         jac_true = (- x.T @ A.T @ A)/((x.T @ A.T @ A @ x)**(3/2))
 
         assert np.allclose(jac_test, jac_true, atol=1e-6)
+
+    This function is also compatible with `State` objects, and hence
+    can compute on-manifold derivatives. Example use:
+
+    .. code-block:: python
+
+        T = SE23State([0.1,0.2,0.3,4,5,6,7,8,9], direction="right")
+
+        def fun(T: SE23State):
+            # Returns the normalized body-frame velocity vector
+            C_ab = T.attitude
+            v_zw_a = T.velocity
+            v_zw_b = C_ab.T @ v_zw_a
+            return v_zw_b/np.linalg.norm(v_zw_b)
+
+        jac_fd = jacobian(fun, T)
 
     Parameters
     ----------

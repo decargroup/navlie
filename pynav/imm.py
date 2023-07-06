@@ -76,10 +76,6 @@ def reparametrize_gaussians_about_X_par(
 
     for X in X_list:
         mu = X.state.minus(X_par)
-        # TODO: Replace with minus_jacobians
-        # J = X_par.plus_jacobian(mu)
-        # Jinv = np.linalg.inv(J)
-        # Jinv = X_par.minus_jacobian(X.state)
         Jinv = X.state.minus_jacobian(X_par)
         Sigma = Jinv @ X.covariance @ Jinv.T
         means_reparametrized.append(mu)
@@ -236,7 +232,6 @@ class InteractingModelFilter:
          volume = {24},
          year = {2017}
          }
-     TODOS: Implement methods for left perturbations.
 
     """
 

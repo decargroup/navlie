@@ -1,6 +1,5 @@
 """
 This module contains the core primitive types used throughout pynav.
-
 """
 
 import numpy as np
@@ -10,6 +9,9 @@ from abc import ABC, abstractmethod
 
 class Input(ABC):
     __slots__ = ["stamp", "dof", "covariance", "state_id"]
+    """
+    An abstract data container that holds a process model input value.
+    """
 
     def __init__(
         self,
@@ -23,14 +25,23 @@ class Input(ABC):
 
         #:Any: Arbitrary optional identifier, possible to "assign" to a state.
         self.state_id = state_id
+
+        #:np.ndarray: Covariance matrix of the object. Has shape (dof, dof)
         self.covariance = covariance
 
     @abstractmethod
     def plus(self, w: np.ndarray) -> "Input":
+        """
+        Generic addition operation to modify the internal value of the input,
+        and return a new modified object.
+        """
         pass
 
     @abstractmethod
     def copy(self) -> "Input":
+        """ 
+        Creates a deep copy of the object.
+        """
         pass
 
 
@@ -147,7 +158,7 @@ class State(ABC):
         Jacobian of the `plus` operator. For Lie groups, this is known as the
         *group Jacobian*.
         """
-        return np.identity(self.dof)
+        return self.plus_jacobian_fd(dx)
 
     def plus_jacobian_fd(self, dx, step_size=1e-8) -> np.ndarray:
         """
@@ -174,7 +185,7 @@ class State(ABC):
         For Lie groups, this is the inverse of the *group Jacobian* evaluated at
         `dx = x1.minus(x2)`.
         """
-        return np.identity(self.dof)
+        return self.minus_jacobian_fd(x)
 
     def minus_jacobian_fd(self, x: "State", step_size=1e-8) -> np.ndarray:
         """
@@ -222,19 +233,18 @@ class MeasurementModel(ABC):
         pass
 
     @abstractmethod
-    def jacobian(self, x: State) -> np.ndarray:
-        """
-        Evaluates the measurement model Jacobian
-        :math:`\mathbf{G} = \partial \mathbf{g}(\mathbf{x})/ \partial \mathbf{x}`.
-        """
-        pass
-
-    @abstractmethod
     def covariance(self, x: State) -> np.ndarray:
         """
         Returns the covariance :math:`\mathbf{R}` associated with additive Gaussian noise.
         """
         pass
+
+    def jacobian(self, x: State) -> np.ndarray:
+        """
+        Evaluates the measurement model Jacobian
+        :math:`\mathbf{G} = \partial \mathbf{g}(\mathbf{x})/ \partial \mathbf{x}`.
+        """
+        return self.jacobian_fd(x)
 
     def jacobian_fd(self, x: State, step_size=1e-6):
         """
@@ -295,6 +305,28 @@ class ProcessModel(ABC):
         pass
 
     @abstractmethod
+    def covariance(self, x: State, u: Input, dt: float) -> np.ndarray:
+        """
+        Covariance matrix math:`\mathbf{Q}_k` of the additive Gaussian
+        noise :math:`\mathbf{w}_{k} \sim \mathcal{N}(\mathbf{0}, \mathbf{Q}_k)`.
+
+        Parameters
+        ----------
+        x : State
+            State at time :math:`k-1`.
+        u : Input
+            The input value :math:`\mathbf{u}` provided as a Input object.
+        dt : float
+            The time interval :math:`\Delta t` between the two states.
+
+        Returns
+        -------
+        np.ndarray
+            Covariance matrix :math:`\mathbf{Q}_k`.
+        """
+        pass
+
+    
     def jacobian(self, x: State, u: Input, dt: float) -> np.ndarray:
         """
         Implementation of the process model Jacobian with respect to the state.
@@ -318,29 +350,7 @@ class ProcessModel(ABC):
         np.ndarray
             Process model Jacobian with respect to the state :math:`\mathbf{F}`.
         """
-        pass
-
-    @abstractmethod
-    def covariance(self, x: State, u: Input, dt: float) -> np.ndarray:
-        """
-        Covariance matrix math:`\mathbf{Q}_k` of the additive Gaussian
-        noise :math:`\mathbf{w}_{k} \sim \mathcal{N}(\mathbf{0}, \mathbf{Q}_k)`.
-
-        Parameters
-        ----------
-        x : State
-            State at time :math:`k-1`.
-        u : Input
-            The input value :math:`\mathbf{u}` provided as a Input object.
-        dt : float
-            The time interval :math:`\Delta t` between the two states.
-
-        Returns
-        -------
-        np.ndarray
-            Covariance matrix :math:`\mathbf{Q}_k`.
-        """
-        pass
+        return self.jacobian_fd(x, u, dt)
 
     def jacobian_fd(
         self, x: State, u: Input, dt: float, step_size=1e-6, *args, **kwargs
@@ -490,9 +500,6 @@ class Dataset(ABC):
     Contains abstract methods to get the groundtruth data,
     the input data, and measurement data.
     """
-
-    def __init__(self):
-        pass
 
     @abstractmethod
     def get_ground_truth(self) -> List[State]:

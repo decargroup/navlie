@@ -224,6 +224,7 @@ The following state types are currently part of the lib:
 - `SE2State`
 - `SE3State`
 - `SE23State`
+- `IMUState` (contains IMU biases as part of the state)
 - `CompositeState` (for holding many sub-states as a single state)
 
 The following process models are currently part of the lib:
@@ -232,6 +233,7 @@ The following process models are currently part of the lib:
 - `BodyFrameVelocity`
 - `RelativeBodyFrameVelocity`
 - `CompositeProcessModel`
+- `IMUKinematics`
 
 The following measurement models are currently part of the lib:
 
@@ -242,15 +244,21 @@ The following measurement models are currently part of the lib:
 - `GlobalPosition`
 - `Altitude` 
 - `Gravitometer`
+- and many more
 
 Finally, this repo has the following state estimation algorithms implemented:
 
 - `ExtendedKalmanFilter`
 - `IteratedKalmanFilter`
+- `UnscentedKalmanFilter`
+- `InteractingModelFilter`
+- and more
+
 
 Contributing
 ------------
 If you wish to make some changes, create a branch, make your changes, and then make a pull request. Here are some conventions that should be followed:
+
 - Code style should follow the PEP8 style guide. https://peps.python.org/pep-0008
 - Everything should be type hinted as much as possible. Essentially, in the VS Code dark theme, you should not have any white text anywhere. 
 

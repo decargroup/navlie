@@ -20,10 +20,31 @@ class SingleIntegrator(ProcessModel):
     """
     The single-integrator process model is a process model of the form
 
-        x_dot = u .
+    .. math::
+
+        \dot{\mathbf{x}} = \mathbf{u} 
+
+    where :math:`\mathbf{u}\in \mathbb{R}^n` is a simple velocity input.
+    In discrete time the process model is simply
+
+    .. math::
+        \mathbf{x}_k = \mathbf{x}_{k-1} + \Delta t \mathbf{u}_{k-1}.
+    
     """
 
     def __init__(self, Q: np.ndarray):
+        """
+        Parameters
+        ----------
+        Q : np.ndarray
+            Square matrix representing the discrete-time covariance of the input 
+            noise.
+
+        Raises
+        ------
+        ValueError
+            If `Q` is not a square matrix.
+        """
 
         if Q.shape[0] != Q.shape[1]:
             raise ValueError("Q must be an n x n matrix.")
@@ -50,10 +71,11 @@ class DoubleIntegrator(ProcessModel):
     The double-integrator process model is a second-order point kinematic model
     given in continuous time by
 
-        x_dot = v
-        v_dot = u
+    .. math::
+        \dot{\mathbf{r}} = \mathbf{v}
+        \dot{\mathbf{v}} = \mathbf{u}
 
-    where `u` is the input.
+    where :math:`\mathbf{u}` is the input.
     """
 
     def __init__(self, Q: np.ndarray):
@@ -160,7 +182,6 @@ class DoubleIntegratorWithBias(DoubleIntegrator):
         else:
             walk = np.zeros((self.dim, 1))
 
-        # TODO. just augment these as matrices
         pv = (Ad @ pv + Ld @ accel).ravel()
         x.value[0 : 2 * self.dim] = pv
         x.value[2 * self.dim :] = (bias + walk * dt).ravel()
@@ -305,7 +326,6 @@ class RelativeBodyFrameVelocity(ProcessModel):
 
 class LinearMeasurement(MeasurementModel):
     def __init__(self, C: np.ndarray, R: np.ndarray):
-        # TODO. add tests
         self._C = C
         self._R = R
 
@@ -724,7 +744,8 @@ class RangePoseToPose(MeasurementModel):
     """
     Range model given two absolute poses of rigid bodies, each containing a tag.
     """
-    # TODO. tag_body_positions should be optional
+    # TODO. tag_body_positions should be optional. argh but this will be 
+    # a breaking change since the argument order needs to be different.
     def __init__(
         self, tag_body_position1, tag_body_position2, state_id1, state_id2, R
     ):
@@ -869,6 +890,41 @@ class GlobalPosition(MeasurementModel):
         else:
             return self.R
 
+
+class GlobalVelocity(MeasurementModel):
+    """
+    Global, world-frame, or "absolute" position measurement.
+
+    Compatible with SE23State, IMUState
+    """
+
+    def __init__(self, R: np.ndarray):
+        self.R = R
+
+    def evaluate(self, x: MatrixLieGroupState):
+        return x.velocity
+
+    def jacobian(self, x: MatrixLieGroupState):
+        C_ab = x.attitude
+        if C_ab.shape == (2, 2):
+            att_group = SO2
+        elif C_ab.shape == (3, 3):
+            att_group = SO3
+
+        if x.direction == "right":
+            return x.jacobian_from_blocks(velocity=x.attitude)
+        elif x.direction == "left":
+            return x.jacobian_from_blocks(
+                attitude=att_group.odot(x.velocity),
+                velocity=np.identity(x.velocity.size),
+            )
+
+    def covariance(self, x: MatrixLieGroupState) -> np.ndarray:
+        if np.isscalar(self.R):
+            return self.R * np.identity(x.velocity.size)
+        else:
+            return self.R
+        
 
 class Altitude(MeasurementModel):
     """

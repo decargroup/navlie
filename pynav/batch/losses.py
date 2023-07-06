@@ -10,12 +10,14 @@ import numpy as np
 
 
 class LossFunction(ABC):
-    """Abstract base class for any loss function."""
+    """
+    Abstract base class for any loss function.
+    """
 
     @abstractmethod
     def loss(self, e: float):
         """
-        The loss function defines the cost :math:`\rho(e)`, where :math:`e` is an
+        The loss function defines the cost :math:`\\rho(e)`, where :math:`e` is an
         error term and is often a function of the design variable.
         """
         pass
@@ -30,7 +32,8 @@ class LossFunction(ABC):
 
 
 class L2Loss(LossFunction):
-    """Standard L2 loss. Simply 0.5 * e * e , with the robust
+    """
+    Standard L2 loss. Simply 0.5 * e * e , with the robust
     weight of ones.
     """
 
@@ -46,7 +49,8 @@ class CauchyLoss(LossFunction):
         self.c = c
 
     def loss(self, e: float) -> float:
-        """Cauchy loss function.
+        """
+        Cauchy loss function.
 
         The form here is taken from "MacTavish, Barfoot - At All Costs."
 
@@ -63,7 +67,8 @@ class CauchyLoss(LossFunction):
         return (0.5 * self.c**2) * np.log(1.0 + (e / self.c) ** 2)
 
     def weight(self, e: float) -> float:
-        """Cauchy weight function.
+        """
+        Cauchy weight function.
 
         Parameters
         ----------

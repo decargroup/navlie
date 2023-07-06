@@ -36,7 +36,7 @@ def test_state_interp_out_of_bounds():
 
 
 def test_state_interp_multiple():
-    x_data = [SE3State(SE3.random(), i) for i in range(10)]
+    x_data = [SE3State.random(stamp=i) for i in range(10)]
     x_query = [x_data[2], x_data[5], x_data[8]]
     x_interp = state_interp(x_query, x_data)
     assert len(x_interp) == len(x_query)

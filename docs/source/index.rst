@@ -7,18 +7,11 @@
 .. include:: ../../README.rst
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 1
+   :hidden:
 
    Home <self>
+   Tutorial <tutorial>
+   API <api>
 
 
-Full Documentation
-------------------
-Click on `pynav`
-
-.. autosummary::
-   :toctree: _autosummary
-   :template: package.rst
-   :recursive:
-
-   pynav
