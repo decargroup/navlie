@@ -1064,6 +1064,35 @@ def state_interp(
 
     return out
 
+def schedule_sequential_measurements(model_list, freq):
+    """Schedules sequential measurements from a list of MeasurementModels
+    that cannot generate measurements at the same time. This allows
+    looping through the measurement model list one at a time. 
+
+    Parameters
+    ----------
+    model_list: List[MeasurementModel]
+        The list of sequential MeasurementModels.
+    freq: float
+        The overall frequency in which all the measurements are generated.
+
+    Returns
+    -------
+    List[float]
+        The list of initial offsets associated with each MeasurementModel.
+    float
+        The reduced frequency at which each individual MeasurementModel
+        generates measurements.
+    """
+    n_models = len(model_list)
+    offset_list = [None] * n_models
+    offset_step = (1 / freq)
+    new_freq = freq / n_models
+    
+    for i in range(n_models):
+        offset_list[i] = i * offset_step
+
+    return offset_list, new_freq 
 
 def associate_stamps(
     first_stamps: List[float],

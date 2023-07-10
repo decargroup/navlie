@@ -32,8 +32,11 @@ class VectorState(State):
 
     def plus(self, dx: np.ndarray) -> "VectorState":
         new = self.copy()
-        new.value: np.ndarray = new.value.ravel() + dx.ravel()
-        return new
+        if dx.size == self.dof:
+            new.value: np.ndarray = new.value.ravel() + dx.ravel()
+            return new
+        else:
+            raise ValueError("Array of mismatched size added to VectorState.")
 
     def minus(self, x: "VectorState") -> np.ndarray:
         og_shape = self.value.shape

@@ -340,6 +340,7 @@ class LinearMeasurement(MeasurementModel):
 
 
 class CompositeInput(Input):
+    # TODO: add tests to new methods
     def __init__(self, input_list: List[Input]) -> None:
         self.input_list = input_list
 
@@ -350,6 +351,73 @@ class CompositeInput(Input):
     @property
     def stamp(self) -> float:
         return self.input_list[0].stamp
+    
+    def get_index_by_id(self, state_id):
+        """
+        Get index of a particular state_id in the list of inputs.
+        """
+        return [x.state_id for x in self.input_list].index(state_id)
+
+    def add_input(self, input: Input):
+        """
+        Adds an input to the composite input.
+        """
+        self.input_list.append(input)
+
+    def remove_input_by_id(self, state_id):
+        """
+        Removes a given input by ID.
+        """
+        idx = self.get_index_by_id(state_id)
+        self.input_list.pop(idx)
+
+    def get_input_by_id(self, state_id) -> Input:
+        """
+        Get input object by id.
+        """
+        idx = self.get_index_by_id(state_id)
+        return self.input_list[idx]
+
+    def get_dof_by_id(self, state_id) -> int:
+        """
+        Get degrees of freedom of sub-input by id.
+        """
+        idx = self.get_index_by_id(state_id)
+        return self.input_list[idx].dof
+
+    def get_stamp_by_id(self, state_id) -> float:
+        """
+        Get timestamp of sub-input by id.
+        """
+        idx = self.get_index_by_id(state_id)
+        return self.input_list[idx].stamp
+
+    def set_stamp_by_id(self, stamp: float, state_id):
+        """
+        Set the timestamp of a sub-input by id.
+        """
+        idx = self.get_index_by_id(state_id)
+        self.input_list[idx].stamp = stamp
+
+    def set_input_by_id(self, input: Input, state_id):
+        """
+        Set the whole sub-input by id.
+        """
+        idx = self.get_index_by_id(state_id)
+        self.input_list[idx] = input
+
+    def set_stamp_for_all(self, stamp: float):
+        """
+        Set the timestamp of all subinputs.
+        """
+        for input in self.input_list:
+            input.stamp = stamp
+
+    def to_list(self):
+        """
+        Converts the CompositeInput object back into a list of inputs.
+        """
+        return self.input_list
 
     def copy(self) -> "CompositeInput":
         return CompositeInput([input.copy() for input in self.input_list])
@@ -367,6 +435,7 @@ class CompositeInput(Input):
 class CompositeProcessModel(ProcessModel):
     """
     Should this be called a StackedProcessModel?
+    # TODO: Add documentation and tests
     """
 
     # TODO: This needs to be expanded and/or changed. We have come across the
@@ -387,35 +456,58 @@ class CompositeProcessModel(ProcessModel):
     # substate. For coupled process models, the user will have to define their
     # own process model from scratch.
 
-    def __init__(self, model_list: List[ProcessModel]):
+    def __init__(
+        self, 
+        model_list: List[ProcessModel],
+        shared_input: bool = False,
+    ):
         self._model_list = model_list
+        self._shared_input = shared_input
 
     def evaluate(
-        self, x: CompositeState, u: CompositeInput, dt: float
+        self, 
+        x: CompositeState, 
+        u: CompositeInput, 
+        dt: float, 
     ) -> CompositeState:
         x = x.copy()
         for i, x_sub in enumerate(x.value):
-            u_sub = u.input_list[i]
+            if self._shared_input:
+                u_sub = u
+            else:
+                u_sub = u.input_list[i]
             x.value[i] = self._model_list[i].evaluate(x_sub, u_sub, dt)
 
         return x
 
     def jacobian(
-        self, x: CompositeState, u: CompositeInput, dt: float
+        self, 
+        x: CompositeState, 
+        u: CompositeInput, 
+        dt: float,
     ) -> np.ndarray:
         jac = []
         for i, x_sub in enumerate(x.value):
-            u_sub = u.input_list[i]
+            if self._shared_input:
+                u_sub = u
+            else:
+                u_sub = u.input_list[i]
             jac.append(self._model_list[i].jacobian(x_sub, u_sub, dt))
 
         return block_diag(*jac)
 
     def covariance(
-        self, x: CompositeState, u: CompositeInput, dt: float
+        self, 
+        x: CompositeState, 
+        u: CompositeInput, 
+        dt: float,
     ) -> np.ndarray:
         cov = []
         for i, x_sub in enumerate(x.value):
-            u_sub = u.input_list[i]
+            if self._shared_input:
+                u_sub = u
+            else:
+                u_sub = u.input_list[i]
             cov.append(self._model_list[i].covariance(x_sub, u_sub, dt))
 
         return block_diag(*cov)

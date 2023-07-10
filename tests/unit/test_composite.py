@@ -31,6 +31,27 @@ def test_composite_process_model():
     jac_fd = process_model.jacobian_fd(x0, u, dt)
     assert np.allclose(jac, jac_fd, atol=1e-6)
 
+def test_shared_input():
+    T12 = SE2State(SE2.Exp([0.5, 1, -1]), stamp=0.0, state_id=2)
+    T13 = SE2State(SE2.Exp([-0.5, 1, 1]), stamp=0.0, state_id=3)
+    Q = np.diag([0.1**2, 0.1**2, 0.001**2])
+    X = CompositeState([T12, T13])
+    x0 = CompositeState([X, X])
+    composite_process_model = CompositeProcessModel([BodyFrameVelocity(Q), BodyFrameVelocity(Q)])
+    process_model = CompositeProcessModel(
+        [composite_process_model, composite_process_model],
+        shared_input = True,
+    )
+    u = CompositeInput(
+        [
+            StampedValue(np.array([0.3, 1, 0]), 1),
+            StampedValue(np.array([0.3, 1, 0]), 1),
+        ]
+    )
+    dt = 1
+    jac = process_model.jacobian(x0, u, dt)
+    jac_fd = process_model.jacobian_fd(x0, u, dt)
+    assert np.allclose(jac, jac_fd, atol=1e-6)
 
 def test_composite_plus_jacobian():
     T12 = SE2State(SE2.Exp([0.5, 1, -1]), stamp=0.0, state_id=2)

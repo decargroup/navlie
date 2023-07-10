@@ -14,7 +14,7 @@ from pynav.types import (
 class DataGenerator:
     """
     A class used for data generation given a process model, and as many measurement
-    models as you want. Frequencies of each measurement can also be specified.
+    models as you want. Frequencies and offsets of each measurement can also be specified.
 
     Parameters
     ----------
@@ -34,6 +34,11 @@ class DataGenerator:
         If a measurement model list is provided, also provide a list of
         frequencies associated with each measurement. If a single frequency
         is provided as a float, it will be used for all measurements.
+    meas_offset_list : float or List[float], optional
+        If a measurement model list is provided, you can also provide a list of
+        initial offsets associated with each measurement. If no offsets provided,
+        the initial offset is assumed to be 0. If a single offset is provided
+        as a float, it will be used for all measurements.
     """
 
     def __init__(
@@ -44,7 +49,9 @@ class DataGenerator:
         input_freq: float,
         meas_model_list: List[MeasurementModel] = [],
         meas_freq_list: Union[float, List[float]] = None,
+        meas_offset_list: Union[float, List[float]] = [],
     ):
+        
         # Make input covariance a callable if it isnt
         if callable(input_covariance):
             self.input_covariance = input_covariance
@@ -54,8 +61,12 @@ class DataGenerator:
             raise ValueError("Input covariance must be a function or a matrix.")
 
         # Check meas frequencies were provided
-        if len(meas_model_list) != 0 and meas_freq_list is None:
+        if (len(meas_model_list) != 0) and (meas_freq_list is None):
             raise ValueError("Measurement frequency must be provided.")
+        
+        # If meas model provided but no offsets, set offsets to 0
+        if (len(meas_model_list) != 0) and (len(meas_offset_list) == 0):
+            meas_offset_list = [0.0]
 
         # If only one frequency was provided, assume it was for all the models.
         if not isinstance(meas_freq_list, list):
@@ -64,13 +75,46 @@ class DataGenerator:
         if len(meas_freq_list) == 1:
             meas_freq_list = meas_freq_list * len(meas_model_list)
 
+        # If only one offset was provided, assume it was for all the models.
+        if isinstance(meas_offset_list, float):
+            meas_offset_list = [meas_offset_list] * len(meas_model_list)
+        elif isinstance(meas_offset_list, list):
+            if len(meas_offset_list) == 1:
+                meas_offset_list *= len(meas_model_list)
+            elif len(meas_offset_list) != len(meas_model_list):
+                raise ValueError("The number of offsets and \
+                                 measurement models should be the same.")
+        else:
+            raise ValueError("Offsets should be provided as a float or a list of floats.")
+
         self.process_model = process_model
         self.input_func = input_func
         self.input_freq = input_freq
-        self._meas_model_and_freq = list(zip(meas_model_list, meas_freq_list))
+        self._meas_model_info = list(zip(
+            meas_model_list, 
+            meas_freq_list, 
+            meas_offset_list,
+        ))
 
-    def add_measurement_model(self, model: MeasurementModel, freq: float):
-        self._meas_model_and_freq.append((model, freq))
+
+    def add_measurement_model(
+        self, 
+        model: MeasurementModel, 
+        freq: float, 
+        offset: float = 0.0
+    ):
+        """Adds a new measurement model to the existing list of measurement models. 
+
+        Parameters
+        ----------
+        model : MeasurementModel
+            The MeasurementModel of measurements to be generated.
+        freq : float
+            The frequency associated with these measurements.
+        offset : float, optional
+            The initial offset associated with these measurements, by default 0.0.
+        """
+        self._meas_model_info.append((model, freq, offset))
 
     def generate(self, x0: State, start: float, stop: float, noise=False):
         """
@@ -105,9 +149,9 @@ class DataGenerator:
         # Build large list of Measurement objects with the correct stamps,
         # but empty values, which we will fill later.
         meas_list: List[Measurement] = []
-        for model_and_freq in self._meas_model_and_freq:
-            model, freq = model_and_freq
-            stamps = np.arange(times[0], times[-1], 1 / freq)
+        for model_freq_offset in self._meas_model_info:
+            model, freq, offset = model_freq_offset
+            stamps = np.arange(times[0] + offset, times[-1], 1 / freq)
             stamps = np.round(stamps, 12)
             temp = [Measurement(None, stamp, model) for stamp in stamps]
             meas_list.extend(temp)
