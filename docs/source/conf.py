@@ -36,6 +36,7 @@ extensions = [
     'sphinx.ext.mathjax',
     'sphinx.ext.autosummary',
     "sphinx.ext.intersphinx",
+     "sphinx.ext.githubpages",
 ]
 autodoc_default_options = {
     'member-order': 'bysource',
