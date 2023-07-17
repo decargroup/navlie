@@ -13,6 +13,7 @@ from math import factorial
 from scipy.special import eval_hermitenorm
 import scipy.linalg as la
 from tqdm import tqdm
+import matplotlib.pyplot as plt
 
 
 def check_outlier(error: np.ndarray, covariance: np.ndarray):
@@ -209,9 +210,7 @@ class ExtendedKalmanFilter:
         if y.stamp is not None:
             dt = y.stamp - x.state.stamp
             if dt < -1e10:
-                raise RuntimeError(
-                    "Measurement stamp is earlier than state stamp"
-                )
+                raise RuntimeError("Measurement stamp is earlier than state stamp")
             elif u is not None and dt > 1e-11:
                 x = self.predict(x, u, dt)
 
@@ -225,6 +224,27 @@ class ExtendedKalmanFilter:
             R = np.atleast_2d(y.model.covariance(x_jac))
             G = np.atleast_2d(y.model.jacobian(x_jac))
             z = y.minus(y_check)
+            # we want to locate the indices the top and bottom 15% of z, then remove the corresponding rows from G and R
+            p = 0.15
+            z = z.flatten()
+            # sort and keep the sorting key
+            z_sorted, key = zip(*sorted(zip(z, range(len(z)))))
+            n_delete = int(p * len(z_sorted))
+            # remove rows from G and R and z by index
+            G = np.delete(G, key[:n_delete], axis=0)
+            R = np.delete(R, key[:n_delete], axis=0)
+            R = np.delete(R, key[:n_delete], axis=1)
+            z = np.delete(z, key[:n_delete], axis=0)
+            # sort again and keep the sorting key to account for shorter z
+            z_sorted_2, key = zip(*sorted(zip(z, range(len(z)))))
+            G = np.delete(G, key[-n_delete:], axis=0)
+            R = np.delete(R, key[-n_delete:], axis=0)
+            R = np.delete(R, key[-n_delete:], axis=1)
+            z = np.delete(z, key[-n_delete:], axis=0)
+
+            plt.hist(z, bins=100)
+            plt.close()
+
             S = G @ P @ G.T + R
 
             outlier = False
@@ -325,9 +345,7 @@ class IteratedKalmanFilter(ExtendedKalmanFilter):
         if y.stamp is not None:
             dt = y.stamp - x.state.stamp
             if dt < 0:
-                raise RuntimeError(
-                    "Measurement stamp is earlier than state stamp"
-                )
+                raise RuntimeError("Measurement stamp is earlier than state stamp")
             elif dt > 0 and u is not None:
                 x = self.predict(x, u, dt)
 
@@ -347,6 +365,26 @@ class IteratedKalmanFilter(ExtendedKalmanFilter):
             G = np.atleast_2d(y.model.jacobian(x_op_jac))
             y_check = y.model.evaluate(x_op)
             z = y.minus(y_check)
+
+            # reject the tails
+            # we want to locate the indices the top and bottom 15% of z, then remove the corresponding rows from G and R
+            p = 0.15
+            z = z.flatten()
+            # sort and keep the sorting key
+            z_sorted, key = zip(*sorted(zip(z, range(len(z)))))
+            n_delete = int(p * len(z_sorted))
+            # remove rows from G and R and z by index
+            G = np.delete(G, key[:n_delete], axis=0)
+            R = np.delete(R, key[:n_delete], axis=0)
+            R = np.delete(R, key[:n_delete], axis=1)
+            z = np.delete(z, key[:n_delete], axis=0)
+            # sort again and keep the sorting key to account for shorter z
+            z_sorted_2, key = zip(*sorted(zip(z, range(len(z)))))
+            G = np.delete(G, key[-n_delete:], axis=0)
+            R = np.delete(R, key[-n_delete:], axis=0)
+            R = np.delete(R, key[-n_delete:], axis=1)
+            z = np.delete(z, key[-n_delete:], axis=0)
+            z = z.reshape((-1, 1))
             e = x_op.minus(x.state).reshape((-1, 1))
             J = x_op.plus_jacobian(e)
 
@@ -385,8 +423,7 @@ class IteratedKalmanFilter(ExtendedKalmanFilter):
                     z_new = y.minus(y_check)
                     e_new = x_new.minus(x.state).reshape((-1, 1))
                     cost_new = np.ndarray.item(
-                        0.5
-                        * (e_new.T @ P_inv @ e_new + z_new.T @ R_inv @ z_new)
+                        0.5 * (e_new.T @ P_inv @ e_new + z_new.T @ R_inv @ z_new)
                     )
                     if cost_new < cost_old:
                         step_accepted = True
@@ -418,6 +455,7 @@ class IteratedKalmanFilter(ExtendedKalmanFilter):
 
             # Re-evaluate the jacobians at our latest operating point
             G = np.atleast_2d(y.model.jacobian(x_op_jac))
+            R = np.atleast_2d(y.model.covariance(x_op_jac))
             e = x_op.minus(x.state).reshape((-1, 1))
             J = x_op.plus_jacobian(e)
             P = J @ x.covariance @ J.T
@@ -425,17 +463,14 @@ class IteratedKalmanFilter(ExtendedKalmanFilter):
             S = 0.5 * (S + S.T)
             K = np.linalg.solve(S.T, (P @ G.T).T).T
             x.state = x_op
-            x.covariance = (np.identity(x.state.dof) - K @ G) @ (
-                J @ x.covariance @ J.T
-            )
+            x.covariance = (np.identity(x.state.dof) - K @ G) @ (J @ x.covariance @ J.T)
 
         x.symmetrize()
 
         return x
 
-def generate_sigmapoints(
-    dof: int, method: str
-) -> Tuple[np.ndarray, np.ndarray]:
+
+def generate_sigmapoints(dof: int, method: str) -> Tuple[np.ndarray, np.ndarray]:
     """Generates unit sigma points from three available
     methods.
 
@@ -590,9 +625,7 @@ class SigmaPointKalmanFilter:
             if u.covariance is not None:
                 input_covariance = u.covariance
             else:
-                raise ValueError(
-                    "Input covariance information must be provided."
-                )
+                raise ValueError("Input covariance information must be provided.")
 
         if dt is None:
             dt = u.stamp - x.state.stamp
@@ -692,9 +725,7 @@ class SigmaPointKalmanFilter:
         if y.stamp is not None:
             dt = y.stamp - x.state.stamp
             if dt < 0:
-                raise RuntimeError(
-                    "Measurement stamp is earlier than state stamp"
-                )
+                raise RuntimeError("Measurement stamp is earlier than state stamp")
             elif u is not None:
                 x = self.predict(x, u, dt)
 
@@ -719,8 +750,7 @@ class SigmaPointKalmanFilter:
 
         if y_check is not None:
             y_propagated = [
-                y.model.evaluate(x.state.plus(sp)).ravel()
-                for sp in sigmapoints.T
+                y.model.evaluate(x.state.plus(sp)).ravel() for sp in sigmapoints.T
             ]
 
             # predicted measurement mean
@@ -772,6 +802,7 @@ class UnscentedKalmanFilter(SigmaPointKalmanFilter):
             iterate_mean=iterate_mean,
         )
 
+
 class CubatureKalmanFilter(SigmaPointKalmanFilter):
     def __init__(
         self,
@@ -785,6 +816,7 @@ class CubatureKalmanFilter(SigmaPointKalmanFilter):
             reject_outliers=reject_outliers,
             iterate_mean=iterate_mean,
         )
+
 
 class GaussHermiteKalmanFilter(SigmaPointKalmanFilter):
     def __init__(
@@ -853,9 +885,7 @@ def run_filter(
         u = input_data[k]
         # Fuse any measurements that have occurred.
         if len(meas_data) > 0:
-            while y.stamp < input_data[k + 1].stamp and meas_idx < len(
-                meas_data
-            ):
+            while y.stamp < input_data[k + 1].stamp and meas_idx < len(meas_data):
                 x = filter.correct(x, y, u)
                 meas_idx += 1
                 if meas_idx < len(meas_data):
