@@ -418,6 +418,7 @@ class IteratedKalmanFilter(ExtendedKalmanFilter):
 
             # Re-evaluate the jacobians at our latest operating point
             G = np.atleast_2d(y.model.jacobian(x_op_jac))
+            R = np.atleast_2d(y.model.covariance(x_op_jac))
             e = x_op.minus(x.state).reshape((-1, 1))
             J = x_op.plus_jacobian(e)
             P = J @ x.covariance @ J.T
