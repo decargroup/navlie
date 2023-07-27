@@ -1,4 +1,4 @@
-from pynav.lib import (
+from navlie.lib import (
     VectorState,
     SO2State,
     SO3State,
@@ -9,7 +9,7 @@ from pynav.lib import (
     IMUState,
     MatrixLieGroupState
 )
-from pynav.types import State
+from navlie.types import State
 from pylie import SO3, SE3
 import numpy as np
 import pytest

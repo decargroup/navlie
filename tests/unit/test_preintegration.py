@@ -1,5 +1,5 @@
-from pynav.lib.imu import IMU, IMUKinematics, IMUState
-from pynav.lib.preintegration import (
+from navlie.lib.imu import IMU, IMUKinematics, IMUState
+from navlie.lib.preintegration import (
     BodyVelocityIncrement,
     IMUIncrement,
     PreintegratedBodyVelocity,
@@ -7,12 +7,12 @@ from pynav.lib.preintegration import (
     LinearIncrement,
     PreintegratedLinearModel,
 )
-from pynav.lib.models import BodyFrameVelocity, DoubleIntegrator, DoubleIntegratorWithBias
-from pynav.filters import ExtendedKalmanFilter
-from pynav.lib.states import SE3State, VectorState
+from navlie.lib.models import BodyFrameVelocity, DoubleIntegrator, DoubleIntegratorWithBias
+from navlie.filters import ExtendedKalmanFilter
+from navlie.lib.states import SE3State, VectorState
 import numpy as np
 from pylie import SE23, SE2, SE3, SO3
-from pynav.types import StampedValue, StateWithCovariance
+from navlie.types import StampedValue, StateWithCovariance
 import pytest
 
 np.set_printoptions(precision=5, suppress=True, linewidth=200)

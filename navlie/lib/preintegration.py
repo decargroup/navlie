@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from typing import List, Any, Callable, Tuple
-from pynav.types import StampedValue, ProcessModel, Input
-from pynav.lib.imu import (
+from navlie.types import StampedValue, ProcessModel, Input
+from navlie.lib.imu import (
     IMU,
     IMUState,
     U_matrix,
@@ -10,7 +10,7 @@ from pynav.lib.imu import (
     L_matrix,
     G_matrix,
 )
-from pynav.lib.states import MatrixLieGroupState, VectorState
+from navlie.lib.states import MatrixLieGroupState, VectorState
 import numpy as np
 from pylie import SO3, SE3, SE2, SE23, MatrixLieGroup
 

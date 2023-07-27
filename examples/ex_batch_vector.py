@@ -1,22 +1,22 @@
 """
 This is an example script showing how to run a batch estimator on custom 
-process and measurement models using the utilities in pynav.batch. 
+process and measurement models using the utilities in navlie.batch. 
 
 The example is a single integrator process model with three range measurement
 models.
 """
 
-from pynav.batch.estimator import BatchEstimator
-from pynav.lib.states import VectorState
-from pynav.datagen import DataGenerator
-from pynav.utils import (
+from navlie.batch.estimator import BatchEstimator
+from navlie.lib.states import VectorState
+from navlie.datagen import DataGenerator
+from navlie.utils import (
     GaussianResult,
     GaussianResultList,
     randvec,
     plot_error,
     associate_stamps,
 )
-from pynav.lib.models import SingleIntegrator, RangePointToAnchor
+from navlie.lib.models import SingleIntegrator, RangePointToAnchor
 import numpy as np
 from typing import List
 import matplotlib.pyplot as plt

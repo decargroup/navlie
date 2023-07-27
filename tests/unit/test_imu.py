@@ -1,5 +1,5 @@
-from pynav.lib.states import SE23State
-from pynav.lib.imu import (
+from navlie.lib.states import SE23State
+from navlie.lib.imu import (
     IMUState,
     IMU,
     IMUKinematics,

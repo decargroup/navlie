@@ -1,11 +1,11 @@
-from pynav.types import (
+from navlie.types import (
     Measurement,
     ProcessModel,
     MeasurementModel,
     StampedValue,
     Input,
 )
-from pynav.lib.states import (
+from navlie.lib.states import (
     CompositeState,
     MatrixLieGroupState,
     VectorState,

@@ -1,5 +1,5 @@
 from typing import List, Tuple
-from pynav.types import (
+from navlie.types import (
     Input,
     State,
     ProcessModel,

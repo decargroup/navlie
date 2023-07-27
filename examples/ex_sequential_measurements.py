@@ -1,8 +1,8 @@
 # %%
-from pynav.lib.states import VectorState
-from pynav.datagen import DataGenerator
-from pynav.utils import schedule_sequential_measurements
-from pynav.lib.models import SingleIntegrator, RangePointToAnchor
+from navlie.lib.states import VectorState
+from navlie.datagen import DataGenerator
+from navlie.utils import schedule_sequential_measurements
+from navlie.lib.models import SingleIntegrator, RangePointToAnchor
 import numpy as np
 import matplotlib.pyplot as plt
 

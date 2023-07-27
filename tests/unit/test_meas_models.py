@@ -1,4 +1,4 @@
-from pynav.lib.states import (
+from navlie.lib.states import (
     MatrixLieGroupState,
     SO3State,
     SE2State,
@@ -6,8 +6,8 @@ from pynav.lib.states import (
     SE23State,
     CompositeState,
 )
-from pynav.lib.imu import IMUState
-from pynav.lib.models import (
+from navlie.lib.imu import IMUState
+from navlie.lib.models import (
     Altitude,
     GlobalPosition,
     InvariantMeasurement,
@@ -18,7 +18,7 @@ from pynav.lib.models import (
     Gravitometer,
     GlobalVelocity,
 )
-from pynav.types import Measurement, MeasurementModel
+from navlie.types import Measurement, MeasurementModel
 from pylie import SO3, SE3, SE2, SE3, SE23
 import numpy as np
 import pytest

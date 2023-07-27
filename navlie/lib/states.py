@@ -1,7 +1,7 @@
 from pylie import SO2, SO3, SE2, SE3, SE23, SL3
 from pylie.numpy.base import MatrixLieGroup
 import numpy as np
-from pynav.types import State
+from navlie.types import State
 from typing import Any, List
 
 try:

@@ -2,14 +2,14 @@ from typing import List
 import matplotlib.pyplot as plt
 import numpy as np
 from pylie import SE23
-from pynav.filters import ExtendedKalmanFilter, run_filter
-from pynav.lib.models import (
+from navlie.filters import ExtendedKalmanFilter, run_filter
+from navlie.lib.models import (
     InvariantMeasurement,
     PointRelativePosition,
 )
-from pynav.lib.imu import IMU, IMUState, IMUKinematics
-from pynav.utils import GaussianResult, GaussianResultList, plot_error, randvec
-from pynav.datagen import DataGenerator
+from navlie.lib.imu import IMU, IMUState, IMUKinematics
+from navlie.utils import GaussianResult, GaussianResultList, plot_error, randvec
+from navlie.datagen import DataGenerator
 
 # ##############################################################################
 # Problem Setup
@@ -186,7 +186,7 @@ estimate_list = run_filter(ekf, x0, P0, input_list, invariants)
 # Postprocess the results and plot
 results = GaussianResultList.from_estimates(estimate_list, states_true)
 
-from pynav.utils import plot_poses
+from navlie.utils import plot_poses
 import seaborn as sns
 
 fig = plt.figure()

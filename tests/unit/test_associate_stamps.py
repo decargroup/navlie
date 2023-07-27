@@ -1,5 +1,5 @@
 import numpy as np
-from pynav.utils import associate_stamps
+from navlie.utils import associate_stamps
 
 def test_associate_stamps():
     freq_stamps_1 = 180

@@ -1,5 +1,5 @@
-from pynav.lib.states import SE2State, SE3State, SE23State
-from pynav.lib.models import (
+from navlie.lib.states import SE2State, SE3State, SE23State
+from navlie.lib.models import (
     BodyFrameVelocity,
     RangePoseToAnchor,
     RelativeBodyFrameVelocity,
@@ -7,7 +7,7 @@ from pynav.lib.models import (
 from pylie import SO2, SO3, SE3, SE2, SE3, SE23
 import numpy as np
 import pytest
-from pynav.types import StampedValue
+from navlie.types import StampedValue
 
 @pytest.mark.parametrize("direction", ["left", "right"])
 def test_body_velocity_se3(direction):

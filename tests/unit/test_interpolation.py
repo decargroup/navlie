@@ -1,5 +1,5 @@
-from pynav.utils import state_interp
-from pynav.lib.states import SE3State, SE3, SO3
+from navlie.utils import state_interp
+from navlie.lib.states import SE3State, SE3, SO3
 import numpy as np 
 import pytest 
 

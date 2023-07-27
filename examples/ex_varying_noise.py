@@ -1,7 +1,7 @@
 # %%
 
-from pynav.lib import VectorState, DoubleIntegrator, RangePointToAnchor
-from pynav import (
+from navlie.lib import VectorState, DoubleIntegrator, RangePointToAnchor
+from navlie import (
     run_filter,
     monte_carlo,
     GaussianResult,

@@ -6,8 +6,8 @@ provided callable trial function. Average NEES, its probability bounds, and
 expected NEES are all automatically calculated for you.
 """
 
-from pynav.lib import SE3State, BodyFrameVelocity, RangePoseToAnchor
-from pynav import (
+from navlie.lib import SE3State, BodyFrameVelocity, RangePoseToAnchor
+from navlie import (
     DataGenerator,
     ExtendedKalmanFilter,
     GaussianResult,

@@ -1,9 +1,9 @@
-from pynav.filters import ExtendedKalmanFilter, IteratedKalmanFilter
-from pynav.lib.states import VectorState
-from pynav.datagen import DataGenerator
-from pynav.types import StateWithCovariance
-from pynav.utils import GaussianResult, GaussianResultList, randvec
-from pynav.lib.models import SingleIntegrator, RangePointToAnchor
+from navlie.filters import ExtendedKalmanFilter, IteratedKalmanFilter
+from navlie.lib.states import VectorState
+from navlie.datagen import DataGenerator
+from navlie.types import StateWithCovariance
+from navlie.utils import GaussianResult, GaussianResultList, randvec
+from navlie.lib.models import SingleIntegrator, RangePointToAnchor
 import numpy as np
 from typing import List
 import time

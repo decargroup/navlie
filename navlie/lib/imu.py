@@ -1,8 +1,8 @@
 from pylie import SO3, SE23
 import numpy as np
-from pynav.types import ProcessModel, Input
+from navlie.types import ProcessModel, Input
 from typing import Any, List, Tuple
-from pynav.lib.states import CompositeState, VectorState, SE23State
+from navlie.lib.states import CompositeState, VectorState, SE23State
 from math import factorial
 
 

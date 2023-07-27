@@ -1,9 +1,9 @@
 """Tests for the process and measurement residuals found in batch.py"""
 
-from pynav.types import StampedValue, Measurement
-from pynav.lib.models import SingleIntegrator, BodyFrameVelocity, GlobalPosition
-from pynav.batch.estimator import PriorResidual, ProcessResidual, MeasurementResidual
-from pynav.lib.states import VectorState, SE3State
+from navlie.types import StampedValue, Measurement
+from navlie.lib.models import SingleIntegrator, BodyFrameVelocity, GlobalPosition
+from navlie.batch.estimator import PriorResidual, ProcessResidual, MeasurementResidual
+from navlie.lib.states import VectorState, SE3State
 from pylie import SE3
 import numpy as np
 

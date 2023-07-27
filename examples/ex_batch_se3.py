@@ -3,15 +3,15 @@ This is an example script showing how to run a batch estimator on custom
 process and measurement models.
 """
 
-from pynav.batch.estimator import BatchEstimator
-from pynav.lib.states import SE3State
-from pynav.datagen import DataGenerator
-from pynav.utils import GaussianResult, GaussianResultList, randvec
-from pynav.lib.models import (
+from navlie.batch.estimator import BatchEstimator
+from navlie.lib.states import SE3State
+from navlie.datagen import DataGenerator
+from navlie.utils import GaussianResult, GaussianResultList, randvec
+from navlie.lib.models import (
     BodyFrameVelocity,
     RangePoseToAnchor,
 )
-from pynav.utils import plot_error
+from navlie.utils import plot_error
 import numpy as np
 from typing import List
 from pylie import SE3

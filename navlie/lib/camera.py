@@ -1,7 +1,7 @@
 """Module containing a basic pinhole camera model."""
 
 import numpy as np
-from pynav.lib import SE3State
+from navlie.lib import SE3State
 from typing import Any
 
 

@@ -1,6 +1,6 @@
 from typing import List
 
-from pynav.types import (
+from navlie.types import (
     Input,
     State,
     Measurement,
@@ -8,8 +8,8 @@ from pynav.types import (
 )
 import numpy as np
 from scipy.stats import multivariate_normal
-from pynav.utils import GaussianResultList, GaussianResult
-from pynav.filters import ExtendedKalmanFilter
+from navlie.utils import GaussianResultList, GaussianResult
+from navlie.filters import ExtendedKalmanFilter
 
 
 def gaussian_mixing_vectorspace(

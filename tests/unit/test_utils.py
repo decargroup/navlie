@@ -1,8 +1,8 @@
-from pynav.utils import (
+from navlie.utils import (
     GaussianResult, GaussianResultList, schedule_sequential_measurements
 )
-from pynav.types import StateWithCovariance
-from pynav.lib.states import (
+from navlie.types import StateWithCovariance
+from navlie.lib.states import (
     SE23State,
     SE3State,
     SO3State,
@@ -12,10 +12,10 @@ from pylie import (
 )
 import numpy as np
 
-from pynav.utils import jacobian
+from navlie.utils import jacobian
 import numpy as np
 import pytest
-from pynav.lib.models import RangePoseToAnchor
+from navlie.lib.models import RangePoseToAnchor
 
 
 def test_gaussian_result_indexing():

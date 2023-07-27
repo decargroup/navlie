@@ -1,18 +1,18 @@
 import pytest
-from pynav.filters import ExtendedKalmanFilter, run_filter
-from pynav.lib.states import VectorState
-from pynav.datagen import DataGenerator
-from pynav.utils import GaussianResult, GaussianResultList
-from pynav.utils import randvec
+from navlie.filters import ExtendedKalmanFilter, run_filter
+from navlie.lib.states import VectorState
+from navlie.datagen import DataGenerator
+from navlie.utils import GaussianResult, GaussianResultList
+from navlie.utils import randvec
 
-from pynav.utils import monte_carlo, plot_error
-from pynav.lib.models import DoubleIntegrator, OneDimensionalPositionVelocityRange
+from navlie.utils import monte_carlo, plot_error
+from navlie.lib.models import DoubleIntegrator, OneDimensionalPositionVelocityRange
 
 import numpy as np
 from typing import List
 from matplotlib import pyplot as plt
-from pynav.imm import InteractingModelFilter, run_interacting_multiple_model_filter
-from pynav.imm import IMMResultList, IMMResult
+from navlie.imm import InteractingModelFilter, run_interacting_multiple_model_filter
+from navlie.imm import IMMResultList, IMMResult
 
 
 """This example runs an Interacting Multiple Model filter to estimate the process model noise matrix

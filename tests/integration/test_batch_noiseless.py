@@ -2,8 +2,8 @@ from concurrent.futures import process
 import pytest
 
 
-from pynav.lib.states import SO3State, VectorState, SE3State
-from pynav.lib.models import (
+from navlie.lib.states import SO3State, VectorState, SE3State
+from navlie.lib.models import (
     BodyFrameVelocity,
     RangePointToAnchor,
     RangePoseToAnchor,
@@ -11,10 +11,10 @@ from pynav.lib.models import (
     Gravitometer,
     SingleIntegrator,
 )
-from pynav.datagen import DataGenerator
-from pynav.filters import ExtendedKalmanFilter, run_filter
-from pynav.utils import GaussianResult, GaussianResultList, plot_error, randvec
-from pynav.batch.estimator import BatchEstimator
+from navlie.datagen import DataGenerator
+from navlie.filters import ExtendedKalmanFilter, run_filter
+from navlie.utils import GaussianResult, GaussianResultList, plot_error, randvec
+from navlie.batch.estimator import BatchEstimator
 from pylie import SO3, SE3
 import numpy as np
 import matplotlib.pyplot as plt

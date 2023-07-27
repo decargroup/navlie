@@ -17,7 +17,7 @@
 
 # -- Project information -----------------------------------------------------
 
-project = 'pynav'
+project = 'navlie'
 copyright = '2022, Charles C. Cossette'
 author = 'Charles C. Cossette'
 
