@@ -1,7 +1,7 @@
-from pynav.lib.datasets import SimulatedPoseRangingDataset
-from pynav.filters import IteratedKalmanFilter
-from pynav.utils import GaussianResult, GaussianResultList, plot_error, randvec
-from pynav.types import StateWithCovariance
+from navlie.lib.datasets import SimulatedPoseRangingDataset
+from navlie.filters import IteratedKalmanFilter
+from navlie.utils import GaussianResult, GaussianResultList, plot_error, randvec
+from navlie.types import StateWithCovariance
 import time
 import numpy as np
 np.random.seed(0)

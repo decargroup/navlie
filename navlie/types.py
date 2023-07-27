@@ -1,5 +1,5 @@
 """
-This module contains the core primitive types used throughout pynav.
+This module contains the core primitive types used throughout navlie.
 """
 
 import numpy as np
@@ -424,7 +424,7 @@ class Measurement:
         self.value = np.array(value) if np.isscalar(value) else value
         #:float: Timestamp
         self.stamp = stamp
-        #:pynav.types.MeasurementModel: measurement model associated with this measurement.
+        #:navlie.types.MeasurementModel: measurement model associated with this measurement.
         self.model = model
         #:Any: Optional, ID of the state this measurement is associated.
         self.state_id = state_id
@@ -467,7 +467,7 @@ class StateWithCovariance:
                 "Covariance matrix does not correspond with state DOF."
             )
 
-        #:pynav.types.State: state object
+        #:navlie.types.State: state object
         self.state = state
 
         #:numpy.ndarray: covariance associated with state

@@ -1,4 +1,4 @@
-from pynav.lib.camera import Camera, PoseMatrix
+from navlie.lib.camera import Camera, PoseMatrix
 import numpy as np
 from pylie import SE3
 

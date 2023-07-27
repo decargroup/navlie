@@ -1,26 +1,26 @@
 import pytest
-from pynav.filters import ExtendedKalmanFilter
-from pynav.lib.states import VectorState, SE3State
-from pynav.datagen import DataGenerator
-from pynav.utils import GaussianResult
-from pynav.utils import randvec
+from navlie.filters import ExtendedKalmanFilter
+from navlie.lib.states import VectorState, SE3State
+from navlie.datagen import DataGenerator
+from navlie.utils import GaussianResult
+from navlie.utils import randvec
 
-from pynav.utils import monte_carlo, plot_error
-from pynav.lib.models import DoubleIntegrator, OneDimensionalPositionVelocityRange
-from pynav.lib.models import SingleIntegrator, RangePointToAnchor
-from pynav.lib.models import (
+from navlie.utils import monte_carlo, plot_error
+from navlie.lib.models import DoubleIntegrator, OneDimensionalPositionVelocityRange
+from navlie.lib.models import SingleIntegrator, RangePointToAnchor
+from navlie.lib.models import (
     BodyFrameVelocity,
     Magnetometer,
     Gravitometer,
 )
-from pynav.lib.models import RangePoseToAnchor
+from navlie.lib.models import RangePoseToAnchor
 from pylie import SE3
 
 import numpy as np
 from typing import List
-from pynav.imm import InteractingModelFilter, run_interacting_multiple_model_filter
-from pynav.imm import IMMResultList
-from pynav.imm import  IMMResult
+from navlie.imm import InteractingModelFilter, run_interacting_multiple_model_filter
+from navlie.imm import IMMResultList
+from navlie.imm import  IMMResult
 # TODO this test is very complicated. we need to simplify this.
 
 PLOT_FLAG = False

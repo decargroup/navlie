@@ -1,6 +1,6 @@
-from pynav.lib.states import SE2State, CompositeState, VectorState
-from pynav.types import StampedValue
-from pynav.lib.models import (
+from navlie.lib.states import SE2State, CompositeState, VectorState
+from navlie.types import StampedValue
+from navlie.lib.models import (
     BodyFrameVelocity,
     CompositeProcessModel,
     RangeRelativePose,

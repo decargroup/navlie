@@ -3,9 +3,9 @@ from typing import List
 import matplotlib.pyplot as plt
 import numpy as np
 
-from pynav.lib.datasets import SimulatedInertialGPSDataset
-from pynav.filters import ExtendedKalmanFilter, run_filter
-from pynav.utils import  GaussianResultList, plot_error, randvec
+from navlie.lib.datasets import SimulatedInertialGPSDataset
+from navlie.filters import ExtendedKalmanFilter, run_filter
+from navlie.utils import  GaussianResultList, plot_error, randvec
 
 np.set_printoptions(precision=3, suppress=True, linewidth=200)
 np.random.seed(0)
@@ -35,7 +35,7 @@ results = GaussianResultList.from_estimates(estimate_list, gt_states)
 
 # ##############################################################################
 # Plot results
-from pynav.utils import plot_poses
+from navlie.utils import plot_poses
 
 fig = plt.figure()
 ax = plt.axes(projection="3d")

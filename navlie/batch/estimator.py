@@ -4,27 +4,27 @@ measurement residuals.
 The BatchEstimator.solve() method constructs and solves a batch problem over a sequence
 of input and measurement data. Process and measurement residuals are automatically created
 and added to the problem, using the generic definitions of process and measurement residuals
-defined in the module `pynav.batch.residuals`.
+defined in the module `navlie.batch.residuals`.
 """
 
 from typing import List
 
 import numpy as np
 
-from pynav.batch.problem import Problem
-from pynav.batch.residuals import (
+from navlie.batch.problem import Problem
+from navlie.batch.residuals import (
     MeasurementResidual,
     PriorResidual,
     ProcessResidual,
 )
-from pynav.types import (
+from navlie.types import (
     Input,
     Measurement,
     ProcessModel,
     State,
     StateWithCovariance,
 )
-from pynav.utils import find_nearest_stamp_idx
+from navlie.utils import find_nearest_stamp_idx
 
 
 class BatchEstimator:

@@ -1,19 +1,19 @@
-from pynav.lib.states import SO3State
-from pynav.lib.models import (
+from navlie.lib.states import SO3State
+from navlie.lib.models import (
     BodyFrameVelocity,
     InvariantMeasurement,
     Magnetometer,
     Gravitometer,
 )
-from pynav.datagen import DataGenerator
-from pynav.filters import ExtendedKalmanFilter, run_filter
-from pynav.utils import (
+from navlie.datagen import DataGenerator
+from navlie.filters import ExtendedKalmanFilter, run_filter
+from navlie.utils import (
     GaussianResultList,
     MonteCarloResult,
     randvec,
 )
 import numpy as np
-import pynav as nav
+import navlie as nav
 
 def generate_so3_results():
     x0 = SO3State([1,2,3], 0.0, direction="left")

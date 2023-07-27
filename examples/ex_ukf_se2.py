@@ -1,5 +1,5 @@
-from pynav.lib import SE3State, BodyFrameVelocity, SimulatedPoseRangingDataset
-from pynav import SigmaPointKalmanFilter, run_filter, GaussianResultList, plot_error, randvec
+from navlie.lib import SE3State, BodyFrameVelocity, SimulatedPoseRangingDataset
+from navlie import SigmaPointKalmanFilter, run_filter, GaussianResultList, plot_error, randvec
 import time
 import numpy as np
 

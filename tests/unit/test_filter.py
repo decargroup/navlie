@@ -1,4 +1,4 @@
-import pynav as nav
+import navlie as nav
 import numpy as np
 
 def test_iterated_ekf():

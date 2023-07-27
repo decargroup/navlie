@@ -1,13 +1,13 @@
-from pynav.lib.states import SO3State
-from pynav.lib.models import (
+from navlie.lib.states import SO3State
+from navlie.lib.models import (
     BodyFrameVelocity,
     InvariantMeasurement,
     Magnetometer,
     Gravitometer,
 )
-from pynav.datagen import DataGenerator
-from pynav.filters import ExtendedKalmanFilter, run_filter
-from pynav.utils import GaussianResult, GaussianResultList, plot_error, randvec
+from navlie.datagen import DataGenerator
+from navlie.filters import ExtendedKalmanFilter, run_filter
+from navlie.utils import GaussianResult, GaussianResultList, plot_error, randvec
 from pylie import SO3
 import numpy as np
 import matplotlib.pyplot as plt

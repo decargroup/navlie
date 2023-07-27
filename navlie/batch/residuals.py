@@ -3,16 +3,16 @@ A set of commonly-used residuals in batch estimation.
 
 These residuals are
     - the PriorResidual, to assign a prior estimate on the state,
-    - the ProcessResidual, which uses a pynav `ProcessModel` to compute an error between
+    - the ProcessResidual, which uses a navlie `ProcessModel` to compute an error between
       a predicted state and the actual state,
-    - a MeasurementResidual, which uses a pynav `Measurement` to compare 
+    - a MeasurementResidual, which uses a navlie `Measurement` to compare 
       a true measurement to the measurement predicted by the `MeasurementModel`.
 
 """
 
 from abc import ABC, abstractmethod
 from typing import Hashable, List, Tuple
-from pynav.types import State, ProcessModel, StampedValue, Measurement
+from navlie.types import State, ProcessModel, StampedValue, Measurement
 import numpy as np
 
 
@@ -110,7 +110,7 @@ class ProcessResidual(Residual):
     """
     A generic process residual.
 
-    Can be used with any :class:`pynav.types.ProcessModel`.
+    Can be used with any :class:`navlie.types.ProcessModel`.
     """
 
     def __init__(
@@ -175,7 +175,7 @@ class MeasurementResidual(Residual):
     """
     A generic measurement residual.
 
-    Can be used with any :class:`pynav.Measurement`.
+    Can be used with any :class:`navlie.Measurement`.
     """
 
     def __init__(self, keys: List[Hashable], measurement: Measurement):

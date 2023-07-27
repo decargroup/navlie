@@ -1,5 +1,5 @@
-from pynav.lib.models import SingleIntegrator
-from pynav import DataGenerator
+from navlie.lib.models import SingleIntegrator
+from navlie import DataGenerator
 import numpy as np
 
 

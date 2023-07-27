@@ -1,7 +1,7 @@
 from typing import Callable, List, Union, Any
 import numpy as np
-from pynav.utils import randvec
-from pynav.types import (
+from navlie.utils import randvec
+from navlie.types import (
     State,
     ProcessModel,
     MeasurementModel,

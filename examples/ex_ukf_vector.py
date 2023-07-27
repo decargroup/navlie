@@ -1,5 +1,5 @@
-from pynav.lib.models import SingleIntegrator, RangePointToAnchor, VectorState
-from pynav import run_filter, randvec, GaussianResultList, SigmaPointKalmanFilter, DataGenerator, plot_error
+from navlie.lib.models import SingleIntegrator, RangePointToAnchor, VectorState
+from navlie import run_filter, randvec, GaussianResultList, SigmaPointKalmanFilter, DataGenerator, plot_error
 import numpy as np
 from typing import List
 import time

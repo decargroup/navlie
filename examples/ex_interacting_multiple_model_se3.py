@@ -1,21 +1,21 @@
 import pytest
-from pynav.filters import ExtendedKalmanFilter, run_filter
-from pynav.lib.states import SE3State
-from pynav.datagen import DataGenerator
-from pynav.utils import GaussianResult, GaussianResultList
-from pynav.utils import randvec
+from navlie.filters import ExtendedKalmanFilter, run_filter
+from navlie.lib.states import SE3State
+from navlie.datagen import DataGenerator
+from navlie.utils import GaussianResult, GaussianResultList
+from navlie.utils import randvec
 
-from pynav.utils import monte_carlo, plot_error
-from pynav.lib.models import BodyFrameVelocity
-from pynav.lib.models import RangePoseToAnchor
+from navlie.utils import monte_carlo, plot_error
+from navlie.lib.models import BodyFrameVelocity
+from navlie.lib.models import RangePoseToAnchor
 from pylie import SE3
 
 import numpy as np
 from typing import List
 from matplotlib import pyplot as plt
-from pynav.imm import InteractingModelFilter, run_interacting_multiple_model_filter
-from pynav.imm import IMMResultList
-from pynav.imm import IMMResult
+from navlie.imm import InteractingModelFilter, run_interacting_multiple_model_filter
+from navlie.imm import IMMResultList
+from navlie.imm import IMMResult
 
 """This example runs an Interacting Multiple Model filter to estimate the process model noise matrix
 for a state that is on a Lie group. The performance is compared to an EKF that knows the ground

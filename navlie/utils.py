@@ -1,6 +1,6 @@
 from typing import Callable, List, Tuple, Union, Any, Dict
 from joblib import Parallel, delayed
-from pynav.types import State, Measurement, StateWithCovariance
+from navlie.types import State, Measurement, StateWithCovariance
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.stats.distributions import chi2

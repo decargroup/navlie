@@ -1,5 +1,5 @@
 import pytest
-from pynav import (
+from navlie import (
     GaussianResult,
     GaussianResultList,
     DataGenerator,
@@ -8,7 +8,7 @@ from pynav import (
     run_filter
 )
 
-from pynav.lib import (
+from navlie.lib import (
     VectorState,
     SE3State,
     SingleIntegrator,

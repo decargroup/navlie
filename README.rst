@@ -1,7 +1,7 @@
-pynav
+navlie
 =====
-.. image:: https://github.com/decargroup/pynav/actions/workflows/test_package.yml/badge.svg
-    :target: https://github.com/decargroup/pynav/actions/workflows/test_package.yml
+.. image:: https://github.com/decargroup/navlie/actions/workflows/test_package.yml/badge.svg
+    :target: https://github.com/decargroup/navlie/actions/workflows/test_package.yml
     :alt: Tests
     
 An on-manifold state estimation library for robotics.
@@ -19,7 +19,7 @@ The core idea behind this project is to abstract-away the state definition such 
 - Monte Carlo experiment executor with result aggregation
 - A preintegration module for linear, wheel odometry, and IMU process models
 
-By implementing a few classes, the user can model almost any problem. Documentation can be found by https://decargroup.github.io/pynav
+By implementing a few classes, the user can model almost any problem. Documentation can be found by https://decargroup.github.io/navlie
 
 Setup
 -----
@@ -72,7 +72,7 @@ Optionally, it is often useful to assign a timestamp (`stamp`) and a label (`sta
 
 .. code-block:: python
 
-    from pynav.types import State 
+    from navlie.types import State 
     import numpy as np
 
     class VectorState(State):
@@ -104,7 +104,7 @@ As another more complicated example, a state object belonging to the SE(3) Lie g
 
 .. code-block:: python
 
-    from pynav.types import State 
+    from navlie.types import State 
     from pylie import SE3 
     import numpy as np 
 
@@ -213,8 +213,8 @@ Many state, process, and measurement models are already written and part of the 
 
 .. code-block:: python 
 
-    from pynav.lib.states import VectorState, SE3State
-    from pynav.lib.models import RangePoseToAnchor, Altitude
+    from navlie.lib.states import VectorState, SE3State
+    from navlie.lib.models import RangePoseToAnchor, Altitude
 
 The following state types are currently part of the lib:
 

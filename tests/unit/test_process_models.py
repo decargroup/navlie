@@ -1,6 +1,6 @@
-from pynav.lib.models import SingleIntegrator, DoubleIntegrator, DoubleIntegratorWithBias
-from pynav.lib.states import VectorState
-from pynav.types import StampedValue
+from navlie.lib.models import SingleIntegrator, DoubleIntegrator, DoubleIntegratorWithBias
+from navlie.lib.states import VectorState
+from navlie.types import StampedValue
 import numpy as np
 
 def test_single_integrator_jacobian():

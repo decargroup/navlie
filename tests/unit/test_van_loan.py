@@ -1,5 +1,5 @@
 import numpy as np
-import pynav.utils as utils
+import navlie.utils as utils
 
 from scipy.linalg import expm
 

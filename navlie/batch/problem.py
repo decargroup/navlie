@@ -15,9 +15,9 @@ from typing import Dict, Hashable, List, Tuple
 import numpy as np
 from scipy import sparse
 
-from pynav.batch.losses import L2Loss, LossFunction
-from pynav.batch.residuals import Residual
-from pynav.types import State
+from navlie.batch.losses import L2Loss, LossFunction
+from navlie.batch.residuals import Residual
+from navlie.types import State
 
 
 class OptimizationSummary:

@@ -1,9 +1,9 @@
 """A collection of simulated dataset examples."""
 
-from pynav.datagen import DataGenerator
+from navlie.datagen import DataGenerator
 from typing import List
-import pynav as nav
-from pynav.lib import (
+import navlie as nav
+from navlie.lib import (
     IMUKinematics,
     IMU,
     IMUState,
