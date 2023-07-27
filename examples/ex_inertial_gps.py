@@ -3,16 +3,16 @@ from typing import List
 import matplotlib.pyplot as plt
 import numpy as np
 
-import pynav.lib.datasets as datasets
+from pynav.lib.datasets import SimulatedInertialGPSDataset
 from pynav.filters import ExtendedKalmanFilter, run_filter
-from pynav.utils import GaussianResult, GaussianResultList, plot_error, randvec
+from pynav.utils import  GaussianResultList, plot_error, randvec
 
 np.set_printoptions(precision=3, suppress=True, linewidth=200)
 np.random.seed(0)
 
 # ##############################################################################
 # Create simulated IMU/GPS data
-data = datasets.SimulatedInertialGPS()
+data = SimulatedInertialGPSDataset()
 gt_states = data.get_ground_truth()
 input_data = data.get_input_data()
 meas_data = data.get_meas_data()
@@ -31,14 +31,7 @@ ekf = ExtendedKalmanFilter(data.process_model)
 estimate_list = run_filter(ekf, x0, P0, input_data, meas_data)
 
 # Postprocess the results and plot
-results = GaussianResultList(
-    [
-        GaussianResult(estimate_list[i], gt_states[i])
-        for i in range(len(estimate_list))
-    ]
-)
-
-import seaborn as sns
+results = GaussianResultList.from_estimates(estimate_list, gt_states)
 
 # ##############################################################################
 # Plot results
@@ -51,7 +44,6 @@ plot_poses(states_list, ax, line_color="tab:blue", step=20, label="Estimate")
 plot_poses(gt_states, ax, line_color="tab:red", step=500, label="Groundtruth")
 ax.legend()
 
-sns.set_theme()
 fig, axs = plot_error(results)
 axs[0, 0].set_title("Attitude")
 axs[0, 1].set_title("Velocity")

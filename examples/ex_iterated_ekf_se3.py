@@ -1,5 +1,5 @@
-import pynav.lib.datasets as datasets
-from pynav.filters import ExtendedKalmanFilter, IteratedKalmanFilter
+from pynav.lib.datasets import SimulatedPoseRangingDataset
+from pynav.filters import IteratedKalmanFilter
 from pynav.utils import GaussianResult, GaussianResultList, plot_error, randvec
 from pynav.types import StateWithCovariance
 import time
@@ -8,7 +8,7 @@ np.random.seed(0)
 
 # ##############################################################################
 # Create simulated pose ranging data
-data = datasets.SimulatedPoseRanging()
+data = SimulatedPoseRangingDataset()
 gt_states = data.get_ground_truth()
 input_data = data.get_input_data()
 meas_data = data.get_meas_data()

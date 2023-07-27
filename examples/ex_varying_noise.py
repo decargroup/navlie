@@ -1,12 +1,19 @@
 # %%
 
-from pynav.filters import ExtendedKalmanFilter
-from pynav.lib.states import VectorState
-from pynav.datagen import DataGenerator
-from pynav.types import StateWithCovariance
-from pynav.utils import GaussianResult, GaussianResultList, monte_carlo, plot_error, randvec
+from pynav.lib import VectorState, DoubleIntegrator, RangePointToAnchor
+from pynav import (
+    run_filter,
+    monte_carlo,
+    GaussianResult,
+    GaussianResultList,
+    plot_error,
+    plot_nees,
+    randvec,
+    DataGenerator,
+    ExtendedKalmanFilter
 
-from pynav.lib.models import DoubleIntegrator, OneDimensionalPositionVelocityRange
+
+)
 import numpy as np
 from typing import List
 from matplotlib import pyplot as plt
@@ -20,14 +27,14 @@ and to then run an EKF using these same noise matrices.
 """
 
 
-x0_true = VectorState(np.array([1, 0]))
+x0_true = VectorState(np.array([1, 0]), stamp=0.0)
 P0 = np.diag([0.5, 0.5])
 R = 0.01**2
 Q = 0.1 * np.identity(1)
-N = 100 # Number MC trials
+N = 10 # Number MC trials
 
 range_models = [
-    OneDimensionalPositionVelocityRange(R),
+    RangePointToAnchor([0.0], R),
 ]
 
 
@@ -70,6 +77,7 @@ dg = DataGenerator(
 )
 
 
+ekf = ExtendedKalmanFilter(process_model)
 
 def ekf_trial(trial_number:int) -> List[GaussianResult]:
     """
@@ -81,46 +89,17 @@ def ekf_trial(trial_number:int) -> List[GaussianResult]:
     state_true, input_data, meas_data = dg.generate(x0_true, 0, t_max, noise=True)
 
     x0_check = x0_true.plus(randvec(P0))
-    x = StateWithCovariance(x0_check, P0)
-
     
-    
-    meas_idx = 0
-    y = meas_data[meas_idx]
-    results_list = []
-    ekf = ExtendedKalmanFilter(process_model)
-    for k in range(len(input_data) - 1):
+    estimates = run_filter(ekf, x0_check, P0, input_data, meas_data, True)
 
-        results_list.append(GaussianResult(x, state_true[k]))
-        u = input_data[k]
-
-        # Fuse any measurements that have occurred.
-        while y.stamp < input_data[k + 1].stamp and meas_idx < len(meas_data):
-            x = ekf.correct(x, y, u)
-            meas_idx += 1
-            if meas_idx < len(meas_data):
-                y = meas_data[meas_idx]
-
-        dt = input_data[k + 1].stamp - x.stamp
-        x = ekf.predict(x, u, dt=dt)
-
-    return GaussianResultList(results_list)
+    return GaussianResultList.from_estimates(estimates, state_true)
 
 # %% Run the monte carlo experiment
 results = monte_carlo(ekf_trial, N)
 
 # %% Plot
 
-fig, ax = plt.subplots(1,1)
-ax.plot(results.stamp, results.average_nees)
-ax.plot(results.stamp, results.expected_nees, color = 'r', label = "Expected NEES")
-ax.plot(results.stamp, results.nees_lower_bound(0.99), color='k', linestyle="--", label="99 percent c.i.")
-ax.plot(results.stamp, results.nees_upper_bound(0.99), color='k', linestyle="--",)
-ax.set_title("{0}-trial average NEES".format(results.num_trials))
-ax.set_ylim(0,None)
-ax.set_xlabel("Time (s)")
-ax.set_ylabel("NEES")
-ax.legend()
+fig, ax = plot_nees(results)
 
 if N < 15:
 
