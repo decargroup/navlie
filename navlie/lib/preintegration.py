@@ -12,7 +12,7 @@ from navlie.lib.imu import (
 )
 from navlie.lib.states import MatrixLieGroupState, VectorState
 import numpy as np
-from pylie import SO3, SE3, SE2, SE23, MatrixLieGroup
+from pymlg import SO3, SE3, SE2, SE23, MatrixLieGroup
 
 
 class RelativeMotionIncrement(Input):

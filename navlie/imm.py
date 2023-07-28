@@ -8,14 +8,19 @@ from navlie.types import (
 )
 import numpy as np
 from scipy.stats import multivariate_normal
-from navlie.utils import GaussianResultList, GaussianResult
+from navlie.utils import GaussianResultList, GaussianResult, state_interp
 from navlie.filters import ExtendedKalmanFilter
+from tqdm import tqdm
+
+# TODO. The IMM seems to have an issue when the user accidently modifies the
+# provided state in the process model.
 
 
 def gaussian_mixing_vectorspace(
     weights: List[float], means: List[np.ndarray], covariances: List[np.ndarray]
 ):
-    """Calculate the mean and covariance of a Gaussian mixture on a vectorspace.
+    """
+    Calculate the mean and covariance of a Gaussian mixture on a vectorspace.
 
     Parameters
     ----------
@@ -37,10 +42,10 @@ def gaussian_mixing_vectorspace(
     x_bar = np.zeros(means[0].shape)
     P_bar = np.zeros(covariances[0].shape)
 
-    for (weight, x) in zip(weights, means):
+    for weight, x in zip(weights, means):
         x_bar = x_bar + weight * x
 
-    for (weight, x, P) in zip(weights, means, covariances):
+    for weight, x, P in zip(weights, means, covariances):
         dx = (x - x_bar).reshape(-1, 1)
         P_bar = P_bar + weight * P + weight * dx @ dx.T
 
@@ -50,7 +55,8 @@ def gaussian_mixing_vectorspace(
 def reparametrize_gaussians_about_X_par(
     X_par: State, X_list: List[StateWithCovariance]
 ):
-    """Reparametrize each Lie group Gaussian in X_list about X_par.
+    """
+    Reparametrize each Lie group Gaussian in X_list about X_par.
     A Lie group Gaussian is only relevant in the tangent space of its own mean.
     To mix Lie group Gaussians, a specific X, X_par, must be chosen to expand
     a tangent space around. Once expanded in this common tangent space,
@@ -85,9 +91,10 @@ def reparametrize_gaussians_about_X_par(
 
 
 def update_X(X: State, mu: np.ndarray, P: np.ndarray):
-    """Given a Lie group Gaussian with mean mu and covariance P, expressed in the tangent space of X,
-    compute Lie group StateAndCovariance X_hat such that the Lie algebra Gaussian
-    around X_hat has zero mean.
+    """
+    Given a Lie group Gaussian with mean mu and covariance P, expressed in the
+    tangent space of X, compute Lie group StateAndCovariance X_hat such that the
+    Lie algebra Gaussian around X_hat has zero mean.
 
     Parameters
     ----------
@@ -147,10 +154,13 @@ class IMMState:
         self.model_states = model_states
         self.model_probabilities = model_probabilities
 
+    @property
+    def stamp(self):
+        return self.model_states[0].state.stamp
+
     def copy(self) -> "IMMState":
-        return IMMState(
-            self.model_states.copy(), self.model_probabilities.copy()
-        )
+        x_copy = [x.copy() for x in self.model_states]
+        return IMMState(x_copy, self.model_probabilities.copy())
 
 
 class IMMResult(GaussianResult):
@@ -197,15 +207,44 @@ class IMMResultList(GaussianResultList):
 
     def __init__(self, result_list: List[IMMResult]):
         super().__init__(result_list)
-        self.model_probabilities = []
-        # Turn list of "probability at time step" into
-        # list of "probability of model"
-        n_models = result_list[0].model_probabilities.shape[0]
-        for lv1 in range(n_models):
-            self.model_probabilities.append(
-                np.array([r.model_probabilities[lv1] for r in result_list])
-            )
+        self.model_probabilities = np.array(
+            [r.model_probabilities for r in result_list]
+        )
 
+    @staticmethod
+    def from_estimates(
+        estimate_list: List[IMMState],
+        state_true_list: List[State],
+        method="nearest",
+    ):
+        """
+        A convenience function that creates a IMMResultList from a list of
+        IMMState and a list of true State objects
+
+        Parameters
+        ----------
+        estimate_list : List[IMMState]
+            A list of IMMState objects
+        state_true_list : List[State]
+            A list of true State objects
+        method : "nearest" or "linear", optional
+            The method used to interpolate the true state when the timestamps
+            do not line up exactly, by default "nearest".
+
+        Returns
+        -------
+        IMMResultList
+            A IMMResultList object
+        """
+        stamps = [r.model_states[0].stamp for r in estimate_list]
+
+        state_true_list = state_interp(stamps, state_true_list, method=method)
+        return IMMResultList(
+            [
+                IMMResult(estimate, state_true)
+                for estimate, state_true in zip(estimate_list, state_true_list)
+            ]
+        )
 
 class InteractingModelFilter:
     """On-manifold Interacting Multiple Model Filter (IMM).
@@ -283,7 +322,8 @@ class InteractingModelFilter:
         return IMMState(x_mix, mu_models)
 
     def predict(self, x_km: IMMState, u: Input, dt: float):
-        """Carries out prediction step for each model of the IMM.
+        """
+        Carries out prediction step for each model of the IMM.
 
         Parameters
         ----------
@@ -298,6 +338,7 @@ class InteractingModelFilter:
         -------
         IMMState
         """
+
         x_km_models = x_km.model_states.copy()
         x_check = []
         for lv1, kf in enumerate(self.kf_list):
@@ -310,18 +351,19 @@ class InteractingModelFilter:
         y: Measurement,
         u: Input,
     ):
-        """Carry out the correction step for each model and update model probabilities.
+        """
+        Carry out the correction step for each model and update model
+        probabilities.
 
         Parameters
         ----------
-        x_check: IMMState
-        mu_km_models : List[Float]
+        x_check: IMMState mu_km_models : List[Float]
             Probabilities for each model from previous timestep.
         y : Measurement
             Measurement to be fused into the current state estimate.
         u: Input
-            Most recent input, to be used to predict the state forward
-            if the measurement stamp is larger than the state stamp.
+            Most recent input, to be used to predict the state forward if the
+            measurement stamp is larger than the state stamp.
 
 
         Returns
@@ -343,16 +385,12 @@ class InteractingModelFilter:
         # Correct and update model probabilities
         x_hat = []
         for lv1, kf in enumerate(self.kf_list):
-            x, details_dict = kf.correct(
-                x_models_check[lv1], y, u, output_details=True
-            )
+            x, details_dict = kf.correct(x_models_check[lv1], y, u, output_details=True)
             x_hat.append(x)
             z = details_dict["z"]
             S = details_dict["S"]
             z = z.ravel()
-            model_likelihood = multivariate_normal.pdf(
-                z, mean=np.zeros(z.shape), cov=S
-            )
+            model_likelihood = multivariate_normal.pdf(z, mean=np.zeros(z.shape), cov=S)
             mu_k[lv1] = model_likelihood * c_bar[lv1]
 
         # If all model likelihoods are zero to machine tolerance, np.sum(mu_k)=0 and it fails
@@ -365,7 +403,7 @@ class InteractingModelFilter:
         return IMMState(x_hat, mu_k)
 
 
-def run_interacting_multiple_model_filter(
+def run_imm_filter(
     filter: InteractingModelFilter,
     x0: State,
     P0: np.ndarray,
@@ -422,15 +460,12 @@ def run_interacting_multiple_model_filter(
         [StateWithCovariance(x0, P0)] * n_models,
         1.0 / n_models * np.array(np.ones(n_models)),
     )
-    for k in range(len(input_data) - 1):
+    for k in tqdm(range(len(input_data) - 1)):
         results_list.append(x)
         u = input_data[k]
         # Fuse any measurements that have occurred.
         if len(meas_data) > 0:
-            while y.stamp < input_data[k + 1].stamp and meas_idx < len(
-                meas_data
-            ):
-
+            while y.stamp < input_data[k + 1].stamp and meas_idx < len(meas_data):
                 x = filter.interaction(x)
                 x = filter.correct(x, y, u)
                 meas_idx += 1

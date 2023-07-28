@@ -12,9 +12,13 @@ from .filters import (
     ExtendedKalmanFilter,
     IteratedKalmanFilter,
     SigmaPointKalmanFilter,
+    UnscentedKalmanFilter,
+    CubatureKalmanFilter,
+    GaussHermiteKalmanFilter,
     run_filter,
 )
 from . import batch
+from . import imm
 from . import lib
 from .batch import BatchEstimator
 

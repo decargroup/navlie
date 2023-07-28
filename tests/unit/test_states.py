@@ -10,7 +10,7 @@ from navlie.lib import (
     MatrixLieGroupState
 )
 from navlie.types import State
-from pylie import SO3, SE3
+from pymlg import SO3, SE3
 import numpy as np
 import pytest
 import sys

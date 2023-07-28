@@ -1,6 +1,6 @@
 from navlie.lib.camera import Camera, PoseMatrix
 import numpy as np
-from pylie import SE3
+from pymlg import SE3
 
 
 def test_valid_measurements():

@@ -10,7 +10,7 @@ from navlie.lib.states import (
     MatrixLieGroupState,
     VectorState,
 )
-from pylie import SO2, SO3
+from pymlg import SO2, SO3
 import numpy as np
 from typing import List, Any
 from scipy.linalg import block_diag
@@ -592,6 +592,10 @@ class RangePointToAnchor(MeasurementModel):
 
 
 class PointRelativePosition(MeasurementModel):
+    """
+    Measurement model describing the position of a known landmark relative 
+    to the robot, resolved in the body frame.
+    """
     def __init__(
         self,
         landmark_position: np.ndarray,
@@ -633,7 +637,8 @@ class InvariantPointRelativePosition(MeasurementModel):
         self.measurement_model = model
 
     def evaluate(self, x: MatrixLieGroupState) -> np.ndarray:
-        """Computes the right-invariant innovation.
+        """
+        Computes the right-invariant innovation.
 
 
         Parameters
@@ -653,7 +658,8 @@ class InvariantPointRelativePosition(MeasurementModel):
         return z
 
     def jacobian(self, x: MatrixLieGroupState) -> np.ndarray:
-        """Compute the Jacobian of the innovation directly.
+        """
+        Compute the Jacobian of the innovation directly.
 
         Parameters
         ----------

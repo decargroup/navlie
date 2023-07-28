@@ -7,7 +7,7 @@ from navlie.lib.states import (
     SE3State,
     SO3State,
 )
-from pylie import (
+from pymlg import (
     SE23, SE3, SO3
 )
 import numpy as np

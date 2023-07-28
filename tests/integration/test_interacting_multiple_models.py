@@ -14,11 +14,11 @@ from navlie.lib.models import (
     Gravitometer,
 )
 from navlie.lib.models import RangePoseToAnchor
-from pylie import SE3
+from pymlg import SE3
 
 import numpy as np
 from typing import List
-from navlie.imm import InteractingModelFilter, run_interacting_multiple_model_filter
+from navlie.imm import InteractingModelFilter, run_imm_filter
 from navlie.imm import IMMResultList
 from navlie.imm import  IMMResult
 # TODO this test is very complicated. we need to simplify this.
@@ -71,7 +71,7 @@ def make_filter_trial(dg, x0_true, P0, t_max, imm, process_model, Q_profile):
         x0_check = x0_true.copy()
         x0_check = x0_check.plus(randvec(P0))
 
-        estimate_list = run_interacting_multiple_model_filter(
+        estimate_list = run_imm_filter(
             imm, x0_check, P0, input_list, meas_list
         )
 

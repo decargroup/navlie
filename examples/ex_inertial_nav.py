@@ -1,21 +1,24 @@
+""" 
+A slightly more complicated example of a robot localizing itself from relative
+position measurements to known landmarks.
+"""
 from typing import List
-import matplotlib.pyplot as plt
 import numpy as np
-from pylie import SE23
-from navlie.filters import ExtendedKalmanFilter, run_filter
-from navlie.lib.models import (
+from pymlg import SE23
+from navlie.lib import (
+    IMU,
+    IMUState,
+    IMUKinematics,
     InvariantMeasurement,
     PointRelativePosition,
 )
-from navlie.lib.imu import IMU, IMUState, IMUKinematics
-from navlie.utils import GaussianResult, GaussianResultList, plot_error, randvec
-from navlie.datagen import DataGenerator
+import navlie as nav
 
 # ##############################################################################
 # Problem Setup
 
 t_start = 0
-t_end = 30
+t_end = 15
 imu_freq = 100
 
 # IMU noise parameters
@@ -123,7 +126,7 @@ def input_profile(stamp: float, x: IMUState) -> np.ndarray:
 
     # Generate a random input to drive the bias random walk
     Q_bias = Q_noise[6:, 6:]
-    bias_noise = randvec(Q_bias)
+    bias_noise = nav.randvec(Q_bias)
 
     u = IMU(omega, accel, stamp, bias_noise[0:3], bias_noise[3:6])
     return u
@@ -138,7 +141,7 @@ meas_cov = np.identity(3) * sigma_landmark_sensor**2
 meas_model_list = [PointRelativePosition(pos, meas_cov) for pos in landmarks]
 
 # Create data generator
-data_gen = DataGenerator(
+data_gen = nav.DataGenerator(
     process_model,
     input_func=input_profile,
     input_covariance=Q_noise,
@@ -165,9 +168,7 @@ P0[9:12, 9:12] *= sigma_bg_init**2
 P0[12:15, 12:15] *= sigma_ba_init**2
 
 # Generate all data
-states_true, input_list, meas_list = data_gen.generate(
-    x0, t_start, t_end, noise=True
-)
+states_true, input_list, meas_list = data_gen.generate(x0, t_start, t_end, noise=True)
 
 # **************** Conversion to Invariant Measurements ! *********************
 invariants = [InvariantMeasurement(meas, "right") for meas in meas_list]
@@ -179,32 +180,35 @@ for u in input_list:
     u.bias_accel_walk = np.array([0, 0, 0])
 
 
-ekf = ExtendedKalmanFilter(process_model)
+ekf = nav.ExtendedKalmanFilter(process_model)
 
-estimate_list = run_filter(ekf, x0, P0, input_list, invariants)
+estimate_list = nav.run_filter(ekf, x0, P0, input_list, invariants)
 
 # Postprocess the results and plot
-results = GaussianResultList.from_estimates(estimate_list, states_true)
+results = nav.GaussianResultList.from_estimates(estimate_list, states_true)
 
-from navlie.utils import plot_poses
-import seaborn as sns
+if __name__ == "__main__":
+    import matplotlib.pyplot as plt
+    import seaborn as sns
 
-fig = plt.figure()
-ax = plt.axes(projection="3d")
-landmarks = np.array(landmarks)
-ax.scatter(landmarks[:, 0], landmarks[:, 1], landmarks[:, 2])
-states_list = [x.state for x in estimate_list]
-plot_poses(states_list, ax, line_color="tab:blue", step=500, label="Estimate")
-plot_poses(states_true, ax, line_color="tab:red", step=500, label="Groundtruth")
-ax.legend()
+    fig = plt.figure()
+    ax = plt.axes(projection="3d")
+    landmarks = np.array(landmarks)
+    ax.scatter(landmarks[:, 0], landmarks[:, 1], landmarks[:, 2])
+    states_list = [x.state for x in estimate_list]
+    nav.plot_poses(results.state, ax, line_color="tab:blue", step=500, label="Estimate")
+    nav.plot_poses(
+        results.state_true, ax, line_color="tab:red", step=500, label="Groundtruth"
+    )
+    ax.legend()
 
-sns.set_theme()
-fig, axs = plot_error(results)
-axs[0, 0].set_title("Attitude")
-axs[0, 1].set_title("Velocity")
-axs[0, 2].set_title("Position")
-axs[0, 3].set_title("Gyro bias")
-axs[0, 4].set_title("Accel bias")
-axs[-1, 2]
+    sns.set_theme()
+    fig, axs = nav.plot_error(results)
+    axs[0, 0].set_title("Attitude")
+    axs[0, 1].set_title("Velocity")
+    axs[0, 2].set_title("Position")
+    axs[0, 3].set_title("Gyro bias")
+    axs[0, 4].set_title("Accel bias")
+    axs[-1, 2]
 
-plt.show()
+    plt.show()

@@ -1,7 +1,7 @@
 from navlie.lib.states import MatrixLieGroupState, VectorState, SE3State
 import numpy as np
 from navlie.filters import mean_state, generate_sigmapoints
-from pylie import SE3
+from pymlg import SE3
 np.random.seed(0)
 
 def test_mean_state_vector():
