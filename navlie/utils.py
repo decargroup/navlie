@@ -393,7 +393,7 @@ class MonteCarloResult:
 def monte_carlo(
     trial: Callable[[int], GaussianResultList],
     num_trials: int,
-    n_jobs: int = -1,
+    num_jobs: int = -1,
     verbose: int = 10,
 ) -> MonteCarloResult:
     """
@@ -409,11 +409,11 @@ def monte_carlo(
         are expected to remain consistent.
     num_trials : int
         Number of Trials to execute
-    n_jobs: int, optional
+    num_jobs: int, optional
         The maximum number of concurrently running jobs, by default -1.
         If -1 all CPUs are used. If 1 is given, no parallel computing code
-        is used at all, which is useful for debugging. For n_jobs below -1,
-        (n_cpus + 1 + n_jobs) are used. Thus for n_jobs = -2, all CPUs but
+        is used at all, which is useful for debugging. For num_jobs below -1,
+        (n_cpus + 1 + num_jobs) are used. Thus for num_jobs = -2, all CPUs but
         one are used.
     verbose: int, optional
         The verbosity level, by default 10. If non zero, progress messages
@@ -429,7 +429,7 @@ def monte_carlo(
     trial_results = [None] * num_trials
 
     print("Starting Monte Carlo experiment...")
-    trial_results = Parallel(n_jobs=n_jobs, verbose=verbose)(
+    trial_results = Parallel(n_jobs=num_jobs, verbose=verbose)(
         delayed(trial)(i) for i in range(num_trials)
     )
 
@@ -988,7 +988,7 @@ def state_interp(
 
     query_stamps = query_stamps.copy()
     for i, stamp in enumerate(query_stamps):
-        if not isinstance(stamp, float):
+        if not isinstance(stamp, (float, int)):
             if hasattr(stamp, "stamp"):
                 stamp = stamp.stamp
                 query_stamps[i] = stamp

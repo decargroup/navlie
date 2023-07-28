@@ -60,6 +60,9 @@ class DataGenerator:
         else:
             raise ValueError("Input covariance must be a function or a matrix.")
 
+        if isinstance(meas_model_list, MeasurementModel):
+            meas_model_list = [meas_model_list]
+
         # Check meas frequencies were provided
         if (len(meas_model_list) != 0) and (meas_freq_list is None):
             raise ValueError("Measurement frequency must be provided.")

@@ -28,7 +28,8 @@ from .models import (
     Gravitometer,
     Magnetometer, 
     GlobalPosition,
-    InvariantMeasurement    
+    InvariantMeasurement,
+    PointRelativePosition
 )
 
 from .preintegration import (
