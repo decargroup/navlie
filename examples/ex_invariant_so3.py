@@ -6,7 +6,7 @@ from navlie.lib import (
     SO3State,
 )
 import navlie as nav
-from pylie import SO3
+from pymlg import SO3
 import numpy as np
 
 

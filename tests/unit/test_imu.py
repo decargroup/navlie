@@ -10,7 +10,7 @@ from navlie.lib.imu import (
     G_matrix,
     G_matrix_inv,
 )
-from pylie import SE23, SO3
+from pymlg import SE23, SO3
 import numpy as np
 from math import factorial
 import pytest

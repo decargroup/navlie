@@ -4,7 +4,7 @@ from navlie.datagen import DataGenerator
 from navlie.filters import ExtendedKalmanFilter, IteratedKalmanFilter
 from navlie.utils import GaussianResult, GaussianResultList, randvec, monte_carlo
 from navlie.types import StateWithCovariance, State
-from pylie import SE3
+from pymlg import SE3
 import numpy as np
 from typing import List
 import pytest

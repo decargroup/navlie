@@ -4,7 +4,7 @@ from navlie.types import StampedValue, Measurement
 from navlie.lib.models import SingleIntegrator, BodyFrameVelocity, GlobalPosition
 from navlie.batch.estimator import PriorResidual, ProcessResidual, MeasurementResidual
 from navlie.lib.states import VectorState, SE3State
-from pylie import SE3
+from pymlg import SE3
 import numpy as np
 
 def test_prior_residual_vector():

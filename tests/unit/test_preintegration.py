@@ -11,7 +11,7 @@ from navlie.lib.models import BodyFrameVelocity, DoubleIntegrator, DoubleIntegra
 from navlie.filters import ExtendedKalmanFilter
 from navlie.lib.states import SE3State, VectorState
 import numpy as np
-from pylie import SE23, SE2, SE3, SO3
+from pymlg import SE23, SE2, SE3, SO3
 from navlie.types import StampedValue, StateWithCovariance
 import pytest
 

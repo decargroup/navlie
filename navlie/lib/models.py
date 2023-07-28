@@ -10,7 +10,7 @@ from navlie.lib.states import (
     MatrixLieGroupState,
     VectorState,
 )
-from pylie import SO2, SO3
+from pymlg import SO2, SO3
 import numpy as np
 from typing import List, Any
 from scipy.linalg import block_diag

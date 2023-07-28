@@ -15,7 +15,7 @@ from navlie.datagen import DataGenerator
 from navlie.filters import ExtendedKalmanFilter, run_filter
 from navlie.utils import GaussianResult, GaussianResultList, plot_error, randvec
 from navlie.batch.estimator import BatchEstimator
-from pylie import SO3, SE3
+from pymlg import SO3, SE3
 import numpy as np
 import matplotlib.pyplot as plt
 

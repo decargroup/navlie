@@ -33,7 +33,7 @@ Clone this repo, change to its directory, and execute
 
     pip install -e .
 
-This command should automatically install all dependencies, including our package `pylie` (found at https://github.com/decargroup/pylie) for back-end Lie group mathematical operations.
+This command should automatically install all dependencies, including our package `pymlg` (found at https://github.com/decargroup/pymlg) for back-end Lie group mathematical operations.
 
 Examples
 ^^^^^^^^
@@ -105,7 +105,7 @@ As another more complicated example, a state object belonging to the SE(3) Lie g
 .. code-block:: python
 
     from navlie.types import State 
-    from pylie import SE3 
+    from pymlg import SE3 
     import numpy as np 
 
     class SE3State(State):

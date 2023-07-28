@@ -18,7 +18,7 @@ from navlie.lib import (
     Gravitometer,
     RangePoseToAnchor,
 )
-from pylie import SE3
+from pymlg import SE3
 
 import numpy as np
 from typing import List

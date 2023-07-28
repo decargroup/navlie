@@ -19,7 +19,7 @@ from navlie.lib.models import (
     GlobalVelocity,
 )
 from navlie.types import Measurement, MeasurementModel
-from pylie import SO3, SE3, SE2, SE3, SE23
+from pymlg import SO3, SE3, SE2, SE3, SE23
 import numpy as np
 import pytest
 

@@ -1,5 +1,5 @@
-from pylie import SO2, SO3, SE2, SE3, SE23, SL3
-from pylie.numpy.base import MatrixLieGroup
+from pymlg import SO2, SO3, SE2, SE3, SE23, SL3
+from pymlg.numpy.base import MatrixLieGroup
 import numpy as np
 from navlie.types import State
 from typing import Any, List
@@ -77,7 +77,7 @@ class MatrixLieGroupState(State):
             coordinates. Otherwise, the value must be a 2D numpy array representing
             a direct element of the group in matrix form.
         group : MatrixLieGroup
-            A `pylie.MatrixLieGroup` class, such as `pylie.SE2` or `pylie.SO3`.
+            A `pymlg.MatrixLieGroup` class, such as `pymlg.SE2` or `pymlg.SO3`.
         stamp : float, optional
             timestamp, by default None
         state_id : Any, optional
