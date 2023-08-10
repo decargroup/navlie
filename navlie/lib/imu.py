@@ -465,6 +465,7 @@ class IMUKinematics(ProcessModel):
         Q: np.ndarray,
         gravity=None,
         jacobian_method="discrete",
+        discretization_method="euler",
     ):
         """
         Parameters
@@ -482,6 +483,9 @@ class IMUKinematics(ProcessModel):
 
         self._gravity = np.array(gravity).ravel()
         self.jacobian_method = jacobian_method
+        # How to compute the discrete-time covariance
+        # from the continuous-time system
+        self.discritization_method = discretization_method
 
     def evaluate(self, x: IMUState, u: IMU, dt: float) -> IMUState:
         """
@@ -532,34 +536,42 @@ class IMUKinematics(ProcessModel):
         if self.jacobian_method == "discrete":
             jac = self.compute_discrete_Jacobian(x, u, dt)
         if self.jacobian_method == "continuous":
-            jac = self.compute_continuous_jacobian(x, u, dt)
+            A_ct, L_ct = self.compute_continuous_jacobians(x, u, dt)
+
+            # Discretize the continuous-time Jacobians
+            Fdt = A_ct * dt
+            Fdt_square = Fdt @ Fdt
+            Fdt_cube = Fdt_square @ Fdt
+
+            jac = np.identity(15) + Fdt + Fdt_square / 2.0 + Fdt_cube / 6.0
 
         return jac
 
-    def compute_continuous_jacobian(
+    def compute_continuous_jacobians(
         self,
         x: IMUState,
         u: IMU,
         dt: float,
-    ) -> np.ndarray:
+    ) -> Tuple[np.ndarray, np.ndarray]:
         """Computes the continuous-time Jacobian, and then discretizes the
         system."""
         if x.direction == "right":
             print("Right Jacobian not implemented!")
             return
+
         # Extract relevant info from RMI
         C = x.attitude
         v = x.velocity
         r = x.position
 
         # Continuous-time F_r
-        F_ct = np.zeros((15, 15))
-        F_ct[0:3, 9:12] = -C
-        F_ct[3:6, 0:3] = SO3.cross(self._gravity)
-        F_ct[3:6, 9:12] = -SO3.cross(v) @ C
-        F_ct[3:6, 12:15] = -C
-        F_ct[6:9, 3:6] = np.identity(3)
-        F_ct[6:9, 9:12] = -SO3.cross(r) @ C
+        A_ct = np.zeros((15, 15))
+        A_ct[0:3, 9:12] = -C
+        A_ct[3:6, 0:3] = SO3.cross(self._gravity)
+        A_ct[3:6, 9:12] = -SO3.cross(v) @ C
+        A_ct[3:6, 12:15] = -C
+        A_ct[6:9, 3:6] = np.identity(3)
+        A_ct[6:9, 9:12] = -SO3.cross(r) @ C
 
         # Continuous-time L
         L_ct = np.zeros((15, 12))
@@ -570,13 +582,7 @@ class IMUKinematics(ProcessModel):
         L_ct[9:12, 6:9] = np.identity(3)
         L_ct[12:15, 9:12] = np.identity(3)
 
-        # Discretize the system
-        Fdt = F_ct * dt
-        Fdt_square = Fdt @ Fdt
-        Fdt_cube = Fdt_square @ Fdt
-
-        A_d = np.identity(15) + Fdt + Fdt_square / 2.0 + Fdt_cube / 6.0
-        return A_d
+        return A_ct, L_ct
 
     def compute_discrete_Jacobian(
         self, x: IMUState, u: IMU, dt: float
@@ -617,6 +623,24 @@ class IMUKinematics(ProcessModel):
         return x.jacobian_from_blocks(**jac_kwargs)
 
     def covariance(self, x: IMUState, u: IMU, dt: float) -> np.ndarray:
+        if self.jacobian_method == "discrete":
+            return self._compute_covariance_discrete(x, u, dt)
+        elif self.jacobian_method == "continuous":
+            return self._compute_covariance_continuous(x, u, dt)
+
+    def _compute_covariance_continuous(
+        self, x: IMUState, u: IMU, dt: float
+    ) -> np.ndarray:
+        # Get the continuous-time Jacobians
+        A_ct, L_ct = self.compute_continuous_jacobians(x, u, dt)
+
+        # Discretize the system
+        Q_d = L_ct @ self._Q @ L_ct.T * dt
+        return Q_d
+
+    def _compute_covariance_discrete(
+        self, x: IMUState, u: IMU, dt: float
+    ) -> np.ndarray:
         # Jacobian of pose wrt to noise
         L_pn = self._get_input_jacobian(x, u, dt)
 
