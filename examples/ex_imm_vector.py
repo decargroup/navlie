@@ -23,6 +23,7 @@ input_freq = 10
 dt = 1 / input_freq
 t_max = dt * 1000
 
+
 # For data generation, assume that the process model noise Q follows this profile.
 def Q_profile(t):
     if t <= t_max / 4:
@@ -34,8 +35,8 @@ def Q_profile(t):
     Q = c * Q_ref
     return Q
 
-def main():
 
+def main():
     # Setup
     x0 = VectorState(np.array([1, 0]), 0.0)
     P0 = np.diag([1, 1])
@@ -49,7 +50,6 @@ def main():
         DoubleIntegrator(c_list[1] * Q_ref),
     ]
 
-
     n_models = len(imm_process_model_list)
 
     # Kalman Filter bank
@@ -58,7 +58,9 @@ def main():
     # Set up probability transition matrix
     off_diag_p = 0.02
     prob_trans_matrix = np.ones((n_models, n_models)) * off_diag_p
-    prob_trans_matrix = prob_trans_matrix + (1 - off_diag_p * (n_models)) * np.diag(np.ones(n_models))
+    prob_trans_matrix = prob_trans_matrix + (
+        1 - off_diag_p * (n_models)
+    ) * np.diag(np.ones(n_models))
     imm = InteractingModelFilter(kf_list, prob_trans_matrix)
 
     # Generate some data with varying Q matrix
@@ -72,13 +74,10 @@ def main():
     )
     state_true, input_list, meas_list = dg.generate(x0, 0, t_max, True)
 
-
     # Add some noise to the initial state
     x0_check = x0.plus(nav.randvec(P0))
 
-    estimate_list = run_imm_filter(
-        imm, x0_check, P0, input_list, meas_list
-    )
+    estimate_list = run_imm_filter(imm, x0_check, P0, input_list, meas_list)
 
     results = IMMResultList.from_estimates(estimate_list, state_true)
     return results
@@ -115,7 +114,7 @@ if __name__ == "__main__":
 
     # Process noise as estimated by the IMM
     fig, ax = plt.subplots(1, 1)
-    estimated_Q = np.sum(c_list*results.model_probabilities, axis=1)
+    estimated_Q = np.sum(c_list * results.model_probabilities, axis=1)
     true_Q = np.array([Q_profile(t)[0, 0] for t in results.stamp])
     ax.plot(results.stamp, estimated_Q, label="Estimated")
     ax.plot(results.stamp, true_Q, label="True")

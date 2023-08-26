@@ -9,6 +9,7 @@ import numpy as np
 import pytest
 from navlie.types import StampedValue
 
+
 @pytest.mark.parametrize("direction", ["left", "right"])
 def test_body_velocity_se3(direction):
     x = SE3State(
@@ -22,6 +23,7 @@ def test_body_velocity_se3(direction):
     jac = process_model.jacobian(x, u, dt)
     jac_fd = process_model.jacobian_fd(x, u, dt)
     assert np.allclose(jac, jac_fd, atol=1e-4)
+
 
 @pytest.mark.parametrize("direction", ["left", "right"])
 def test_body_velocity_se2(direction):
@@ -38,6 +40,7 @@ def test_body_velocity_se2(direction):
     Q = process_model.covariance(x, u, dt)
     assert np.allclose(jac, jac_fd, atol=1e-4)
 
+
 @pytest.mark.parametrize("direction", ["left", "right"])
 def test_body_velocity_se3_left(direction):
     x = SE3State(
@@ -51,6 +54,7 @@ def test_body_velocity_se3_left(direction):
     jac = process_model.jacobian(x, u, dt)
     jac_fd = process_model.jacobian_fd(x, u, dt)
     assert np.allclose(jac, jac_fd, atol=1e-4)
+
 
 @pytest.mark.parametrize("direction", ["right", "left"])
 def test_body_velocity_se2_left(direction):

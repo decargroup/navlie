@@ -21,12 +21,12 @@ setup(
     ],
     url="https://github.com/decargroup/navlie",
     classifiers=[
-        'Programming Language :: Python :: 3',
-        'License :: OSI Approved :: MIT License',
-        'Operating System :: OS Independent',
+        "Programming Language :: Python :: 3",
+        "License :: OSI Approved :: MIT License",
+        "Operating System :: OS Independent",
     ],
     project_urls={
         "Source": "https://github.com/decargroup/navlie",
-        "Tracker": "https://github.com/decargroup/navlie/issues"
+        "Tracker": "https://github.com/decargroup/navlie/issues",
     },
 )

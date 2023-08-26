@@ -1,5 +1,12 @@
 from navlie.lib.models import SingleIntegrator, RangePointToAnchor, VectorState
-from navlie import run_filter, randvec, GaussianResultList, SigmaPointKalmanFilter, DataGenerator, plot_error
+from navlie import (
+    run_filter,
+    randvec,
+    GaussianResultList,
+    SigmaPointKalmanFilter,
+    DataGenerator,
+    plot_error,
+)
 import numpy as np
 from typing import List
 import time
@@ -9,6 +16,8 @@ This is an example script showing how to define a custom process model and
 measurement model, generate data using those models, and then run an Sigma Point 
 Kalman Filter on that data.
 """
+
+
 def main():
     # ##############################################################################
     # Problem Setup
@@ -46,9 +55,10 @@ def main():
     # Run Filter
     if noise_active:
         x0 = x0.plus(randvec(P0))
-        
 
-    ukf = SigmaPointKalmanFilter(process_model, method= 'cubature', iterate_mean=False)
+    ukf = SigmaPointKalmanFilter(
+        process_model, method="cubature", iterate_mean=False
+    )
     # ukf = UnscentedKalmanFilter(process_model, iterate_mean=False) # Equivalent syntax!
 
     start_time = time.time()
@@ -62,6 +72,7 @@ def main():
 if __name__ == "__main__":
     results = main()
     import matplotlib.pyplot as plt
+
     fig, ax = plt.subplots(1, 1)
     ax.plot(results.value[:, 0], results.value[:, 1], label="Estimate")
     ax.plot(

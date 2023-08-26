@@ -48,7 +48,7 @@ def main():
     # Run Filter
     if noise_active:
         x0 = x0.plus(nav.randvec(P0))
-        
+
     x = nav.StateWithCovariance(x0, P0)
 
     ekf = nav.ExtendedKalmanFilter(process_model)
@@ -59,12 +59,10 @@ def main():
     y = meas_data[meas_idx]
     results_list = []
     for k in range(len(input_data) - 1):
-
         u = input_data[k]
-        
+
         # Fuse any measurements that have occurred.
         while y.stamp < input_data[k + 1].stamp and meas_idx < len(meas_data):
-
             x = ekf.correct(x, y, u)
 
             # Load the next measurement
@@ -72,20 +70,19 @@ def main():
             if meas_idx < len(meas_data):
                 y = meas_data[meas_idx]
 
-
         dt = input_data[k + 1].stamp - x.state.stamp
         x = ekf.predict(x, u, dt)
-        
-        results_list.append(nav.GaussianResult(x, gt_data[k+1]))
+
+        results_list.append(nav.GaussianResult(x, gt_data[k + 1]))
 
     print("Average filter computation frequency (Hz):")
     print(1 / ((time.time() - start_time) / len(input_data)))
 
-
     # ##############################################################################
     # Post processing
     results = nav.GaussianResultList(results_list)
-    return results 
+    return results
+
 
 if __name__ == "__main__":
     results = main()

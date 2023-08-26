@@ -1,6 +1,7 @@
 import navlie as nav
 import numpy as np
 
+
 def test_iterated_ekf():
     """
     Check if we can run the filter with the default options.
@@ -10,11 +11,11 @@ def test_iterated_ekf():
     P = np.diag([1, 1])
     R = 0.1**2
     Q = 0.1 * np.identity(2)
-    range_model =  nav.lib.RangePointToAnchor([0, 4], R)
+    range_model = nav.lib.RangePointToAnchor([0, 4], R)
     process_model = nav.lib.SingleIntegrator(Q)
     y = nav.generate_measurement(x, range_model)
-    u = nav.StampedValue([1,2], stamp=0.0)
-    
+    u = nav.StampedValue([1, 2], stamp=0.0)
+
     x = nav.StateWithCovariance(x, P)
     kf = nav.IteratedKalmanFilter(process_model)
     x = kf.correct(x, y, u)
@@ -30,15 +31,16 @@ def test_iterated_ekf_no_line_search():
     P = np.diag([1, 1])
     R = 0.1**2
     Q = 0.1 * np.identity(2)
-    range_model =  nav.lib.RangePointToAnchor([0, 4], R)
+    range_model = nav.lib.RangePointToAnchor([0, 4], R)
     process_model = nav.lib.SingleIntegrator(Q)
     y = nav.generate_measurement(x, range_model)
-    u = nav.StampedValue([1,2], stamp=0.0)
-    
+    u = nav.StampedValue([1, 2], stamp=0.0)
+
     x = nav.StateWithCovariance(x, P)
     kf = nav.IteratedKalmanFilter(process_model, line_search=False)
     x = kf.correct(x, y, u)
     x = kf.predict(x, u, dt=0.1)
+
 
 def test_iterated_ekf_equivalence():
     """
@@ -51,11 +53,11 @@ def test_iterated_ekf_equivalence():
     P = np.diag([1, 1])
     R = 0.1**2
     Q = 0.1 * np.identity(2)
-    range_model =  nav.lib.RangePointToAnchor([0, 4], R)
+    range_model = nav.lib.RangePointToAnchor([0, 4], R)
     process_model = nav.lib.SingleIntegrator(Q)
     y = nav.generate_measurement(x, range_model)
-    u = nav.StampedValue([1,2], stamp=0.0)
-    
+    u = nav.StampedValue([1, 2], stamp=0.0)
+
     x = nav.StateWithCovariance(x, P)
     kf = nav.IteratedKalmanFilter(process_model, max_iters=1, line_search=False)
     ekf = nav.ExtendedKalmanFilter(process_model)

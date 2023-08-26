@@ -13,8 +13,8 @@ from navlie.lib.models import SingleIntegrator, RangePointToAnchor
 import numpy as np
 import matplotlib.pyplot as plt
 
-def main():
 
+def main():
     # ##############################################################################
     # Problem Setup
 
@@ -23,12 +23,12 @@ def main():
     R = 0.1**2
     Q = 0.1 * np.identity(2)
     range_models = [
-        RangePointToAnchor([0, 4], R), # Anchor 1
-        RangePointToAnchor([-2, 0], R), # Anchor 2
-        RangePointToAnchor([2, 0], R), # Anchor 3
+        RangePointToAnchor([0, 4], R),  # Anchor 1
+        RangePointToAnchor([-2, 0], R),  # Anchor 2
+        RangePointToAnchor([2, 0], R),  # Anchor 3
     ]
-    range_freqs = 100 # This defines the overall frequency in which we want the
-                    # frequencies of the 3 measurement models to sum up to.
+    range_freqs = 100  # This defines the overall frequency in which we want the
+    # frequencies of the 3 measurement models to sum up to.
     process_model = SingleIntegrator(Q)
     input_profile = lambda t, x: np.array([0, 0])
     input_covariance = Q
@@ -51,21 +51,25 @@ def main():
         input_covariance,
         input_freq,
         range_models,
-        sequential_freq, # reduced frequency of each individual MeasurementModel
-        range_offset, # each measurement is offset so they do not start at the same time
+        sequential_freq,  # reduced frequency of each individual MeasurementModel
+        range_offset,  # each measurement is offset so they do not start at the same time
     )
 
     _, _, meas_data = dg.generate(x0, 0, 0.1)
 
-    print("The effective frequency of every measurements to every Anchor is " \
-        + str(sequential_freq) + " Hz.")
+    print(
+        "The effective frequency of every measurements to every Anchor is "
+        + str(sequential_freq)
+        + " Hz."
+    )
 
     return meas_data
 
+
 if __name__ == "__main__":
     meas_data = main()
-    # We can then see in the plot that the measurement to each anchor is being generated 
-    # sequentially with no overlap. 
+    # We can then see in the plot that the measurement to each anchor is being generated
+    # sequentially with no overlap.
     plt.scatter([x.stamp for x in meas_data], [x.value for x in meas_data])
     plt.grid()
     plt.ylabel(r"Measurement Value [m]")

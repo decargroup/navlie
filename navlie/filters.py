@@ -97,7 +97,7 @@ class ExtendedKalmanFilter:
         must provide the current state, input, and time interval
 
         .. note::
-            If the time interval `dt` is not provided in the arguments, it will
+            If the time interval ``dt`` is not provided in the arguments, it will
             be taken as the difference between the input stamp and the state stamp.
 
         Parameters
@@ -108,7 +108,7 @@ class ExtendedKalmanFilter:
             Input measurement to be given to process model
         dt : float, optional
             Duration to next time step. If not provided, dt will be calculated
-            with `dt = u.stamp - x.state.stamp`.
+            with ``dt = u.stamp - x.state.stamp``.
         x_jac : State, optional
             Evaluation point for the process model Jacobian. If not provided, the
             current state estimate will be used.
@@ -142,7 +142,9 @@ class ExtendedKalmanFilter:
         details_dict = {}
         if u is not None:
             Q = self.process_model.covariance(x_jac, u, dt)
-            x_new.state, A = self.process_model.evaluate_with_jacobian(x.state, u, dt)
+            x_new.state, A = self.process_model.evaluate_with_jacobian(
+                x.state, u, dt
+            )
             x_new.covariance = A @ x.covariance @ A.T + Q
             x_new.symmetrize()
             x_new.state.stamp = t_km1 + dt
@@ -165,7 +167,7 @@ class ExtendedKalmanFilter:
     ) -> StateWithCovariance:
         """
         Fuses an arbitrary measurement to produce a corrected state estimate.
-        If a measurement model returns `None` from its `evaluate()` method,
+        If a measurement model returns ``None`` from its ``evaluate()`` method,
         the measurement will not be fused.
 
         Parameters
@@ -184,7 +186,7 @@ class ExtendedKalmanFilter:
             current state estimate will be used.
         reject_outlier : bool, optional
             Whether to apply the NIS test to this measurement, by default None,
-            in which case the value of `self.reject_outliers` will be used.
+            in which case the value of ``self.reject_outliers`` will be used.
         output_details : bool, optional
             Whether to output intermediate computation results (innovation,
             innovation covariance) in an additional returned dict.
@@ -301,7 +303,7 @@ class IteratedKalmanFilter(ExtendedKalmanFilter):
             current state estimate will be used.
         reject_outlier : bool, optional
             Whether to apply the NIS test to this measurement, by default None,
-            in which case the value of `self.reject_outliers` will be used.
+            in which case the value of ``self.reject_outliers`` will be used.
 
         Returns
         -------
@@ -352,7 +354,9 @@ class IteratedKalmanFilter(ExtendedKalmanFilter):
 
             P_inv = np.linalg.inv(x.covariance)
             R_inv = np.linalg.inv(R)
-            cost_old = np.ndarray.item(0.5 * (e.T @ P_inv @ e + z.T @ R_inv @ z))
+            cost_old = np.ndarray.item(
+                0.5 * (e.T @ P_inv @ e + z.T @ R_inv @ z)
+            )
             P = J @ x.covariance @ J.T
 
             # Compute covariance of innovation
@@ -434,6 +438,7 @@ class IteratedKalmanFilter(ExtendedKalmanFilter):
         x.symmetrize()
 
         return x
+
 
 def generate_sigmapoints(
     dof: int, method: str
@@ -559,7 +564,7 @@ class SigmaPointKalmanFilter:
         must provide the current state, input, and time interval
 
         .. note::
-            If the time interval `dt` is not provided in the arguments, it will
+            If the time interval ``dt`` is not provided in the arguments, it will
             be taken as the difference between the input stamp and the state stamp.
 
         Parameters
@@ -570,7 +575,7 @@ class SigmaPointKalmanFilter:
             Input measurement to be given to process model
         dt : float, optional
             Duration to next time step. If not provided, dt will be calculated
-            with `dt = u.stamp - x.state.stamp`.
+            with ``dt = u.stamp - x.state.stamp``.
         input_covariance: np.ndarray, optional
             Covariance associated to the inpu measurement. If not provided,
             it will be grabbed from u.covariance
@@ -672,7 +677,7 @@ class SigmaPointKalmanFilter:
             Measurement to be fused into the current state estimate.
         reject_outlier : bool, optional
             Whether to apply the NIS test to this measurement, by default None,
-            in which case the value of `self.reject_outliers` will be used.
+            in which case the value of ``self.reject_outliers`` will be used.
 
         Returns
         -------
@@ -717,19 +722,29 @@ class SigmaPointKalmanFilter:
         y_check = y.model.evaluate(x.state)
 
         if y_check is not None:
-            y_propagated = np.array([
-                y.model.evaluate(x.state.plus(sp)).ravel()
-                for sp in sigmapoints.T
-            ])
+            y_propagated = np.array(
+                [
+                    y.model.evaluate(x.state.plus(sp)).ravel()
+                    for sp in sigmapoints.T
+                ]
+            )
 
             # predicted measurement mean
-            y_mean = np.sum(w[:,None]*y_propagated, axis=0)
+            y_mean = np.sum(w[:, None] * y_propagated, axis=0)
 
             # compute covariance of innovation and cross covariance
             err = y_propagated - y_mean
             sigmapoints = sigmapoints.T
-            Pyy = np.sum(w[:,None,None]*err[:,:,None]*err[:,None,:], axis=0) + R
-            Pxy = np.sum(w[:,None,None]*sigmapoints[:,:,None]*err[:,None,:], axis=0)
+            Pyy = (
+                np.sum(
+                    w[:, None, None] * err[:, :, None] * err[:, None, :], axis=0
+                )
+                + R
+            )
+            Pxy = np.sum(
+                w[:, None, None] * sigmapoints[:, :, None] * err[:, None, :],
+                axis=0,
+            )
 
             z = y.minus(y_mean)
 
@@ -764,6 +779,7 @@ class UnscentedKalmanFilter(SigmaPointKalmanFilter):
             iterate_mean=iterate_mean,
         )
 
+
 class CubatureKalmanFilter(SigmaPointKalmanFilter):
     def __init__(
         self,
@@ -777,6 +793,7 @@ class CubatureKalmanFilter(SigmaPointKalmanFilter):
             reject_outliers=reject_outliers,
             iterate_mean=iterate_mean,
         )
+
 
 class GaussHermiteKalmanFilter(SigmaPointKalmanFilter):
     def __init__(

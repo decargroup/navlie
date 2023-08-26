@@ -52,8 +52,6 @@ def test_G_matrix_inverse_se23():
     assert np.allclose(G.dot(G_inv), np.eye(5))
 
 
-
-
 def test_U_adjoint_se23():
     dt = 0.1
     u = IMU([1, 2, 3], [2, 3, 1], 0)
@@ -114,6 +112,7 @@ def test_imu_kinematics_jacobian_se23(direction):
     jac_fd = model.jacobian_fd(x, u, dt)
     assert np.allclose(jac, jac_fd, atol=1e-4)
 
+
 @pytest.mark.parametrize("direction", ["right", "left"])
 def test_imu_kinematics_jacobian_imu(direction):
     model = IMUKinematics(np.identity(6))
@@ -130,6 +129,7 @@ def test_imu_kinematics_jacobian_imu(direction):
     jac_fd = model.jacobian_fd(x, u, dt)
     assert np.allclose(jac, jac_fd, atol=1e-3)
 
+
 @pytest.mark.parametrize("direction", ["right", "left"])
 def test_imu_group_jacobian(direction):
     x = IMUState(
@@ -143,6 +143,7 @@ def test_imu_group_jacobian(direction):
     jac = x.plus_jacobian(dx)
     jac_fd = x.plus_jacobian_fd(dx)
     assert np.allclose(jac, jac_fd, atol=1e-6)
+
 
 if __name__ == "__main__":
     test_imu_kinematics_jacobian_imu("left")

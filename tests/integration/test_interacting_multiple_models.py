@@ -6,7 +6,10 @@ from navlie.utils import GaussianResult
 from navlie.utils import randvec
 
 from navlie.utils import monte_carlo, plot_error
-from navlie.lib.models import DoubleIntegrator, OneDimensionalPositionVelocityRange
+from navlie.lib.models import (
+    DoubleIntegrator,
+    OneDimensionalPositionVelocityRange,
+)
 from navlie.lib.models import SingleIntegrator, RangePointToAnchor
 from navlie.lib.models import (
     BodyFrameVelocity,
@@ -20,7 +23,8 @@ import numpy as np
 from typing import List
 from navlie.imm import InteractingModelFilter, run_imm_filter
 from navlie.imm import IMMResultList
-from navlie.imm import  IMMResult
+from navlie.imm import IMMResult
+
 # TODO this test is very complicated. we need to simplify this.
 
 PLOT_FLAG = False
@@ -71,9 +75,7 @@ def make_filter_trial(dg, x0_true, P0, t_max, imm, process_model, Q_profile):
         x0_check = x0_true.copy()
         x0_check = x0_check.plus(randvec(P0))
 
-        estimate_list = run_imm_filter(
-            imm, x0_check, P0, input_list, meas_list
-        )
+        estimate_list = run_imm_filter(imm, x0_check, P0, input_list, meas_list)
 
         results = [
             IMMResult(estimate_list[i], state_true[i])
@@ -152,7 +154,8 @@ def make_c_profile_const(t_max):
                     np.diag([0.01**2, 0.01**2, 0.01**2, 0.1, 0.1, 0.1])
                 ),
                 BodyFrameVelocity(
-                    9 * np.diag([0.01**2, 0.01**2, 0.01**2, 0.1, 0.1, 0.1])
+                    9
+                    * np.diag([0.01**2, 0.01**2, 0.01**2, 0.1, 0.1, 0.1])
                 ),
             ],
             np.diag([0.01**2, 0.01**2, 0.01**2, 0.1, 0.1, 0.1]),
@@ -221,7 +224,12 @@ def test_reasonable_nees_imm(
 
         fig, ax = plt.subplots(1, 1)
         ax.plot(results.stamp, results.average_nees)
-        ax.plot(results.stamp, results.expected_nees, color="r", label="Expected NEES")
+        ax.plot(
+            results.stamp,
+            results.expected_nees,
+            color="r",
+            label="Expected NEES",
+        )
         ax.plot(
             results.stamp,
             results.nees_lower_bound(0.99),
@@ -242,7 +250,6 @@ def test_reasonable_nees_imm(
         ax.legend()
 
         if N < 15:
-
             fig, axs = plt.subplots(2, 1)
             axs: List[plt.Axes] = axs
             for result in results.trial_results:
@@ -252,7 +259,8 @@ def test_reasonable_nees_imm(
             axs[1].set_xlabel("Time (s)")
 
         average_model_probabilities = np.average(
-            np.array([t.model_probabilities for t in results.trial_results]), axis=0
+            np.array([t.model_probabilities for t in results.trial_results]),
+            axis=0,
         )
         fig, ax = plt.subplots(1, 1)
         for lv1 in range(n_models):

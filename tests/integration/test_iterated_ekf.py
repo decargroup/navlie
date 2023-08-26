@@ -2,7 +2,12 @@ from navlie.lib.states import SE3State
 from navlie.lib.models import BodyFrameVelocity, GlobalPosition
 from navlie.datagen import DataGenerator
 from navlie.filters import ExtendedKalmanFilter, IteratedKalmanFilter
-from navlie.utils import GaussianResult, GaussianResultList, randvec, monte_carlo
+from navlie.utils import (
+    GaussianResult,
+    GaussianResultList,
+    randvec,
+    monte_carlo,
+)
 from navlie.types import StateWithCovariance, State
 from pymlg import SE3
 import numpy as np
@@ -26,7 +31,9 @@ test1_kwargs = {
     ),
     "input_freq": 50,
     "input_covariance": Q,
-    "measurement_models": [GlobalPosition(np.diag([0.1**2, 0.1**2, 0.1**2]))],
+    "measurement_models": [
+        GlobalPosition(np.diag([0.1**2, 0.1**2, 0.1**2]))
+    ],
     "measurement_freq": 10,
     "filter": IteratedKalmanFilter,
 }
@@ -41,7 +48,9 @@ test2_kwargs = {
     ),
     "input_freq": 50,
     "input_covariance": Q,
-    "measurement_models": [GlobalPosition(np.diag([0.1**2, 0.1**2, 0.1**2]))],
+    "measurement_models": [
+        GlobalPosition(np.diag([0.1**2, 0.1**2, 0.1**2]))
+    ],
     "measurement_freq": 10,
     "filter": IteratedKalmanFilter,
 }
@@ -56,13 +65,16 @@ test3_kwargs = {
     ),
     "input_freq": 50,
     "input_covariance": Q,
-    "measurement_models": [GlobalPosition(np.diag([0.1**2, 0.1**2, 0.1**2]))],
+    "measurement_models": [
+        GlobalPosition(np.diag([0.1**2, 0.1**2, 0.1**2]))
+    ],
     "measurement_freq": 10,
     "filter": ExtendedKalmanFilter,
 }
 
 ################################################################################
 ################################################################################
+
 
 def _filter_trial(
     trial_number: int,
@@ -101,7 +113,6 @@ def _filter_trial(
 
         # Fuse any measurements that have occurred.
         while y.stamp < input_data[k + 1].stamp and meas_idx < len(meas_data):
-
             x = filter.correct(x, y, u)
             meas_idx += 1
             if meas_idx < len(meas_data):
@@ -112,9 +123,9 @@ def _filter_trial(
 
     return GaussianResultList(results_list)
 
+
 @pytest.mark.parametrize("kwargs", [test1_kwargs, test2_kwargs, test3_kwargs])
 def test_iterated_ekf(kwargs):
-
     results = monte_carlo(lambda n: _filter_trial(n, **kwargs), 5)
     nees_in_correct_region = np.count_nonzero(
         results.average_nees < 2 * results.nees_upper_bound(0.99)
@@ -128,5 +139,3 @@ def test_iterated_ekf(kwargs):
         results.average_nees < 50 * results.nees_upper_bound(0.99)
     )
     assert nees_in_correct_region / nt > 0.9999
-
-

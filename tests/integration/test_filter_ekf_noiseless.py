@@ -5,7 +5,7 @@ from navlie import (
     DataGenerator,
     ExtendedKalmanFilter,
     monte_carlo,
-    run_filter
+    run_filter,
 )
 
 from navlie.lib import (
@@ -23,7 +23,8 @@ from pymlg import SE3
 import numpy as np
 from typing import List
 
-# TODO. simplify this. 
+# TODO. simplify this.
+
 
 def make_range_models_ekf_vector(R):
     range_models = [
@@ -56,7 +57,6 @@ def make_range_models_iterated_ekf(R):
 
 def make_filter_trial_prediction_noiseless(dg, x0_true, P0, t_max, ekf):
     def ekf_trial(trial_number: int) -> List[GaussianResult]:
-
         np.random.seed(trial_number)
         state_true, input_data, meas_data = dg.generate(
             x0_true, 0, t_max, noise=False

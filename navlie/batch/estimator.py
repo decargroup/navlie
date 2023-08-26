@@ -4,7 +4,7 @@ measurement residuals.
 The BatchEstimator.solve() method constructs and solves a batch problem over a sequence
 of input and measurement data. Process and measurement residuals are automatically created
 and added to the problem, using the generic definitions of process and measurement residuals
-defined in the module `navlie.batch.residuals`.
+defined in the module ``navlie.batch.residuals``.
 """
 
 from typing import List

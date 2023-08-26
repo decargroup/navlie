@@ -8,7 +8,7 @@ def main():
     # Problem Setup
 
     x0 = VectorState(np.array([1, 0, 0, 0]))
-    P0 = 0.1**2*np.identity(x0.dof)
+    P0 = 0.1**2 * np.identity(x0.dof)
     R = 0.1**2
     Q = 0.1 * np.identity(2)
     range_models = [
@@ -21,7 +21,7 @@ def main():
 
     # VVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV
     # The TRUE input profile is zero-mean random signal.
-    input_profile = lambda t, x: nav.randvec(Q).ravel() # random walk.
+    input_profile = lambda t, x: nav.randvec(Q).ravel()  # random walk.
 
     # ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
@@ -52,19 +52,17 @@ def main():
     y = meas_data[meas_idx]
     results_list = []
     for k in range(len(input_data) - 1):
-
         # VVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV
-        # The data generator will add noise on top of the already random signal if 
-        # `input_covariance` is not zero. So here we remove this.
-        
+        # The data generator will add noise on top of the already random signal if
+        # ``input_covariance`` is not zero. So here we remove this.
+
         u: nav.StampedValue = input_data[k]
-        u.value = np.zeros(u.value.shape) # Zero-out the input
+        u.value = np.zeros(u.value.shape)  # Zero-out the input
 
         # ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
         # Fuse any measurements that have occurred.
         while y.stamp < input_data[k + 1].stamp and meas_idx < len(meas_data):
-
             x = ekf.correct(x, y, u)
 
             # Load the next measurement
@@ -79,19 +77,21 @@ def main():
 
     return results
 
+
 if __name__ == "__main__":
     results = main()
 
     import matplotlib.pyplot as plt
-    fig, axs = plt.subplots(2,2, sharex=True)
+
+    fig, axs = plt.subplots(2, 2, sharex=True)
     nav.plot_error(results, axs)
-    axs[0,0].set_title("Position Error")
-    axs[0,1].set_title("Velocity Error")
-    axs[1,0].set_xlabel("Time (s)")
-    axs[1,1].set_xlabel("Time (s)")
-    axs[0,0].set_ylabel("x (m)")
-    axs[1,0].set_ylabel("y (m)")
-    axs[0,1].set_ylabel("x (m/s)")
-    axs[1,1].set_ylabel("y (m/s)")
+    axs[0, 0].set_title("Position Error")
+    axs[0, 1].set_title("Velocity Error")
+    axs[1, 0].set_xlabel("Time (s)")
+    axs[1, 1].set_xlabel("Time (s)")
+    axs[0, 0].set_ylabel("x (m)")
+    axs[1, 0].set_ylabel("y (m)")
+    axs[0, 1].set_ylabel("x (m/s)")
+    axs[1, 1].set_ylabel("y (m/s)")
     plt.tight_layout()
     plt.show()

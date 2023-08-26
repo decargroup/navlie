@@ -26,10 +26,10 @@ from .models import (
     CompositeInput,
     Altitude,
     Gravitometer,
-    Magnetometer, 
+    Magnetometer,
     GlobalPosition,
     InvariantMeasurement,
-    PointRelativePosition
+    PointRelativePosition,
 )
 
 from .preintegration import (

@@ -44,7 +44,7 @@ class GaussianResult:
 
         state = estimate.state
         covariance = estimate.covariance
-        
+
         #:float: timestamp
         self.stamp = state.stamp
         #:State: estimated state
@@ -62,7 +62,7 @@ class GaussianResult:
         #:float: normalized estimation error squared (NEES)
         self.nees = np.ndarray.item(e.T @ np.linalg.solve(covariance, e))
         #:float: root mean squared error (RMSE)
-        self.rmse = np.sqrt(self.ees/state.dof)
+        self.rmse = np.sqrt(self.ees / state.dof)
         #:float: Mahalanobis distance
         self.md = np.sqrt(self.nees)
         #:numpy.ndarray: three-sigma bounds on each error component
@@ -71,9 +71,9 @@ class GaussianResult:
 
 class GaussianResultList:
     """
-    A data container that accepts a list of `GaussianResult` objects and
+    A data container that accepts a list of ``GaussianResult`` objects and
     stacks the attributes in numpy arrays. Convenient for plotting. This object
-    does nothing more than array-ifying the attributes of `GaussianResult`
+    does nothing more than array-ifying the attributes of ``GaussianResult``
     """
 
     __slots__ = [
@@ -101,7 +101,7 @@ class GaussianResultList:
             to a different time point
 
 
-        Let `N = len(result_list)`
+        Let ``N = len(result_list)``
         """
         #:numpy.ndarray with shape (N,):  timestamp
         self.stamp = np.array([r.stamp for r in result_list])
@@ -139,11 +139,11 @@ class GaussianResultList:
         if isinstance(key, tuple):
             if not len(key) == 2:
                 raise IndexError("Only two dimensional indexing is supported")
-        else: 
+        else:
             key = (key, slice(None, None, None))
 
-        key_lists = list(key) # make mutable
-        for i,k in enumerate(key):
+        key_lists = list(key)  # make mutable
+        for i, k in enumerate(key):
             if isinstance(k, int):
                 key_lists[i] = [k]
             elif isinstance(k, slice):
@@ -152,38 +152,41 @@ class GaussianResultList:
                 step = k.step if k.step is not None else 1
                 key_lists[i] = list(range(start, stop, step))
             elif isinstance(k, list):
-                pass 
+                pass
             else:
                 raise TypeError("keys must be int, slice, or list of indices")
-        
 
         key1, key2 = key
         out = GaussianResultList([])
         out.stamp = self.stamp[key1]
         out.state = self.state[key1]
         out.state_true = self.state_true[key1]
-        out.covariance = self.covariance[np.ix_(key_lists[0], key_lists[1], key_lists[1])] # (N, key_size, key_size)
-        out.error = self.error[key1,key2] # (N, key_size)
+        out.covariance = self.covariance[
+            np.ix_(key_lists[0], key_lists[1], key_lists[1])
+        ]  # (N, key_size, key_size)
+        out.error = self.error[key1, key2]  # (N, key_size)
         out.ees = np.sum(np.atleast_2d(out.error**2), axis=1)
 
         if len(out.error.shape) == 1:
             out.nees = out.error**2 / out.covariance.flatten()
             out.dof = np.ones_like(out.stamp)
         else:
-            out.nees = np.sum(out.error * np.linalg.solve(out.covariance, out.error), axis=1)
+            out.nees = np.sum(
+                out.error * np.linalg.solve(out.covariance, out.error), axis=1
+            )
             out.dof = out.error.shape[1] * np.ones_like(out.stamp)
-            
+
         out.md = np.sqrt(out.nees)
-        out.three_sigma = 3 * np.sqrt(np.diagonal(out.covariance, axis1=1, axis2=2))
-        out.rmse = np.sqrt(out.ees/out.dof)
+        out.three_sigma = 3 * np.sqrt(
+            np.diagonal(out.covariance, axis1=1, axis2=2)
+        )
+        out.rmse = np.sqrt(out.ees / out.dof)
         out.value = self.value[key1]
-        out.value_true = self.value_true[key1] 
+        out.value_true = self.value_true[key1]
         out.covariance = out.covariance.squeeze()
         out.error = out.error.squeeze()
 
         return out
-
-
 
     def nees_lower_bound(self, confidence_interval: float):
         """
@@ -302,7 +305,7 @@ class MonteCarloResult:
             that the timestamps in each trial are identical.
 
 
-        Let `N` denote the number of time steps in a trial.
+        Let ``N`` denote the number of time steps in a trial.
         """
 
         #:List[GaussianResultList]: raw trial results
@@ -397,8 +400,8 @@ def monte_carlo(
     verbose: int = 10,
 ) -> MonteCarloResult:
     """
-    Monte-Carlo experiment executor. Give a callable `trial` function that
-    executes a trial and returns a `GaussianResultList`, and this function
+    Monte-Carlo experiment executor. Give a callable ``trial`` function that
+    executes a trial and returns a ``GaussianResultList``, and this function
     will execute it a number of times and aappgregate the results.
 
     Parameters
@@ -439,14 +442,14 @@ def monte_carlo(
 def randvec(cov: np.ndarray, num_samples: int = 1) -> np.ndarray:
     """
 
-    Produces a random zero-mean column vector with covariance given by `cov`
+    Produces a random zero-mean column vector with covariance given by ``cov``
 
     Parameters
     ----------
     cov : np.ndarray
         square numpy array with shape (n,n)
     num_samples : int, optional
-        Will make `num_samples` independent random vectors and
+        Will make ``num_samples`` independent random vectors and
         stack them horizontally, by default 1. It can be faster to generate
         many samples this way to avoid recomputing the Cholesky decomposition
         every time.
@@ -454,7 +457,7 @@ def randvec(cov: np.ndarray, num_samples: int = 1) -> np.ndarray:
     Returns
     -------
     np.ndarray with shape (n, num_samples)
-        Random column vector(s) with covariance `cov`
+        Random column vector(s) with covariance ``cov``
 
     """
     L = np.linalg.cholesky(cov)
@@ -475,14 +478,14 @@ def van_loans(
         \dot{\mathbf{x}} = \mathbf{A}_c \mathbf{x} + \mathbf{L}_c \mathbf{w}, \hspace{5mm}
         \mathbf{w} \sim \mathcal{N} (\mathbf{0}, \mathbf{Q}_c ),
 
-    where :math:`\mathbf{Q}_c` is a power spectral density,
+    where :math:``\mathbf{Q}_c`` is a power spectral density,
     Van Loan's method can be used to find its equivalent discrete-time representation,
 
     .. math::
         \mathbf{x}_k = \mathbf{A}_{d} \mathbf{x}_{k-1} + \mathbf{w}_{k-1}, \hspace{5mm}
         \mathbf{w} \sim \mathcal{N} (\mathbf{0}, \mathbf{Q}_d ).
 
-    These are computed using the matrix exponential, with a sampling period :math:`\Delta t`.
+    These are computed using the matrix exponential, with a sampling period :math:``\Delta t``.
 
     Parameters
     ----------
@@ -581,9 +584,9 @@ def plot_error(
             )
         axs[i].plot(results.stamp, results.error[:, i], label=label, **kwargs)
 
-
-    fig: plt.Figure = fig # For type hinting
+    fig: plt.Figure = fig  # For type hinting
     return fig, axs_og
+
 
 def plot_nees(
     results: GaussianResultList,
@@ -592,7 +595,7 @@ def plot_nees(
     color=None,
     confidence_interval: float = 0.95,
     normalize: bool = False,
-    expected_nees_color = "r",
+    expected_nees_color="r",
 ) -> Tuple[plt.Figure, plt.Axes]:
     """
     Makes a plot of the NEES, showing the actual NEES values, the expected NEES,
@@ -608,7 +611,7 @@ def plot_nees(
     label : str, optional
         Label to assign to the NEES line, by default None
     color : optional
-        Fed directly to the ``plot(..., color=color)`` function, by default None
+        Fed directly to the ````plot(..., color=color)```` function, by default None
     confidence_interval : float or None, optional
         Desired probability confidence region, by default 0.95. Must lie between
         0 and 1. If None, no confidence interval will be plotted.
@@ -618,13 +621,17 @@ def plot_nees(
     Returns
     -------
     plt.Figure
-        Figure on which the plot was drawn  
+        Figure on which the plot was drawn
     plt.Axes
         Axes on which the plot was drawn
     """
 
     if axs is None:
-        fig, axs = plt.subplots(1, 1, sharex=True,)
+        fig, axs = plt.subplots(
+            1,
+            1,
+            sharex=True,
+        )
     else:
         fig = axs.get_figure()
 
@@ -637,7 +644,6 @@ def plot_nees(
         s = results.dof
     else:
         s = 1
-
 
     expected_nees_label = "Expected NEES"
     ci_label = f"${int(confidence_interval*100)}\%$ CI"
@@ -659,6 +665,7 @@ def plot_nees(
     axs.legend()
 
     return fig, axs_og
+
 
 def plot_meas(
     meas_list: List[Measurement],
@@ -716,8 +723,8 @@ def plot_meas(
         x = state_list[int(state_idx[i])]
         y = meas_list[i].model.evaluate(x)
         if y is None:
-            y_true.append(np.zeros_like(data)*np.nan)
-            three_sigma.append(np.zeros_like(data)*np.nan)
+            y_true.append(np.zeros_like(data) * np.nan)
+            three_sigma.append(np.zeros_like(data) * np.nan)
         else:
             y_true.append(np.ravel(y))
             R = np.atleast_2d(meas_list[i].model.covariance(x))
@@ -795,23 +802,21 @@ def plot_meas_by_model(
         meas_by_model[model_id].append(meas)
 
     if axs is None:
-        axs = np.array([None]*len(meas_by_model))
+        axs = np.array([None] * len(meas_by_model))
 
     axs = axs.ravel("F")
 
-    figs = [None]*len(meas_by_model)
+    figs = [None] * len(meas_by_model)
     for i, temp in enumerate(meas_by_model.items()):
         model_id, meas_list = temp
         fig, ax = plot_meas(meas_list, state_list, axs[i], sharey=sharey)
         figs[i] = fig
         axs[i] = ax
         ax[0].set_title(f"{meas_list[0].model} {hex(model_id)}", fontsize=12)
-        ax[0].tick_params(axis='both', which='major', labelsize=10)
-        ax[0].tick_params(axis='both', which='minor', labelsize=8)
-    
+        ax[0].tick_params(axis="both", which="major", labelsize=10)
+        ax[0].tick_params(axis="both", which="minor", labelsize=8)
 
     return fig, axs
-    
 
 
 def plot_poses(
@@ -830,9 +835,9 @@ def plot_poses(
     Parameters
     ----------
     poses : List[SE3State]
-        A list objects containing a `position` property (numpy array of size 3)
-        and an `attitude` (3 x 3 numpy array) property representing the rotation 
-        matrix :math:`\mathbf{C}_{ab}`.
+        A list objects containing a ``position`` property (numpy array of size 3)
+        and an ``attitude`` (3 x 3 numpy array) property representing the rotation
+        matrix :math:``\mathbf{C}_{ab}``.
     ax : plt.Axes, optional
         Axes to plot on, if none, 3D axes are created.
     line_color : str, optional
@@ -938,7 +943,7 @@ def state_interp(
     method="linear",
 ) -> Union[State, List[State]]:
     """
-    Performs "linear" (geodesic) interpolation between `State` objects. Multiple
+    Performs "linear" (geodesic) interpolation between ``State`` objects. Multiple
     interpolations can be performed at once in a vectorized fashion. If the
     query point is out of bounds, the end points are returned.
 
@@ -950,24 +955,24 @@ def state_interp(
 
     Parameters
     ----------
-    query_stamps : float or object with `.stamp` attribute (or Lists thereof)
-        Query stamps. Can either be a float, or an object containing a `stamp`
+    query_stamps : float or object with ``.stamp`` attribute (or Lists thereof)
+        Query stamps. Can either be a float, or an object containing a ``stamp``
         attribute. If a list is provided, it will be treated as multiple query
-        points and the return value will be a list of `State` objects.
+        points and the return value will be a list of ``State`` objects.
     state_list : List[State]
-        List of `State` objects to interpolate between.
+        List of ``State`` objects to interpolate between.
 
     Returns
     -------
-    `State` or List[`State`]
+    ``State`` or List[``State``]
         The interpolated state(s).
 
     Raises
     ------
     TypeError
-        If query point is not a float or object with a `stamp` attribute.
+        If query point is not a float or object with a ``stamp`` attribute.
     """
-    
+
     # Handle input
     if isinstance(query_stamps, list):
         single_query = False
@@ -977,8 +982,7 @@ def state_interp(
         query_stamps = [query_stamps]
         single_query = True
     else:
-        pass    
-
+        pass
 
     # if not isinstance(query_stamps, list):
     #     query_stamps = [query_stamps]
@@ -1024,7 +1028,8 @@ def state_interp(
         # "Fraction" of the way between the two states
         alpha = np.zeros(len(query_stamps))
         alpha[inside] = np.array(
-            (query_stamps[inside] - stamp_lower[inside]) / (stamp_upper[inside] - stamp_lower[inside])
+            (query_stamps[inside] - stamp_lower[inside])
+            / (stamp_upper[inside] - stamp_lower[inside])
         ).ravel()
 
         # The two neighboring states around the query point
@@ -1040,14 +1045,13 @@ def state_interp(
         for i, state in enumerate(state_lower):
             if np.isnan(alpha[i]) or np.isinf(alpha[i]) or alpha[i] < 0.0:
                 raise RuntimeError("wtf")
-            
+
             state_interp = state.plus(dx[i] * alpha[i])
 
             state_interp.stamp = query_stamps[i]
             out.append(state_interp)
 
     elif method == "nearest":
-
         indexes = np.array(range(len(stamp_list)))
         nearest_state = interp1d(
             stamp_list,
@@ -1064,10 +1068,11 @@ def state_interp(
 
     return out
 
+
 def schedule_sequential_measurements(model_list, freq):
     """Schedules sequential measurements from a list of MeasurementModels
     that cannot generate measurements at the same time. This allows
-    looping through the measurement model list one at a time. 
+    looping through the measurement model list one at a time.
 
     Parameters
     ----------
@@ -1086,13 +1091,14 @@ def schedule_sequential_measurements(model_list, freq):
     """
     n_models = len(model_list)
     offset_list = [None] * n_models
-    offset_step = (1 / freq)
+    offset_step = 1 / freq
     new_freq = freq / n_models
-    
+
     for i in range(n_models):
         offset_list[i] = i * offset_step
 
-    return offset_list, new_freq 
+    return offset_list, new_freq
+
 
 def associate_stamps(
     first_stamps: List[float],
@@ -1145,10 +1151,12 @@ def associate_stamps(
     return matches
 
 
-def find_nearest_stamp_idx(stamps_list: List[float], stamp: Union[float, List[float]]) -> int:
+def find_nearest_stamp_idx(
+    stamps_list: List[float], stamp: Union[float, List[float]]
+) -> int:
     """
-    Find the index of the nearest stamp in ``stamps_list`` to ``stamp``. If
-    ``stamp`` is a list or array, then the output is a list of indices.
+    Find the index of the nearest stamp in ````stamps_list```` to ````stamp````. If
+    ````stamp```` is a list or array, then the output is a list of indices.
 
     Parameters
     ----------
@@ -1169,7 +1177,6 @@ def find_nearest_stamp_idx(stamps_list: List[float], stamp: Union[float, List[fl
     else:
         single_query = False
         query_stamps = np.array(stamp).ravel()
-
 
     nearest_stamp = interp1d(
         stamps_list,
@@ -1201,7 +1208,7 @@ def jacobian(
     .. code-block:: python
 
         x = np.array([1, 2]).reshape((-1,1))
-        
+
         A = np.array([[1, 2], [3, 4]])
         def fun(x):
             return 1/np.sqrt(x.T @ A.T @ A @ x)
@@ -1211,7 +1218,7 @@ def jacobian(
 
         assert np.allclose(jac_test, jac_true, atol=1e-6)
 
-    This function is also compatible with `State` objects, and hence
+    This function is also compatible with ``State`` objects, and hence
     can compute on-manifold derivatives. Example use:
 
     .. code-block:: python
@@ -1239,20 +1246,20 @@ def jacobian(
         "forward", "central" or "cs", by default "forward". "forward" calculates
         using a forward finite difference procedure. "central" calculates using
         a central finite difference procedure. "cs" calculates using the
-        complex-step procedure. If using "cs", you must be careful to ensure 
-        that the function can handle and propagate through complex 
+        complex-step procedure. If using "cs", you must be careful to ensure
+        that the function can handle and propagate through complex
         components.
 
     Returns
     -------
     np.ndarray with shape (M, N)
-        Jacobian of the function, where ``M`` is the DOF of the output and
-        ``N`` is the DOF of the input.
+        Jacobian of the function, where ````M```` is the DOF of the output and
+        ````N```` is the DOF of the input.
     """
-    x = x.copy() 
+    x = x.copy()
 
     if step_size is None:
-        if method=="cs":
+        if method == "cs":
             step_size = 1e-16
         else:
             step_size = 1e-6
@@ -1267,18 +1274,18 @@ def jacobian(
     Y_bar: State = fun(x.copy(), *args, **kwargs)
 
     # Check if output has a minus method. otherwise, assume it will behave
-    # like a numpy array 
+    # like a numpy array
     if hasattr(Y_bar, "minus"):
         output_diff = lambda Y, Y_bar: Y.minus(Y_bar)
     else:
         output_diff = lambda Y, Y_bar: Y - Y_bar
 
-
-
-    func_to_diff = lambda dx : output_diff(fun(input_plus(x, dx), *args, **kwargs), Y_bar)
+    func_to_diff = lambda dx: output_diff(
+        fun(input_plus(x, dx), *args, **kwargs), Y_bar
+    )
 
     # Check if input/output has a dof attribute. otherwise, assume it will
-    # behave like a numpy array and use the `.size` attribute to get
+    # behave like a numpy array and use the ``.size`` attribute to get
     # the DOF of the input/output
     if hasattr(x, "dof"):
         N = x.dof
@@ -1289,7 +1296,6 @@ def jacobian(
         M = Y_bar.dof
     else:
         M = Y_bar.size
-
 
     Y_bar_diff = func_to_diff(np.zeros((N,)))
     jac_fd = np.zeros((M, N))
@@ -1306,15 +1312,16 @@ def jacobian(
         elif method == "central":
             Y_plus = func_to_diff(dx.copy())
             Y_minus = func_to_diff(-dx.copy())
-            jac_fd[:, i] = (Y_plus - Y_minus).ravel() / (2*step_size)
+            jac_fd[:, i] = (Y_plus - Y_minus).ravel() / (2 * step_size)
 
         elif method == "cs":
-            Y_imag: State = func_to_diff(1j*dx.copy())
+            Y_imag: State = func_to_diff(1j * dx.copy())
             jac_fd[:, i] = np.imag(Y_imag).ravel() / step_size
 
         else:
-            raise ValueError(f"Unknown method '{method}'. "
-                             "Must be 'forward', 'central' or 'cs")
-
+            raise ValueError(
+                f"Unknown method '{method}'. "
+                "Must be 'forward', 'central' or 'cs"
+            )
 
     return jac_fd

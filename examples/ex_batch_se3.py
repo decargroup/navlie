@@ -3,14 +3,11 @@ This is an example script showing how to run a batch estimator on custom
 process and measurement models.
 """
 
-from navlie.lib import (
-    BodyFrameVelocity,
-    RangePoseToAnchor,
-    SE3State
-)
+from navlie.lib import BodyFrameVelocity, RangePoseToAnchor, SE3State
 import navlie as nav
 import numpy as np
 import matplotlib.pyplot as plt
+
 
 def main():
     # ##########################################################################
@@ -44,7 +41,6 @@ def main():
     input_freq = 100
     noise_active = True
 
-
     # Generate data with no noise
     dg = nav.DataGenerator(
         process_model,
@@ -68,7 +64,6 @@ def main():
     )
 
     print(opt_results["summary"])
-
 
     results = nav.GaussianResultList.from_estimates(estimate_list, state_true)
     return results

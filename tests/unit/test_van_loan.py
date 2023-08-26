@@ -19,9 +19,10 @@ def test_van_loans():
     # Compare to A_d computed through matrix exponential
     assert np.allclose(A_d, expm(A_c * dt))
 
+
 def test_van_loan_double_integrator():
-    A_c = np.array([[0 ,1],[0, 0]])
-    L_c = np.array([0,1]).reshape((-1,1))
+    A_c = np.array([[0, 1], [0, 0]])
+    L_c = np.array([0, 1]).reshape((-1, 1))
     Q_c = np.array([1])
     dt = 0.1
 
@@ -29,9 +30,10 @@ def test_van_loan_double_integrator():
 
     # Compare to analytical solution
     A_d_test = np.array([[1, dt], [0, 1]])
-    Q_d_test = np.array([[1/3*dt**3, 1/2*dt**2],[1/2*dt**2, dt]])
+    Q_d_test = np.array(
+        [[1 / 3 * dt**3, 1 / 2 * dt**2], [1 / 2 * dt**2, dt]]
+    )
 
-    
     assert np.allclose(A_d, A_d_test)
     assert np.allclose(Q_d, Q_d_test)
 

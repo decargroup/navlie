@@ -138,6 +138,7 @@ def test_global_position_se23(direction):
     model = GlobalPosition(np.identity(3))
     _jacobian_test(x, model, atol=1e-5)
 
+
 @pytest.mark.parametrize("direction", ["right", "left"])
 def test_global_velocity_se23(direction):
     x = SE23State(
@@ -148,6 +149,7 @@ def test_global_velocity_se23(direction):
     )
     model = GlobalVelocity(np.identity(3))
     _jacobian_test(x, model, atol=1e-5)
+
 
 @pytest.mark.parametrize("direction", ["right", "left"])
 def test_global_velocity_imu_state(direction):

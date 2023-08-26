@@ -3,6 +3,7 @@ import navlie as nav
 
 import numpy as np
 from typing import List
+
 """
 This example runs an Interacting Multiple Model filter to estimate the process model noise matrix
 for a state that is on a Lie group. The performance is compared to an EKF that knows the ground
@@ -106,7 +107,8 @@ def imm_trial(trial_number: int) -> List[nav.GaussianResult]:
     )
 
     results = [
-        nav.imm.IMMResult(estimate_list[i], state_true[i]) for i in range(len(estimate_list))
+        nav.imm.IMMResult(estimate_list[i], state_true[i])
+        for i in range(len(estimate_list))
     ]
 
     return nav.imm.IMMResultList(results)
@@ -142,8 +144,12 @@ if __name__ == "__main__":
 
     fig, ax = plt.subplots(1, 1)
     ax.plot(results.stamp, results.average_nees, label="IMM NEES")
-    ax.plot(results.stamp, results_ekf.average_nees, label="EKF using GT Q NEES")
-    ax.plot(results.stamp, results.expected_nees, color="r", label="Expected NEES")
+    ax.plot(
+        results.stamp, results_ekf.average_nees, label="EKF using GT Q NEES"
+    )
+    ax.plot(
+        results.stamp, results.expected_nees, color="r", label="Expected NEES"
+    )
     ax.plot(
         results.stamp,
         results.nees_lower_bound(0.99),
@@ -163,16 +169,14 @@ if __name__ == "__main__":
     ax.set_ylabel("NEES")
     ax.legend()
 
-
     if N < 15:
-
         fig, axs = plt.subplots(3, 2)
         axs: List[plt.Axes] = axs
         for result in results.trial_results:
             nav.plot_error(result, axs=axs)
 
         fig.suptitle("Estimation error IMM")
-        axs[1,0].set_xlabel("Time (s)")
+        axs[1, 0].set_xlabel("Time (s)")
 
         fig, axs = plt.subplots(3, 2)
         axs: List[plt.Axes] = axs
@@ -180,10 +184,11 @@ if __name__ == "__main__":
             nav.plot_error(result, axs=axs)
 
         fig.suptitle("Estimation error EKF GT")
-        axs[1,0].set_xlabel("Time (s)")
+        axs[1, 0].set_xlabel("Time (s)")
 
         average_model_probabilities = np.average(
-            np.array([t.model_probabilities for t in results.trial_results]), axis=0
+            np.array([t.model_probabilities for t in results.trial_results]),
+            axis=0,
         )
         fig, ax = plt.subplots(1, 1)
         for lv1 in range(n_models):
@@ -194,7 +199,9 @@ if __name__ == "__main__":
     fig, ax = plt.subplots(1, 1)
     Q_ = np.zeros(results.stamp.shape)
     for lv1 in range(n_models):
-        Q_ = Q_ + average_model_probabilities[lv1, :] * c_list[lv1] * Q_ref[0, 0]
+        Q_ = (
+            Q_ + average_model_probabilities[lv1, :] * c_list[lv1] * Q_ref[0, 0]
+        )
 
     ax.plot(results.stamp, Q_, label=r"$Q_{00}$, Estimated")
     ax.plot(

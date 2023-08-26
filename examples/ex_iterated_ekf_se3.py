@@ -1,7 +1,9 @@
 import navlie as nav
 import time
 import numpy as np
+
 np.random.seed(0)
+
 
 def main():
     # ##############################################################################
@@ -29,10 +31,9 @@ def main():
         results_list.append(nav.GaussianResult(x, gt_states[k]))
 
         u = input_data[k]
-        
+
         # Fuse any measurements that have occurred.
         while y.stamp < input_data[k + 1].stamp and meas_idx < len(meas_data):
-
             x = ekf.correct(x, y, u)
             meas_idx += 1
             if meas_idx < len(meas_data):
@@ -40,14 +41,13 @@ def main():
 
         dt = input_data[k + 1].stamp - x.stamp
         x = ekf.predict(x, u, dt)
-        
-
 
     print("Average filter computation frequency (Hz):")
     print(1 / ((time.time() - start_time) / len(input_data)))
 
     results = nav.GaussianResultList(results_list)
     return results
+
 
 if __name__ == "__main__":
     results = main()

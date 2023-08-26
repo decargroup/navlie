@@ -5,6 +5,7 @@ Below is a list of all the modules in the navlie package.  Click on any of the l
 .. autosummary::
    :toctree: _autosummary
    :recursive:
+   :template: custom-module-template.rst
 
    navlie.datagen
    navlie.filters

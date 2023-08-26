@@ -19,7 +19,7 @@ from pymlg import SO3, SE3
 import numpy as np
 import matplotlib.pyplot as plt
 
-# Flag to plot the errors to verify that they are 
+# Flag to plot the errors to verify that they are
 # zero in the absense of noise.
 plot_flag = False
 
@@ -93,7 +93,6 @@ def test_noiseless_batch(
     input_freq,
     measurement_freq,
 ):
-
     noise_active = False
     process_model = process_model(Q)
 
@@ -111,7 +110,9 @@ def test_noiseless_batch(
 
     # Run batch
     estimator = BatchEstimator(max_iters=20)
-    estimate_list = estimator.solve(x0, P0, input_list, meas_list, process_model)
+    estimate_list = estimator.solve(
+        x0, P0, input_list, meas_list, process_model
+    )
     results = GaussianResultList(
         [
             GaussianResult(estimate_list[i], state_true[i])

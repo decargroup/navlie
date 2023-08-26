@@ -62,7 +62,7 @@ class IMU(Input):
 
     def copy(self):
         if self.covariance is None:
-            cov_copy = None 
+            cov_copy = None
         else:
             cov_copy = self.covariance.copy()
         return IMU(

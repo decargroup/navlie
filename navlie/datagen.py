@@ -51,7 +51,6 @@ class DataGenerator:
         meas_freq_list: Union[float, List[float]] = None,
         meas_offset_list: Union[float, List[float]] = [],
     ):
-        
         # Make input covariance a callable if it isnt
         if callable(input_covariance):
             self.input_covariance = input_covariance
@@ -66,7 +65,7 @@ class DataGenerator:
         # Check meas frequencies were provided
         if (len(meas_model_list) != 0) and (meas_freq_list is None):
             raise ValueError("Measurement frequency must be provided.")
-        
+
         # If meas model provided but no offsets, set offsets to 0
         if (len(meas_model_list) != 0) and (len(meas_offset_list) == 0):
             meas_offset_list = [0.0]
@@ -85,28 +84,30 @@ class DataGenerator:
             if len(meas_offset_list) == 1:
                 meas_offset_list *= len(meas_model_list)
             elif len(meas_offset_list) != len(meas_model_list):
-                raise ValueError("The number of offsets and \
-                                 measurement models should be the same.")
+                raise ValueError(
+                    "The number of offsets and \
+                                 measurement models should be the same."
+                )
         else:
-            raise ValueError("Offsets should be provided as a float or a list of floats.")
+            raise ValueError(
+                "Offsets should be provided as a float or a list of floats."
+            )
 
         self.process_model = process_model
         self.input_func = input_func
         self.input_freq = input_freq
-        self._meas_model_info = list(zip(
-            meas_model_list, 
-            meas_freq_list, 
-            meas_offset_list,
-        ))
-
+        self._meas_model_info = list(
+            zip(
+                meas_model_list,
+                meas_freq_list,
+                meas_offset_list,
+            )
+        )
 
     def add_measurement_model(
-        self, 
-        model: MeasurementModel, 
-        freq: float, 
-        offset: float = 0.0
+        self, model: MeasurementModel, freq: float, offset: float = 0.0
     ):
-        """Adds a new measurement model to the existing list of measurement models. 
+        """Adds a new measurement model to the existing list of measurement models.
 
         Parameters
         ----------
@@ -234,8 +235,8 @@ def generate_measurement(
     state_id: Any = None,
 ) -> Union[Measurement, List[Measurement]]:
     """
-    Generates a `Measurement` object given a measurement model and corresponding
-    ground truth `State` objects. If a list of ground truth state objects is
+    Generates a ``Measurement`` object given a measurement model and corresponding
+    ground truth ``State`` objects. If a list of ground truth state objects is
     provided, a measurement will be generated for each state.
 
     Parameters
@@ -247,7 +248,7 @@ def generate_measurement(
     noise : bool, optional
         flag whether to add noise to measurement, by default True
     state_id : Any, optional
-        value to be given to the state_id field of the `Measurement` object
+        value to be given to the state_id field of the ``Measurement`` object
 
     Returns
     -------

@@ -6,7 +6,7 @@ from navlie import (
     run_filter,
     DataGenerator,
     ExtendedKalmanFilter,
-    monte_carlo
+    monte_carlo,
 )
 
 from navlie.lib import (

@@ -3,13 +3,14 @@ import numpy as np
 from navlie.lib.datasets import SimulatedInertialGPSDataset
 import navlie as nav
 
+
 def main():
     np.set_printoptions(precision=3, suppress=True, linewidth=200)
     np.random.seed(0)
 
     # ##########################################################################
     # Load pre-developed dataset
-    data = SimulatedInertialGPSDataset(t_start = 0, t_end=20)
+    data = SimulatedInertialGPSDataset(t_start=0, t_end=20)
     gt_states = data.get_ground_truth()
     input_data = data.get_input_data()
     meas_data = data.get_meas_data()
@@ -30,7 +31,8 @@ def main():
 
     # Postprocess the results and plot
     results = nav.GaussianResultList.from_estimates(estimate_list, gt_states)
-    return results 
+    return results
+
 
 if __name__ == "__main__":
     results = main()
@@ -41,8 +43,16 @@ if __name__ == "__main__":
 
     fig = plt.figure()
     ax = plt.axes(projection="3d")
-    nav.plot_poses(results.state, ax, line_color="tab:blue", step=20, label="Estimate")
-    nav.plot_poses(results.state_true, ax, line_color="tab:red", step=500, label="Groundtruth")
+    nav.plot_poses(
+        results.state, ax, line_color="tab:blue", step=20, label="Estimate"
+    )
+    nav.plot_poses(
+        results.state_true,
+        ax,
+        line_color="tab:red",
+        step=500,
+        label="Groundtruth",
+    )
     ax.legend()
 
     fig, axs = nav.plot_error(results)

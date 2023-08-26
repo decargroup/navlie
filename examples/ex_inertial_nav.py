@@ -168,7 +168,9 @@ P0[9:12, 9:12] *= sigma_bg_init**2
 P0[12:15, 12:15] *= sigma_ba_init**2
 
 # Generate all data
-states_true, input_list, meas_list = data_gen.generate(x0, t_start, t_end, noise=True)
+states_true, input_list, meas_list = data_gen.generate(
+    x0, t_start, t_end, noise=True
+)
 
 # **************** Conversion to Invariant Measurements ! *********************
 invariants = [InvariantMeasurement(meas, "right") for meas in meas_list]
@@ -196,9 +198,15 @@ if __name__ == "__main__":
     landmarks = np.array(landmarks)
     ax.scatter(landmarks[:, 0], landmarks[:, 1], landmarks[:, 2])
     states_list = [x.state for x in estimate_list]
-    nav.plot_poses(results.state, ax, line_color="tab:blue", step=500, label="Estimate")
     nav.plot_poses(
-        results.state_true, ax, line_color="tab:red", step=500, label="Groundtruth"
+        results.state, ax, line_color="tab:blue", step=500, label="Estimate"
+    )
+    nav.plot_poses(
+        results.state_true,
+        ax,
+        line_color="tab:red",
+        step=500,
+        label="Groundtruth",
     )
     ax.legend()
 

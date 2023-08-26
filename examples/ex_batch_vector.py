@@ -12,6 +12,7 @@ import numpy as np
 from typing import List
 import matplotlib.pyplot as plt
 
+
 def main():
     # #############################################################################
     # Create the batch estimator with desired settings
@@ -77,6 +78,7 @@ def main():
     # Postprocess the results and plot
     results = nav.GaussianResultList.from_estimates(est_list, gt_list)
     return results
+
 
 if __name__ == "__main__":
     results = main()

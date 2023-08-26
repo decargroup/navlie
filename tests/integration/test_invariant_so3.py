@@ -15,8 +15,9 @@ from navlie.utils import (
 import numpy as np
 import navlie as nav
 
+
 def generate_so3_results():
-    x0 = SO3State([1,2,3], 0.0, direction="left")
+    x0 = SO3State([1, 2, 3], 0.0, direction="left")
     P0 = 0.1 * np.identity(3)
     Q = 0.1**2 * np.identity(3)
 
@@ -35,7 +36,6 @@ def generate_so3_results():
         1,
     )
     state_true, input_list, meas_list = dg.generate(x0, 0, 30, True)
-
 
     # Run the regular filter
     x0_check = x0.plus(randvec(P0))

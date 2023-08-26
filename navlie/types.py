@@ -39,7 +39,7 @@ class Input(ABC):
 
     @abstractmethod
     def copy(self) -> "Input":
-        """ 
+        """
         Creates a deep copy of the object.
         """
         pass
@@ -112,10 +112,10 @@ class State(ABC):
         - a value of some sort;
         - a certain number of degrees of freedom (dof);
         - an update rule that modified the state value given an update vector
-          `dx` containing `dof` elements.
+          ``dx`` containing ``dof`` elements.
 
-    Optionally, it is often useful to assign a timestamp (`stamp`) and a label
-    (`state_id`) to differentiate state instances from others.
+    Optionally, it is often useful to assign a timestamp (``stamp``) and a label
+    (``state_id``) to differentiate state instances from others.
     """
 
     __slots__ = ["value", "dof", "stamp", "state_id"]
@@ -133,8 +133,8 @@ class State(ABC):
     @abstractmethod
     def plus(self, dx: np.ndarray) -> "State":
         """
-        A generic "addition" operation given a `dx` numpy array with as many
-        elements as the `dof` of this state.
+        A generic "addition" operation given a ``dx`` numpy array with as many
+        elements as the ``dof`` of this state.
         """
         pass
 
@@ -155,7 +155,7 @@ class State(ABC):
 
     def plus_jacobian(self, dx: np.ndarray) -> np.ndarray:
         """
-        Jacobian of the `plus` operator. For Lie groups, this is known as the
+        Jacobian of the ``plus`` operator. For Lie groups, this is known as the
         *group Jacobian*.
         """
         return self.plus_jacobian_fd(dx)
@@ -177,13 +177,13 @@ class State(ABC):
 
     def minus_jacobian(self, x: "State") -> np.ndarray:
         """
-        Jacobian of the `minus` operator with respect to self. That is, if
+        Jacobian of the ``minus`` operator with respect to self. That is, if
 
             y = x1.minus(x2)
 
-        then this is the Jacobian of `y` with respect to `x1`.
+        then this is the Jacobian of ``y`` with respect to ``x1``.
         For Lie groups, this is the inverse of the *group Jacobian* evaluated at
-        `dx = x1.minus(x2)`.
+        ``dx = x1.minus(x2)``.
         """
         return self.minus_jacobian_fd(x)
 
@@ -245,7 +245,7 @@ class MeasurementModel(ABC):
         :math:`\mathbf{G} = \partial \mathbf{g}(\mathbf{x})/ \partial \mathbf{x}`.
         """
         return self.jacobian_fd(x)
-    
+
     def evaluate_with_jacobian(self, x: State) -> (np.ndarray, np.ndarray):
         """
         Evaluates the measurement model and simultaneously returns the Jacobian
@@ -255,7 +255,7 @@ class MeasurementModel(ABC):
         same function call.
         """
         return self.evaluate(x), self.jacobian(x)
-    
+
     def jacobian_fd(self, x: State, step_size=1e-6):
         """
         Calculates the model jacobian with finite difference.
@@ -336,7 +336,6 @@ class ProcessModel(ABC):
         """
         pass
 
-    
     def jacobian(self, x: State, u: Input, dt: float) -> np.ndarray:
         """
         Implementation of the process model Jacobian with respect to the state.
@@ -361,10 +360,12 @@ class ProcessModel(ABC):
             Process model Jacobian with respect to the state :math:`\mathbf{F}`.
         """
         return self.jacobian_fd(x, u, dt)
-    
-    def evaluate_with_jacobian(self, x: State, u: Input, dt: float) -> (State, np.ndarray):
+
+    def evaluate_with_jacobian(
+        self, x: State, u: Input, dt: float
+    ) -> (State, np.ndarray):
         """
-        Evaluates the process model and simultaneously returns the Jacobian as 
+        Evaluates the process model and simultaneously returns the Jacobian as
         its second output argument. This is useful to override for
         performance reasons when the model evaluation and Jacobian have a lot of
         common calculations, and it is more efficient to calculate them in the
@@ -465,7 +466,7 @@ class Measurement:
         and a predicted measurement.
 
         By default, assumes that the measurement is a column vector,
-        and thus, the `minus` operator is simply vector subtraction.
+        and thus, the ``minus`` operator is simply vector subtraction.
         """
 
         return self.value.reshape((-1, 1)) - y_check.reshape((-1, 1))

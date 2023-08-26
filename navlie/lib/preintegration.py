@@ -348,8 +348,9 @@ class BodyVelocityIncrement(RelativeMotionIncrement):
     .. math::
         \Delta \mathbf{U}_{ij} = \prod_{k=i}^{j-1} \exp(\Delta t \mathbf{u}_{k}^\wedge).
     """
+
     # TODO. add bias update tests
-    # TODO. add ability to also propagate bias uncertainty. 
+    # TODO. add ability to also propagate bias uncertainty.
     def __init__(
         self,
         group: MatrixLieGroup,
@@ -573,9 +574,7 @@ class AngularVelocityIncrement(BodyVelocityIncrement):
         AngularVelocityIncrement
             A new AngularVelocityIncrement with reinitialized values
         """
-        new = self.__class__(
-            self.input_covariance, self.bias, self.state_id
-        )
+        new = self.__class__(self.input_covariance, self.bias, self.state_id)
         return new
 
 
@@ -614,9 +613,7 @@ class WheelOdometryIncrement(BodyVelocityIncrement):
         WheelOdometryIncrement
             A new WheelOdometryIncrement with reinitialized values
         """
-        new = self.__class__(
-            self.input_covariance, self.bias, self.state_id
-        )
+        new = self.__class__(self.input_covariance, self.bias, self.state_id)
         return new
 
 
@@ -870,7 +867,6 @@ class PreintegratedLinearModel(ProcessModel):
     def evaluate(
         self, x: VectorState, rmi: LinearIncrement, dt=None
     ) -> VectorState:
-
         x = x.copy()
         A_ij = rmi.value[0]
         Du_ij = rmi.value[1]
@@ -893,7 +889,6 @@ class PreintegratedLinearModel(ProcessModel):
     def jacobian(
         self, x: VectorState, rmi: LinearIncrement, dt=None
     ) -> np.ndarray:
-
         if rmi.original_bias is not None:
             A_ij = rmi.value[0]
             B_ij = rmi.bias_jacobian

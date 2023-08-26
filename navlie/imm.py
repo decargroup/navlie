@@ -246,47 +246,43 @@ class IMMResultList(GaussianResultList):
             ]
         )
 
-class InteractingModelFilter:
-    """On-manifold Interacting Multiple Model Filter (IMM).
-    References for the IMM:
-     @article{blom1988interacting,
-         author = {Blom, Henk A P and Bar-Shalom, Yaakov},
-         journal = {IEEE transactions on Automatic Control},
-         number = {8},
-         pages = {780--783},
-         publisher = {IEEE},
-         title = {{The interacting multiple model algorithm for systems with Markovian switching coefficients}},
-         volume = {33},
-         year = {1988}
-         }
-     The IMM involves Gaussian mixtures.
-     Reference for mixing Gaussians on manifolds:
-     @article{7968489,
-         author = {{\'{C}}esi{\'{c}}, Josip and Markovi{\'{c}}, Ivan and Petrovi{\'{c}}, Ivan},
-         doi = {10.1109/LSP.2017.2723765},
-         journal = {IEEE Signal Processing Letters},
-         number = {11},
-         pages = {1719--1723},
-         title = {{Mixture Reduction on Matrix Lie Groups}},
-         volume = {24},
-         year = {2017}
-         }
 
+class InteractingModelFilter:
+    """
+    On-manifold Interacting Multiple Model Filter (IMM).
+
+    References for the IMM:
+
+    H. A. P. Blom and Y. Bar-Shalom, "The interacting
+    multiple model algorithm for systems with Markovian switching coefficients,"
+    in IEEE Transactions on Automatic Control, vol. 33, no. 8, pp. 780-783, Aug.
+    1988, doi: 10.1109/9.1299.
+
+
+    The IMM involves Gaussian mixtures. Reference for mixing Gaussians on
+    manifolds:
+
+    J. Ćesić, I. Marković and I. Petrović, "Mixture Reduction on Matrix Lie
+    Groups," in IEEE Signal Processing Letters, vol. 24, no. 11, pp.
+    1719-1723, Nov. 2017, doi: 10.1109/LSP.2017.2723765.
     """
 
-    def __init__(self, kf_list: List[ExtendedKalmanFilter], Pi: np.ndarray):
-        """Initialize InteractingModelFilter.
+    def __init__(
+        self, kf_list: List[ExtendedKalmanFilter], transition_matrix: np.ndarray
+    ):
+        """
+        Initialize InteractingModelFilter.
 
         Parameters
         ----------
         kf_list : List[ExtendedKalmanFilter]
             A list of filter instances which correspond to
             each model of the IMM.
-        Pi : np.ndarray
+        transition_matrix : np.ndarray
             Probability transition matrix corresponding to the IMM models.
         """
         self.kf_list = kf_list
-        self.Pi = Pi
+        self.transition_matrix = transition_matrix
 
     def interaction(
         self,
@@ -306,13 +302,15 @@ class InteractingModelFilter:
         x_km_models = x.model_states.copy()
         mu_models = np.array(x.model_probabilities)
 
-        n_modes = self.Pi.shape[0]
-        c = self.Pi.T @ mu_models.reshape(-1, 1)
+        n_modes = self.transition_matrix.shape[0]
+        c = self.transition_matrix.T @ mu_models.reshape(-1, 1)
 
         mu_mix = np.zeros((n_modes, n_modes))
         for i in range(n_modes):
             for j in range(n_modes):
-                mu_mix[i, j] = 1.0 / c[j] * self.Pi[i, j] * mu_models[i]
+                mu_mix[i, j] = (
+                    1.0 / c[j] * self.transition_matrix[i, j] * mu_models[i]
+                )
         x_mix = []
 
         for j in range(n_modes):
@@ -380,17 +378,23 @@ class InteractingModelFilter:
         c_bar = np.zeros(n_modes)
         for i in range(n_modes):
             for j in range(n_modes):
-                c_bar[j] = c_bar[j] + self.Pi[i, j] * mu_km_models[i]
+                c_bar[j] = (
+                    c_bar[j] + self.transition_matrix[i, j] * mu_km_models[i]
+                )
 
         # Correct and update model probabilities
         x_hat = []
         for lv1, kf in enumerate(self.kf_list):
-            x, details_dict = kf.correct(x_models_check[lv1], y, u, output_details=True)
+            x, details_dict = kf.correct(
+                x_models_check[lv1], y, u, output_details=True
+            )
             x_hat.append(x)
             z = details_dict["z"]
             S = details_dict["S"]
             z = z.ravel()
-            model_likelihood = multivariate_normal.pdf(z, mean=np.zeros(z.shape), cov=S)
+            model_likelihood = multivariate_normal.pdf(
+                z, mean=np.zeros(z.shape), cov=S
+            )
             mu_k[lv1] = model_likelihood * c_bar[lv1]
 
         # If all model likelihoods are zero to machine tolerance, np.sum(mu_k)=0 and it fails
@@ -454,7 +458,7 @@ def run_imm_filter(
         y = meas_data[meas_idx]
 
     results_list = []
-    n_models = filter.Pi.shape[0]
+    n_models = filter.transition_matrix.shape[0]
 
     x = IMMState(
         [StateWithCovariance(x0, P0)] * n_models,
@@ -465,7 +469,9 @@ def run_imm_filter(
         u = input_data[k]
         # Fuse any measurements that have occurred.
         if len(meas_data) > 0:
-            while y.stamp < input_data[k + 1].stamp and meas_idx < len(meas_data):
+            while y.stamp < input_data[k + 1].stamp and meas_idx < len(
+                meas_data
+            ):
                 x = filter.interaction(x)
                 x = filter.correct(x, y, u)
                 meas_idx += 1

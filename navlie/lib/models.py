@@ -22,14 +22,14 @@ class SingleIntegrator(ProcessModel):
 
     .. math::
 
-        \dot{\mathbf{x}} = \mathbf{u} 
+        \dot{\mathbf{x}} = \mathbf{u}
 
     where :math:`\mathbf{u}\in \mathbb{R}^n` is a simple velocity input.
     In discrete time the process model is simply
 
     .. math::
         \mathbf{x}_k = \mathbf{x}_{k-1} + \Delta t \mathbf{u}_{k-1}.
-    
+
     """
 
     def __init__(self, Q: np.ndarray):
@@ -37,7 +37,7 @@ class SingleIntegrator(ProcessModel):
         Parameters
         ----------
         Q : np.ndarray
-            Square matrix representing the discrete-time covariance of the input 
+            Square matrix representing the discrete-time covariance of the input
             noise.
 
         Raises
@@ -351,7 +351,7 @@ class CompositeInput(Input):
     @property
     def stamp(self) -> float:
         return self.input_list[0].stamp
-    
+
     def get_index_by_id(self, state_id):
         """
         Get index of a particular state_id in the list of inputs.
@@ -457,7 +457,7 @@ class CompositeProcessModel(ProcessModel):
     # own process model from scratch.
 
     def __init__(
-        self, 
+        self,
         model_list: List[ProcessModel],
         shared_input: bool = False,
     ):
@@ -465,10 +465,10 @@ class CompositeProcessModel(ProcessModel):
         self._shared_input = shared_input
 
     def evaluate(
-        self, 
-        x: CompositeState, 
-        u: CompositeInput, 
-        dt: float, 
+        self,
+        x: CompositeState,
+        u: CompositeInput,
+        dt: float,
     ) -> CompositeState:
         x = x.copy()
         for i, x_sub in enumerate(x.value):
@@ -481,9 +481,9 @@ class CompositeProcessModel(ProcessModel):
         return x
 
     def jacobian(
-        self, 
-        x: CompositeState, 
-        u: CompositeInput, 
+        self,
+        x: CompositeState,
+        u: CompositeInput,
         dt: float,
     ) -> np.ndarray:
         jac = []
@@ -497,9 +497,9 @@ class CompositeProcessModel(ProcessModel):
         return block_diag(*jac)
 
     def covariance(
-        self, 
-        x: CompositeState, 
-        u: CompositeInput, 
+        self,
+        x: CompositeState,
+        u: CompositeInput,
         dt: float,
     ) -> np.ndarray:
         cov = []
@@ -593,9 +593,10 @@ class RangePointToAnchor(MeasurementModel):
 
 class PointRelativePosition(MeasurementModel):
     """
-    Measurement model describing the position of a known landmark relative 
+    Measurement model describing the position of a known landmark relative
     to the robot, resolved in the body frame.
     """
+
     def __init__(
         self,
         landmark_position: np.ndarray,
@@ -686,7 +687,6 @@ class InvariantPointRelativePosition(MeasurementModel):
         return jac
 
     def covariance(self, x: MatrixLieGroupState) -> np.ndarray:
-
         R = np.atleast_2d(self.measurement_model.covariance(x))
         M = x.attitude
         cov = M @ R @ M.T
@@ -750,7 +750,8 @@ class RangePoseToPose(MeasurementModel):
     """
     Range model given two absolute poses of rigid bodies, each containing a tag.
     """
-    # TODO. tag_body_positions should be optional. argh but this will be 
+
+    # TODO. tag_body_positions should be optional. argh but this will be
     # a breaking change since the argument order needs to be different.
     def __init__(
         self, tag_body_position1, tag_body_position2, state_id1, state_id2, R
@@ -863,7 +864,6 @@ class RangeRelativePose(CompositeMeasurementModel):
         return f"RangeRelativePose (of substate {self.state_id})"
 
 
-
 class GlobalPosition(MeasurementModel):
     """
     Global, world-frame, or "absolute" position measurement.
@@ -930,7 +930,7 @@ class GlobalVelocity(MeasurementModel):
             return self.R * np.identity(x.velocity.size)
         else:
             return self.R
-        
+
 
 class Altitude(MeasurementModel):
     """
@@ -961,7 +961,6 @@ class Altitude(MeasurementModel):
         return h if h > self.minimum else None
 
     def jacobian(self, x: MatrixLieGroupState):
-
         if x.direction == "right":
             return x.jacobian_from_blocks(
                 position=x.attitude[2, :].reshape((1, -1))
@@ -987,9 +986,7 @@ class Gravitometer(MeasurementModel):
     where :math:`\mathbf{g}_a` is the magnetic field vector in a world frame `a`.
     """
 
-    def __init__(
-        self, R: np.ndarray, gravity_vector: List[float] = None
-    ):
+    def __init__(self, R: np.ndarray, gravity_vector: List[float] = None):
         """
         Parameters
         ----------
@@ -1013,7 +1010,6 @@ class Gravitometer(MeasurementModel):
                 attitude=-SO3.odot(x.attitude.T @ self._g_a)
             )
         elif x.direction == "left":
-
             return x.jacobian_from_blocks(
                 attitude=x.attitude.T @ -SO3.odot(self._g_a)
             )
@@ -1061,7 +1057,6 @@ class Magnetometer(MeasurementModel):
                 attitude=-SO3.odot(x.attitude.T @ self._m_a)
             )
         elif x.direction == "left":
-
             return x.jacobian_from_blocks(
                 attitude=-x.attitude.T @ SO3.odot(self._m_a)
             )
@@ -1105,7 +1100,6 @@ class _InvariantInnovation(MeasurementModel):
         return jac
 
     def covariance(self, x: MatrixLieGroupState) -> np.ndarray:
-
         R = np.atleast_2d(self.measurement_model.covariance(x))
 
         direction = self._compute_direction(x)

@@ -9,6 +9,7 @@ Welcome to navlie's documentation!
    :maxdepth: 1
    :hidden:
 
+   Home <self>
    Tutorial <tutorial>
    API <api>
 

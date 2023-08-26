@@ -7,7 +7,11 @@ from navlie.lib.preintegration import (
     LinearIncrement,
     PreintegratedLinearModel,
 )
-from navlie.lib.models import BodyFrameVelocity, DoubleIntegrator, DoubleIntegratorWithBias
+from navlie.lib.models import (
+    BodyFrameVelocity,
+    DoubleIntegrator,
+    DoubleIntegratorWithBias,
+)
 from navlie.filters import ExtendedKalmanFilter
 from navlie.lib.states import SE3State, VectorState
 import numpy as np
@@ -60,6 +64,7 @@ def test_imu_preintegration_equivalence(direction):
     assert np.allclose(x_dr.state.bias, x_pre.state.bias)
     assert np.allclose(x_dr.covariance, x_pre.covariance)
 
+
 def test_imu_update_bias():
     Q = np.identity(12)
     accel_bias = [1, 2, 3]
@@ -82,9 +87,6 @@ def test_imu_update_bias():
     rmi1.update_bias(np.array(new_gyro_bias + new_accel_bias))
 
     assert np.allclose(rmi1.value, rmi2.value, atol=1e-3)
-
-
-
 
 
 @pytest.mark.parametrize("direction", ["left", "right"])
@@ -161,7 +163,7 @@ def test_preintegrated_process_jacobian_imu(direction):
         0,
         direction=direction,
     )
-    rmi = IMUIncrement(Q, gyro_bias=[2,3,4], accel_bias=[0.1,0.2,0.3])
+    rmi = IMUIncrement(Q, gyro_bias=[2, 3, 4], accel_bias=[0.1, 0.2, 0.3])
     preint_model = PreintegratedIMUKinematics()
 
     # Do preintegration
@@ -173,6 +175,7 @@ def test_preintegrated_process_jacobian_imu(direction):
 
     print(jac - jac_fd)
     assert np.allclose(jac, jac_fd, atol=1e-4)
+
 
 @pytest.mark.parametrize("direction", ["left", "right"])
 def test_preintegrated_process_covariance_imu(direction):
@@ -189,7 +192,7 @@ def test_preintegrated_process_covariance_imu(direction):
         0,
         direction=direction,
     )
-    rmi = IMUIncrement(Q, gyro_bias=[2,3,4], accel_bias=[0.1,0.2,0.3])
+    rmi = IMUIncrement(Q, gyro_bias=[2, 3, 4], accel_bias=[0.1, 0.2, 0.3])
     preint_model = PreintegratedIMUKinematics()
 
     # Do preintegration
@@ -202,7 +205,7 @@ def test_preintegrated_process_covariance_imu(direction):
 
     # We are unable to test the covariance associated with the bias RMI
     # since it is always zero and not actually included in the IMUIncrement object.
-    assert np.allclose(Qd[:9,:9], Qd_fd[:9,:9], atol=1e-4)
+    assert np.allclose(Qd[:9, :9], Qd_fd[:9, :9], atol=1e-4)
 
 
 def test_double_integrator_preintegration():
@@ -219,17 +222,17 @@ def test_double_integrator_preintegration():
 
     model = DoubleIntegrator(Q)
     rmi = LinearIncrement(
-        input_covariance = Q,
-        state_matrix = lambda u, dt: model.jacobian(None, None, dt),
-        input_matrix = lambda u, dt: model.input_jacobian(dt),
-        dof = 4,
+        input_covariance=Q,
+        state_matrix=lambda u, dt: model.jacobian(None, None, dt),
+        input_matrix=lambda u, dt: model.input_jacobian(dt),
+        dof=4,
     )
     preint_model = PreintegratedLinearModel()
 
     ekf = ExtendedKalmanFilter(model)
     x0 = StateWithCovariance(x, P0)
     x_dr = x0.copy()
- 
+
     # Do both dead reckoning and preintegration
     for i in range(100):
         x_dr = ekf.predict(x_dr, u, dt)
@@ -243,6 +246,7 @@ def test_double_integrator_preintegration():
     print(x_dr.covariance - x_pre.covariance)
     assert np.allclose(x_dr.state.value, x_pre.state.value)
     assert np.allclose(x_dr.covariance, x_pre.covariance)
+
 
 def test_double_integrator_preintegration_with_bias():
     """
@@ -258,12 +262,12 @@ def test_double_integrator_preintegration_with_bias():
     P0 = np.identity(6)
 
     model = DoubleIntegratorWithBias(Q)
-    model_di = DoubleIntegrator(Q[:2,:2])
+    model_di = DoubleIntegrator(Q[:2, :2])
     rmi = LinearIncrement(
-        input_covariance = Q,
-        state_matrix = lambda u, dt: model_di.jacobian(None, None, dt),
-        input_matrix = lambda u, dt: model_di.input_jacobian(dt),
-        dof = 4,
+        input_covariance=Q,
+        state_matrix=lambda u, dt: model_di.jacobian(None, None, dt),
+        input_matrix=lambda u, dt: model_di.input_jacobian(dt),
+        dof=4,
         bias=bias,
     )
     preint_model = PreintegratedLinearModel()
@@ -271,7 +275,7 @@ def test_double_integrator_preintegration_with_bias():
     ekf = ExtendedKalmanFilter(model)
     x0 = StateWithCovariance(x, P0)
     x_dr = x0.copy()
- 
+
     # Do both dead reckoning and preintegration
     for i in range(100):
         x_dr = ekf.predict(x_dr, u, dt)
@@ -285,6 +289,7 @@ def test_double_integrator_preintegration_with_bias():
     print(x_dr.covariance - x_pre.covariance)
     assert np.allclose(x_dr.state.value, x_pre.state.value)
     assert np.allclose(x_dr.covariance, x_pre.covariance)
+
 
 def test_double_integrator_bias_equivalence():
     """
@@ -301,19 +306,19 @@ def test_double_integrator_bias_equivalence():
     P0 = np.identity(6)
 
     model = DoubleIntegratorWithBias(Q)
-    model_di = DoubleIntegrator(Q[:2,:2])
+    model_di = DoubleIntegrator(Q[:2, :2])
     rmi1 = LinearIncrement(
-        input_covariance = Q,
-        state_matrix = lambda u, dt: model_di.jacobian(None, None, dt),
-        input_matrix = lambda u, dt: model_di.input_jacobian(dt),
-        dof = 4,
+        input_covariance=Q,
+        state_matrix=lambda u, dt: model_di.jacobian(None, None, dt),
+        input_matrix=lambda u, dt: model_di.input_jacobian(dt),
+        dof=4,
         bias=bias,
     )
     rmi2 = LinearIncrement(
-        input_covariance = Q,
-        state_matrix = lambda u, dt: model.jacobian(None, None, dt),
-        input_matrix = lambda u, dt: model.input_jacobian(dt),
-        dof = 6,
+        input_covariance=Q,
+        state_matrix=lambda u, dt: model.jacobian(None, None, dt),
+        input_matrix=lambda u, dt: model.input_jacobian(dt),
+        dof=6,
         bias=None,
     )
 

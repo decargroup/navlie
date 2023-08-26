@@ -41,13 +41,13 @@ class VectorState(State):
     def minus(self, x: "VectorState") -> np.ndarray:
         og_shape = self.value.shape
         return (self.value.ravel() - x.value.ravel()).reshape(og_shape)
-    
+
     def plus_jacobian(self, dx: np.ndarray) -> np.ndarray:
         return np.identity(self.dof)
-    
+
     def minus_jacobian(self, x: State) -> np.ndarray:
         return np.identity(self.dof)
-    
+
     def copy(self) -> "VectorState":
         return VectorState(self.value.copy(), self.stamp, self.state_id)
 
@@ -57,6 +57,7 @@ class MatrixLieGroupState(State):
     The MatrixLieGroupState class. Although this class can be used directly,
     it is recommended to use one of the subclasses, such as SE2State or SO3State.
     """
+
     # TODO. Add identity() and random() functions to this
     __slots__ = ["group", "direction"]
 
@@ -65,14 +66,14 @@ class MatrixLieGroupState(State):
         value: np.ndarray,
         group: MatrixLieGroup,
         stamp: float = None,
-        state_id: Any=None,
+        state_id: Any = None,
         direction="right",
     ):
         """
         Parameters
         ----------
         value : np.ndarray
-            Value of of the state. If the value has as many elements as the 
+            Value of of the state. If the value has as many elements as the
             DOF of the group, then it is assumed to be a vector of exponential
             coordinates. Otherwise, the value must be a 2D numpy array representing
             a direct element of the group in matrix form.
@@ -84,7 +85,7 @@ class MatrixLieGroupState(State):
             optional state ID, by default None
         direction : str, optional
             either "left" or "right", by default "right". Defines the perturbation
-            :math:`\\delta \mathbf{x}` as either 
+            :math:`\\delta \mathbf{x}` as either
 
             .. math::
                 \mathbf{X} = \mathbf{X} \exp(\delta \mathbf{x}^\wedge) \text{ (right)}
@@ -129,7 +130,7 @@ class MatrixLieGroupState(State):
         return diff.ravel()
 
     def copy(self) -> "MatrixLieGroupState":
-        ## Check if instance of this class as opposed to a child class 
+        ## Check if instance of this class as opposed to a child class
         if type(self) == MatrixLieGroupState:
             return MatrixLieGroupState(
                 self.value.copy(),
@@ -174,7 +175,7 @@ class MatrixLieGroupState(State):
             f"{value_str}",
         ]
         return "\n".join(s)
-    
+
     def dot(self, other: "MatrixLieGroupState") -> "MatrixLieGroupState":
         new = self.copy()
         new.value = self.value @ other.value
@@ -208,16 +209,16 @@ class MatrixLieGroupState(State):
         raise NotImplementedError()
 
 
-
 class SO2State(MatrixLieGroupState):
     group = SO2
+
     def __init__(
         self,
         value: np.ndarray,
         stamp: float = None,
         state_id=None,
         direction="right",
-    ):  
+    ):
         # check if value is a single number
         if isinstance(value, (int, float)):
             value = np.array(value).reshape((1, 1))
@@ -233,11 +234,14 @@ class SO2State(MatrixLieGroupState):
 
     @staticmethod
     def random(stamp: float = None, state_id=None, direction="right"):
-        return SO2State(SO2.random(), stamp=stamp, state_id=state_id, direction=direction)
+        return SO2State(
+            SO2.random(), stamp=stamp, state_id=state_id, direction=direction
+        )
 
 
 class SO3State(MatrixLieGroupState):
-    group=SO3
+    group = SO3
+
     def __init__(
         self,
         value: np.ndarray,
@@ -307,10 +311,14 @@ class SO3State(MatrixLieGroupState):
 
     @staticmethod
     def random(stamp: float = None, state_id=None, direction="right"):
-        return SO3State(SO3.random(), stamp=stamp, state_id=state_id, direction=direction)
+        return SO3State(
+            SO3.random(), stamp=stamp, state_id=state_id, direction=direction
+        )
+
 
 class SE2State(MatrixLieGroupState):
-    group=SE2
+    group = SE2
+
     def __init__(
         self,
         value: np.ndarray,
@@ -348,7 +356,6 @@ class SE2State(MatrixLieGroupState):
     def jacobian_from_blocks(
         attitude: np.ndarray = None, position: np.ndarray = None
     ):
-
         for jac in [attitude, position]:
             if jac is not None:
                 dim = jac.shape[0]
@@ -359,14 +366,17 @@ class SE2State(MatrixLieGroupState):
             position = np.zeros((dim, 2))
 
         return np.block([attitude, position])
-    
+
     @staticmethod
     def random(stamp: float = None, state_id=None, direction="right"):
-        return SE2State(SE2.random(), stamp=stamp, state_id=state_id, direction=direction)
+        return SE2State(
+            SE2.random(), stamp=stamp, state_id=state_id, direction=direction
+        )
 
 
 class SE3State(MatrixLieGroupState):
-    group=SE3
+    group = SE3
+
     def __init__(
         self,
         value: np.ndarray,
@@ -396,7 +406,6 @@ class SE3State(MatrixLieGroupState):
     def jacobian_from_blocks(
         attitude: np.ndarray = None, position: np.ndarray = None
     ):
-
         for jac in [attitude, position]:
             if jac is not None:
                 dim = jac.shape[0]
@@ -472,15 +481,17 @@ class SE3State(MatrixLieGroupState):
         msg.pose = SE3.to_ros(self.value)
 
         return msg
-    
 
     @staticmethod
     def random(stamp: float = None, state_id=None, direction="right"):
-        return SE2State(SE2.random(), stamp=stamp, state_id=state_id, direction=direction)
+        return SE2State(
+            SE2.random(), stamp=stamp, state_id=state_id, direction=direction
+        )
 
 
 class SE23State(MatrixLieGroupState):
-    group=SE23
+    group = SE23
+
     def __init__(
         self,
         value: np.ndarray,
@@ -491,7 +502,7 @@ class SE23State(MatrixLieGroupState):
         super().__init__(value, self.group, stamp, state_id, direction)
 
     @property
-    def pose(self)  -> np.ndarray:
+    def pose(self) -> np.ndarray:
         return self.value[0:5, 0:5]
 
     @pose.setter
@@ -499,7 +510,7 @@ class SE23State(MatrixLieGroupState):
         self.value[0:5, 0:5] = T
 
     @property
-    def attitude(self)  -> np.ndarray:
+    def attitude(self) -> np.ndarray:
         return self.value[0:3, 0:3]
 
     @attitude.setter
@@ -507,7 +518,7 @@ class SE23State(MatrixLieGroupState):
         self.value[0:3, 0:3] = C
 
     @property
-    def position(self)  -> np.ndarray:
+    def position(self) -> np.ndarray:
         return self.value[0:3, 4]
 
     @position.setter
@@ -519,7 +530,7 @@ class SE23State(MatrixLieGroupState):
         return self.value[0:3, 3]
 
     @velocity.setter
-    def velocity(self, v)  -> np.ndarray:
+    def velocity(self, v) -> np.ndarray:
         self.value[0:3, 3] = v
 
     @staticmethod
@@ -541,13 +552,16 @@ class SE23State(MatrixLieGroupState):
 
         return np.block([attitude, velocity, position])
 
-
     @staticmethod
     def random(stamp: float = None, state_id=None, direction="right"):
-        return SE23State(SE23.random(), stamp=stamp, state_id=state_id, direction=direction)
+        return SE23State(
+            SE23.random(), stamp=stamp, state_id=state_id, direction=direction
+        )
+
 
 class SL3State(MatrixLieGroupState):
     group = SL3
+
     def __init__(
         self,
         value: np.ndarray,
@@ -581,7 +595,6 @@ class CompositeState(State):
     def __init__(
         self, state_list: List[State], stamp: float = None, state_id=None
     ):
-
         #:List[State]: The substates are the CompositeState's value.
         self.value = state_list
 
@@ -864,7 +877,6 @@ class CompositeState(State):
         return jac
 
     def minus_jacobian(self, x: "CompositeState") -> np.ndarray:
-
         dof = self.dof
         jac = np.zeros((dof, dof))
         counter = 0
