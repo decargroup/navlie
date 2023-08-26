@@ -141,9 +141,8 @@ class ExtendedKalmanFilter:
 
         details_dict = {}
         if u is not None:
-            A = self.process_model.jacobian(x_jac, u, dt)
             Q = self.process_model.covariance(x_jac, u, dt)
-            x_new.state = self.process_model.evaluate(x.state, u, dt)
+            x_new.state, A = self.process_model.evaluate_with_jacobian(x.state, u, dt)
             x_new.covariance = A @ x.covariance @ A.T + Q
             x_new.symmetrize()
             x_new.state.stamp = t_km1 + dt
@@ -217,13 +216,14 @@ class ExtendedKalmanFilter:
 
         if x_jac is None:
             x_jac = x.state
-        y_check = y.model.evaluate(x.state)
+
+        y_check, G = y.model.evaluate_with_jacobian(x.state)
 
         details_dict = {}
         if y_check is not None:
             P = x.covariance
             R = np.atleast_2d(y.model.covariance(x_jac))
-            G = np.atleast_2d(y.model.jacobian(x_jac))
+            G = np.atleast_2d(G)
             z = y.minus(y_check)
             S = G @ P @ G.T + R
 
@@ -344,8 +344,8 @@ class IteratedKalmanFilter(ExtendedKalmanFilter):
                 x_op_jac = x_op
 
             R = np.atleast_2d(y.model.covariance(x_op))
-            G = np.atleast_2d(y.model.jacobian(x_op_jac))
-            y_check = y.model.evaluate(x_op)
+            y_check, G = y.model.evaluate_with_jacobian(x_op)
+            G = np.atleast_2d(G)
             z = y.minus(y_check)
             e = x_op.minus(x.state).reshape((-1, 1))
             J = x_op.plus_jacobian(e)
@@ -417,7 +417,8 @@ class IteratedKalmanFilter(ExtendedKalmanFilter):
                 x_op_jac = x_op
 
             # Re-evaluate the jacobians at our latest operating point
-            G = np.atleast_2d(y.model.jacobian(x_op_jac))
+            _, G = y.model.evaluate_with_jacobian(x_op_jac)
+            G = np.atleast_2d(G)
             R = np.atleast_2d(y.model.covariance(x_op_jac))
             e = x_op.minus(x.state).reshape((-1, 1))
             J = x_op.plus_jacobian(e)
@@ -703,7 +704,6 @@ class SigmaPointKalmanFilter:
         R = y.model.covariance(x.state)
 
         n_x = x.state.dof
-        n_y = y.value.size
 
         if (n_x, self.method) in self._sigmapoint_cache:
             unit_sigmapoints, w = self._sigmapoint_cache[(n_x, self.method)]
@@ -714,31 +714,22 @@ class SigmaPointKalmanFilter:
         P_sqrt = np.linalg.cholesky(P_xx)
         sigmapoints = P_sqrt @ unit_sigmapoints
 
-        n_sig = w.size
-
         y_check = y.model.evaluate(x.state)
 
         if y_check is not None:
-            y_propagated = [
+            y_propagated = np.array([
                 y.model.evaluate(x.state.plus(sp)).ravel()
                 for sp in sigmapoints.T
-            ]
+            ])
 
             # predicted measurement mean
-            y_mean = np.zeros(n_y)
-            for i in range(n_sig):
-                y_mean += w[i] * y_propagated[i]
+            y_mean = np.sum(w[:,None]*y_propagated, axis=0)
 
             # compute covariance of innovation and cross covariance
-            Pyy = np.zeros((n_y, n_y))
-            Pxy = np.zeros((n_x, n_y))
-            for i in range(n_sig):
-                err = y_propagated[i].reshape((-1, 1)) - y_mean.reshape((-1, 1))
-
-                Pyy += w[i] * err @ err.T
-                Pxy += w[i] * sigmapoints[:, i].reshape((-1, 1)) @ err.T
-
-            Pyy += R
+            err = y_propagated - y_mean
+            sigmapoints = sigmapoints.T
+            Pyy = np.sum(w[:,None,None]*err[:,:,None]*err[:,None,:], axis=0) + R
+            Pxy = np.sum(w[:,None,None]*sigmapoints[:,:,None]*err[:,None,:], axis=0)
 
             z = y.minus(y_mean)
 
