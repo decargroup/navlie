@@ -1,4 +1,4 @@
-name: Publish Sphinx Documentation
+name: Docs
 
 on:
   push:

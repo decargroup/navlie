@@ -245,7 +245,17 @@ class MeasurementModel(ABC):
         :math:`\mathbf{G} = \partial \mathbf{g}(\mathbf{x})/ \partial \mathbf{x}`.
         """
         return self.jacobian_fd(x)
-
+    
+    def evaluate_with_jacobian(self, x: State) -> (np.ndarray, np.ndarray):
+        """
+        Evaluates the measurement model and simultaneously returns the Jacobian
+        as its second output argument. This is useful to override for
+        performance reasons when the model evaluation and Jacobian have a lot of
+        common calculations, and it is more efficient to calculate them in the
+        same function call.
+        """
+        return self.evaluate(x), self.jacobian(x)
+    
     def jacobian_fd(self, x: State, step_size=1e-6):
         """
         Calculates the model jacobian with finite difference.
@@ -351,6 +361,16 @@ class ProcessModel(ABC):
             Process model Jacobian with respect to the state :math:`\mathbf{F}`.
         """
         return self.jacobian_fd(x, u, dt)
+    
+    def evaluate_with_jacobian(self, x: State, u: Input, dt: float) -> (State, np.ndarray):
+        """
+        Evaluates the process model and simultaneously returns the Jacobian as 
+        its second output argument. This is useful to override for
+        performance reasons when the model evaluation and Jacobian have a lot of
+        common calculations, and it is more efficient to calculate them in the
+        same function call.
+        """
+        return self.evaluate(x, u, dt), self.jacobian(x, u, dt)
 
     def jacobian_fd(
         self, x: State, u: Input, dt: float, step_size=1e-6, *args, **kwargs
