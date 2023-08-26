@@ -1,8 +1,6 @@
 name: Test Documentation Build
 
 on:
-  push:
-    branches: [add_docs_testing] # for testing
   pull_request:
     branches: [main]
 

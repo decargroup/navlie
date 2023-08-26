@@ -8,6 +8,10 @@ navlie
 .. image:: https://github.com/decargroup/navlie/actions/workflows/publish_docs.yml/badge.svg
     :target: https://github.com/decargroup/navlie/actions/workflows/publish_docs.yml
     :alt: Docs
+
+.. image:: https://img.shields.io/badge/python-3.8%20%7C%203.9%20%7C%203.10-blue
+    :target: https://www.python.org/downloads/
+    :alt: Python Version
     
 An on-manifold state estimation library for robotics.
 
