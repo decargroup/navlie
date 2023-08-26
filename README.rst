@@ -1,8 +1,17 @@
 navlie
-=====
+======
 .. image:: https://github.com/decargroup/navlie/actions/workflows/test_package.yml/badge.svg
     :target: https://github.com/decargroup/navlie/actions/workflows/test_package.yml
     :alt: Tests
+
+
+.. image:: https://github.com/decargroup/navlie/actions/workflows/publish_docs.yml/badge.svg
+    :target: https://github.com/decargroup/navlie/actions/workflows/publish_docs.yml
+    :alt: Docs
+
+.. image:: https://img.shields.io/badge/python-3.8%20%7C%203.9%20%7C%203.10-blue
+    :target: https://www.python.org/downloads/
+    :alt: Python Version
     
 An on-manifold state estimation library for robotics.
 
@@ -132,8 +141,6 @@ As another more complicated example, a state object belonging to the SE(3) Lie g
 Process and Measurement Models
 ------------------------------
 .. image:: system_diagram.png
-    :alt: System Diagram
-.. image:: ./docs/source/system_diagram.png
     :alt: System Diagram
 
 There are a few more core types in this package. The main ones are the `ProcessModel` and `MeasurementModel` classes. Both of these are abstract classes requiring the user to implement
