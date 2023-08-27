@@ -8,6 +8,7 @@ from .states import (
     SL3State,
     CompositeState,
     MatrixLieGroupState,
+    VectorInput,
 )
 
 from .imu import IMU, IMUState, IMUKinematics
@@ -19,6 +20,7 @@ from .models import (
     RangeRelativePose,
     SingleIntegrator,
     DoubleIntegrator,
+    DoubleIntegratorWithBias,
     BodyFrameVelocity,
     RelativeBodyFrameVelocity,
     CompositeMeasurementModel,

@@ -1,10 +1,12 @@
-from navlie.lib.states import SE2State, CompositeState, VectorState
-from navlie.types import VectorInput
-from navlie.lib.models import (
+from navlie.lib import (
     BodyFrameVelocity,
     CompositeProcessModel,
     RangeRelativePose,
     CompositeInput,
+    VectorInput,
+    SE2State,
+    VectorState,
+    CompositeState,
 )
 from pymlg import SE2
 import numpy as np

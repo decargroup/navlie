@@ -1,10 +1,11 @@
-from navlie.lib.models import (
+from navlie.lib import (
     SingleIntegrator,
     DoubleIntegrator,
     DoubleIntegratorWithBias,
+    VectorInput,
+    VectorState,
 )
-from navlie.lib.states import VectorState
-from navlie.types import VectorInput
+from navlie.lib import VectorState, VectorInput
 import numpy as np
 
 

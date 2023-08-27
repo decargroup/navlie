@@ -2,13 +2,13 @@ from navlie.types import (
     Measurement,
     ProcessModel,
     MeasurementModel,
-    VectorInput,
     Input,
 )
 from navlie.lib.states import (
     CompositeState,
     MatrixLieGroupState,
     VectorState,
+    VectorInput,
 )
 from pymlg import SO2, SO3
 import numpy as np
@@ -52,9 +52,7 @@ class SingleIntegrator(ProcessModel):
         self._Q = Q
         self.dim = Q.shape[0]
 
-    def evaluate(
-        self, x: VectorState, u: VectorInput, dt: float
-    ) -> np.ndarray:
+    def evaluate(self, x: VectorState, u: VectorInput, dt: float) -> np.ndarray:
         x = x.copy()
         x.value = x.value + dt * u.value
         return x
@@ -89,9 +87,7 @@ class DoubleIntegrator(ProcessModel):
         self._Q = Q
         self.dim = Q.shape[0]
 
-    def evaluate(
-        self, x: VectorState, u: VectorInput, dt: float
-    ) -> np.ndarray:
+    def evaluate(self, x: VectorState, u: VectorInput, dt: float) -> np.ndarray:
         """
         Evaluate discrete-time process model
         """

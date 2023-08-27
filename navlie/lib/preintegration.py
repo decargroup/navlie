@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from typing import List, Any, Callable, Tuple
-from navlie.types import VectorInput, ProcessModel, Input
+from navlie.types import ProcessModel, Input
 from navlie.lib.imu import (
     IMU,
     IMUState,
@@ -10,7 +10,7 @@ from navlie.lib.imu import (
     L_matrix,
     G_matrix,
 )
-from navlie.lib.states import MatrixLieGroupState, VectorState
+from navlie.lib.states import MatrixLieGroupState, VectorState, VectorInput
 import numpy as np
 from pymlg import SO3, SE3, SE2, SE23, MatrixLieGroup
 

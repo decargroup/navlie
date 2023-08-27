@@ -1,10 +1,11 @@
 """Tests for the process and measurement residuals found in batch.py"""
 
-from navlie.types import VectorInput, Measurement
-from navlie.lib.models import (
+from navlie.types import Measurement
+from navlie.lib import (
     SingleIntegrator,
     BodyFrameVelocity,
     GlobalPosition,
+    VectorInput,
 )
 from navlie.batch.estimator import (
     PriorResidual,

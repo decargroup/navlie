@@ -1,22 +1,24 @@
-from navlie.lib.imu import IMU, IMUKinematics, IMUState
-from navlie.lib.preintegration import (
+from navlie.lib import (
     BodyVelocityIncrement,
     IMUIncrement,
     PreintegratedBodyVelocity,
     PreintegratedIMUKinematics,
     LinearIncrement,
     PreintegratedLinearModel,
-)
-from navlie.lib.models import (
+    IMU,
+    IMUKinematics,
+    IMUState,
     BodyFrameVelocity,
     DoubleIntegrator,
-    DoubleIntegratorWithBias,
+    VectorInput,
+    SE3State,
+    VectorState,
 )
+from navlie.lib.models import DoubleIntegratorWithBias
 from navlie.filters import ExtendedKalmanFilter
-from navlie.lib.states import SE3State, VectorState
 import numpy as np
-from pymlg import SE23, SE2, SE3, SO3
-from navlie.types import VectorInput, StateWithCovariance
+from pymlg import SE23, SE3
+from navlie import StateWithCovariance, ExtendedKalmanFilter
 import pytest
 
 np.set_printoptions(precision=5, suppress=True, linewidth=200)

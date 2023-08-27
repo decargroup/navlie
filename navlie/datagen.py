@@ -6,9 +6,9 @@ from navlie.types import (
     ProcessModel,
     MeasurementModel,
     Input,
-    VectorInput,
     Measurement,
 )
+from navlie.lib import VectorInput
 
 
 class DataGenerator:
