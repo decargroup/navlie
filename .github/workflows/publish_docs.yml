@@ -23,7 +23,6 @@ jobs:
           pip install pandoc
           pip install nbsphinx
           pip install ipykernel
-          pip install ipykernel
           pip install pydata-sphinx-theme==0.7.2
       - name: Sphinx build
         run: |
