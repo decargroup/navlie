@@ -254,11 +254,13 @@ class ProcessModel(ABC):
         """
         pass
 
-    @abstractmethod
     def covariance(self, x: State, u: Input, dt: float) -> np.ndarray:
         """
         Covariance matrix math:`\mathbf{Q}_k` of the additive Gaussian
         noise :math:`\mathbf{w}_{k} \sim \mathcal{N}(\mathbf{0}, \mathbf{Q}_k)`.
+        If this method is not overridden, the covariance of the process model
+        error is approximated from the input covariance using a linearization
+        procedure, with the input Jacobian evaluated using finite difference.
 
         Parameters
         ----------
@@ -274,7 +276,9 @@ class ProcessModel(ABC):
         np.ndarray
             Covariance matrix :math:`\mathbf{Q}_k`.
         """
-        pass
+        L = np.atleast_2d(self.input_jacobian_fd(x, u, dt))
+        Q = np.atleast_2d(self.input_covariance(x, u, dt))
+        return L @ Q @ L.T
 
     def jacobian(self, x: State, u: Input, dt: float) -> np.ndarray:
         """
@@ -352,6 +356,29 @@ class ProcessModel(ABC):
     def sqrt_information(self, x: State, u: Input, dt: float) -> np.ndarray:
         Q = np.atleast_2d(self.covariance(x, u, dt))
         return np.linalg.cholesky(np.linalg.inv(Q))
+
+    def input_covariance(self, x: State, u: Input, dt: float) -> np.ndarray:
+        """
+        Covariance matrix of additive noise *on the input*.
+
+        Parameters
+        ----------
+        x : State
+            State at time :math:`k-1`.
+        u : Input
+            The input value :math:`\mathbf{u}` provided as a Input object.
+        dt : float
+            The time interval :math:`\Delta t` between the two states.
+
+        Returns
+        -------
+        np.ndarray
+            Covariance matrix :math:`\mathbf{R}_k`.
+        """
+        raise NotImplementedError(
+            "input_covariance must be implemented "
+            + "if the covariance method is not overridden."
+        )
 
 
 class Measurement:

@@ -47,7 +47,7 @@ class DataGenerator:
         input_func: Callable[[float], np.ndarray],
         input_covariance: np.ndarray,
         input_freq: float,
-        meas_model_list: List[MeasurementModel] = [],
+        meas_model_list: List[MeasurementModel] = [], # TODO: fix mutable default argument
         meas_freq_list: Union[float, List[float]] = None,
         meas_offset_list: Union[float, List[float]] = [],
     ):

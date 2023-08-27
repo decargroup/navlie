@@ -16,7 +16,10 @@ jobs:
         run: |
           pip install -e .
           pip install sphinx
-          pip install pydata-sphinx-theme
+          sudo apt-get install -y pandoc
+          pip install pandoc
+          pip install nbsphinx
+          pip install pydata-sphinx-theme==0.7.2
       - name: Sphinx build
         run: |
           cd docs
