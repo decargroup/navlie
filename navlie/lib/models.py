@@ -2,7 +2,7 @@ from navlie.types import (
     Measurement,
     ProcessModel,
     MeasurementModel,
-    StampedValue,
+    VectorInput,
     Input,
 )
 from navlie.lib.states import (
@@ -53,7 +53,7 @@ class SingleIntegrator(ProcessModel):
         self.dim = Q.shape[0]
 
     def evaluate(
-        self, x: VectorState, u: StampedValue, dt: float
+        self, x: VectorState, u: VectorInput, dt: float
     ) -> np.ndarray:
         x = x.copy()
         x.value = x.value + dt * u.value
@@ -90,7 +90,7 @@ class DoubleIntegrator(ProcessModel):
         self.dim = Q.shape[0]
 
     def evaluate(
-        self, x: VectorState, u: StampedValue, dt: float
+        self, x: VectorState, u: VectorInput, dt: float
     ) -> np.ndarray:
         """
         Evaluate discrete-time process model
@@ -161,7 +161,7 @@ class DoubleIntegratorWithBias(DoubleIntegrator):
         self.dim = int(Q.shape[0] / 2)
 
     def evaluate(
-        self, x: VectorState, u: StampedValue, dt: float
+        self, x: VectorState, u: VectorInput, dt: float
     ) -> VectorState:
         """
         Evaluate discrete-time process model
@@ -254,14 +254,14 @@ class BodyFrameVelocity(ProcessModel):
         self._Q = Q
 
     def evaluate(
-        self, x: MatrixLieGroupState, u: StampedValue, dt: float
+        self, x: MatrixLieGroupState, u: VectorInput, dt: float
     ) -> MatrixLieGroupState:
         x = x.copy()
         x.value = x.value @ x.group.Exp(u.value * dt)
         return x
 
     def jacobian(
-        self, x: MatrixLieGroupState, u: StampedValue, dt: float
+        self, x: MatrixLieGroupState, u: VectorInput, dt: float
     ) -> np.ndarray:
         if x.direction == "right":
             return x.group.adjoint(x.group.Exp(-u.value * dt))
@@ -269,7 +269,7 @@ class BodyFrameVelocity(ProcessModel):
             return np.identity(x.dof)
 
     def covariance(
-        self, x: MatrixLieGroupState, u: StampedValue, dt: float
+        self, x: MatrixLieGroupState, u: VectorInput, dt: float
     ) -> np.ndarray:
         if x.direction == "right":
             L = dt * x.group.left_jacobian(-u.value * dt)
@@ -286,7 +286,7 @@ class RelativeBodyFrameVelocity(ProcessModel):
         self._Q2 = Q2
 
     def evaluate(
-        self, x: MatrixLieGroupState, u: StampedValue, dt: float
+        self, x: MatrixLieGroupState, u: VectorInput, dt: float
     ) -> MatrixLieGroupState:
         x = x.copy()
         u = u.value.reshape((2, round(u.value.size / 2)))
@@ -294,7 +294,7 @@ class RelativeBodyFrameVelocity(ProcessModel):
         return x
 
     def jacobian(
-        self, x: MatrixLieGroupState, u: StampedValue, dt: float
+        self, x: MatrixLieGroupState, u: VectorInput, dt: float
     ) -> np.ndarray:
         u = u.value.reshape((2, round(u.value.size / 2)))
         if x.direction == "right":
@@ -305,7 +305,7 @@ class RelativeBodyFrameVelocity(ProcessModel):
             )
 
     def covariance(
-        self, x: MatrixLieGroupState, u: StampedValue, dt: float
+        self, x: MatrixLieGroupState, u: VectorInput, dt: float
     ) -> np.ndarray:
         u = u.value.reshape((2, round(u.value.size / 2)))
         u1 = u[0]

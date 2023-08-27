@@ -7,7 +7,7 @@ from navlie.lib.models import (
 from pymlg import SO2, SO3, SE3, SE2, SE3, SE23
 import numpy as np
 import pytest
-from navlie.types import StampedValue
+from navlie.types import VectorInput
 
 
 @pytest.mark.parametrize("direction", ["left", "right"])
@@ -16,7 +16,7 @@ def test_body_velocity_se3(direction):
         SE3.random(),
         direction=direction,
     )
-    u = StampedValue(np.array([1, 2, 3, 4, 5, 6]))
+    u = VectorInput(np.array([1, 2, 3, 4, 5, 6]))
     dt = 0.1
     Q = np.identity(6)
     process_model = BodyFrameVelocity(Q)
@@ -31,7 +31,7 @@ def test_body_velocity_se2(direction):
         SE2.random(),
         direction=direction,
     )
-    u = StampedValue(np.array([1, 2, 3]))
+    u = VectorInput(np.array([1, 2, 3]))
     dt = 0.1
     Q = np.identity(3)
     process_model = BodyFrameVelocity(Q)
@@ -47,7 +47,7 @@ def test_body_velocity_se3_left(direction):
         SE3.random(),
         direction=direction,
     )
-    u = StampedValue(np.array([1, 2, 3, 4, 5, 6]))
+    u = VectorInput(np.array([1, 2, 3, 4, 5, 6]))
     dt = 0.1
     Q = np.identity(6)
     process_model = BodyFrameVelocity(Q)
@@ -62,7 +62,7 @@ def test_body_velocity_se2_left(direction):
         SE2.random(),
         direction=direction,
     )
-    u = StampedValue(np.array([1, 2, 3]))
+    u = VectorInput(np.array([1, 2, 3]))
     dt = 0.1
     Q = np.identity(3)
     process_model = BodyFrameVelocity(Q)
@@ -77,7 +77,7 @@ def test_relative_body_velocity_se2():
         SE2.random(),
         direction="right",
     )
-    u = StampedValue(np.array([1, 2, 3, 4, 5, 6]))
+    u = VectorInput(np.array([1, 2, 3, 4, 5, 6]))
     dt = 0.1
     Q = np.identity(3)
     process_model = RelativeBodyFrameVelocity(Q, Q)
@@ -92,7 +92,7 @@ def test_relative_body_velocity_se3():
         SE3.random(),
         direction="right",
     )
-    u = StampedValue(np.array([i for i in range(12)]))
+    u = VectorInput(np.array([i for i in range(12)]))
     dt = 0.1
     Q = np.identity(6)
     process_model = RelativeBodyFrameVelocity(Q, Q)
@@ -111,7 +111,7 @@ def test_relative_body_velocity_equivalence():
         T_12,
         direction="right",
     )
-    u = StampedValue(np.array([i for i in range(12)]).reshape((-1, 6)))
+    u = VectorInput(np.array([i for i in range(12)]).reshape((-1, 6)))
     dt = 0.1
     Q = np.identity(6)
     process_model = RelativeBodyFrameVelocity(Q, Q)

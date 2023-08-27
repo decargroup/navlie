@@ -45,7 +45,7 @@ class Input(ABC):
         pass
 
 
-class StampedValue(Input):
+class VectorInput(Input):
     """
     Generic data container for timestamped information.
     """
@@ -72,7 +72,7 @@ class StampedValue(Input):
             covariance=covariance,
         )
 
-    def plus(self, w: np.ndarray) -> "StampedValue":
+    def plus(self, w: np.ndarray) -> "VectorInput":
         """
         Generic addition operation to modify the internal value.
 
@@ -87,11 +87,11 @@ class StampedValue(Input):
         new.value = new.value.reshape(og_shape)
         return new
 
-    def copy(self) -> "StampedValue":
+    def copy(self) -> "VectorInput":
         """
         Returns a copy of the instance with fully seperate memory.
         """
-        return StampedValue(
+        return VectorInput(
             self.value.copy(), self.stamp, self.state_id, self.covariance
         )
 
@@ -104,6 +104,8 @@ class StampedValue(Input):
         ]
         return "\n".join(s)
 
+class StampedValue(VectorInput):
+    pass # For backwards compatibility
 
 class State(ABC):
     """

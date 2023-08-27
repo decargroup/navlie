@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from typing import List, Any, Callable, Tuple
-from navlie.types import StampedValue, ProcessModel, Input
+from navlie.types import VectorInput, ProcessModel, Input
 from navlie.lib.imu import (
     IMU,
     IMUState,
@@ -375,7 +375,7 @@ class BodyVelocityIncrement(RelativeMotionIncrement):
         self.bias = bias
         self.new_bias = bias
 
-    def increment(self, u: StampedValue, dt):
+    def increment(self, u: VectorInput, dt):
         """
         In-place updating the RMI given an input measurement `u` and a duration `dt`
         over which to preintegrate.
@@ -657,8 +657,8 @@ class LinearIncrement(RelativeMotionIncrement):
     def __init__(
         self,
         input_covariance: np.ndarray,
-        state_matrix: Callable[[StampedValue, float], np.ndarray],
-        input_matrix: Callable[[StampedValue, float], np.ndarray],
+        state_matrix: Callable[[VectorInput, float], np.ndarray],
+        input_matrix: Callable[[VectorInput, float], np.ndarray],
         dof: int,
         bias: np.ndarray = None,
         state_id: Any = None,
@@ -670,10 +670,10 @@ class LinearIncrement(RelativeMotionIncrement):
         input_covariance : numpy.ndarray
             Covariance associated with the input. If a bias is also supplied,
             then this should also contain the covariance of the bias random walk.
-        state_matrix : Callable[[StampedValue, float], numpy.ndarray]
+        state_matrix : Callable[[VectorInput, float], numpy.ndarray]
             The state transition matrix, supplied as a function of the input
             and time interval `dt`.
-        input_matrix : Callable[[StampedValue, float], numpy.ndarray]
+        input_matrix : Callable[[VectorInput, float], numpy.ndarray]
             The input matrix, supplied as a function of the input and time
             interval `dt`.
         dof : int
@@ -715,7 +715,7 @@ class LinearIncrement(RelativeMotionIncrement):
         self.new_bias = self.original_bias
         self.stamps = [None, None]
 
-    def increment(self, u: StampedValue, dt: float):
+    def increment(self, u: VectorInput, dt: float):
         u = u.copy()
 
         if self.stamps[0] is None:

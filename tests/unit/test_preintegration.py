@@ -16,7 +16,7 @@ from navlie.filters import ExtendedKalmanFilter
 from navlie.lib.states import SE3State, VectorState
 import numpy as np
 from pymlg import SE23, SE2, SE3, SO3
-from navlie.types import StampedValue, StateWithCovariance
+from navlie.types import VectorInput, StateWithCovariance
 import pytest
 
 np.set_printoptions(precision=5, suppress=True, linewidth=200)
@@ -100,7 +100,7 @@ def test_odometry_preintegration_se3_equivalence(direction):
 
     model = BodyFrameVelocity(Q)
     dt = 0.01
-    u = StampedValue([1, 2, 3, 4, 5, 6], 0)
+    u = VectorInput([1, 2, 3, 4, 5, 6], 0)
     x = SE3State(SE3.random(), stamp=0.0, direction=direction)
     P0 = np.identity(6)
     ekf = ExtendedKalmanFilter(model)
@@ -132,7 +132,7 @@ def test_preintegrated_process_jacobian_body_velocity(direction):
     Q = np.identity(6)
     bias = [0, 0, 0, 0, 0, 0]
     dt = 0.01
-    u = StampedValue([1, 2, 3, 4, 5, 6], 0)
+    u = VectorInput([1, 2, 3, 4, 5, 6], 0)
     x = SE3State(SE3.random(), stamp=0.0, direction=direction)
     rmi = BodyVelocityIncrement(x.group, Q, bias=bias)
     preint_model = PreintegratedBodyVelocity()
@@ -216,7 +216,7 @@ def test_double_integrator_preintegration():
     Q = np.identity(2)
 
     dt = 0.01
-    u = StampedValue([1, 2], 0)
+    u = VectorInput([1, 2], 0)
     x = VectorState([0, 0, 0, 0], stamp=0.0)
     P0 = np.identity(4)
 
@@ -257,7 +257,7 @@ def test_double_integrator_preintegration_with_bias():
     bias = [0, 2]
 
     dt = 0.01
-    u = StampedValue([1, 2], 0)
+    u = VectorInput([1, 2], 0)
     x = VectorState([0, 0, 0, 0] + bias, stamp=0.0)
     P0 = np.identity(6)
 
@@ -300,8 +300,8 @@ def test_double_integrator_bias_equivalence():
     bias = [0, 2]
 
     dt = 0.01
-    u = StampedValue([1, 2], 0)
-    u2 = StampedValue([1, 2, 0, 0], 0)
+    u = VectorInput([1, 2], 0)
+    u2 = VectorInput([1, 2, 0, 0], 0)
     x = VectorState([0, 0, 0, 0] + bias, stamp=0.0)
     P0 = np.identity(6)
 

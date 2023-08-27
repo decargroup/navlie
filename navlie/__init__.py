@@ -4,7 +4,7 @@ from .types import (
     MeasurementModel,
     ProcessModel,
     Input,
-    StampedValue,
+    VectorInput,
     StateWithCovariance,
     Dataset,
 )

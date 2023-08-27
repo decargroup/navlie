@@ -12,7 +12,7 @@ These residuals are
 
 from abc import ABC, abstractmethod
 from typing import Hashable, List, Tuple
-from navlie.types import State, ProcessModel, StampedValue, Measurement
+from navlie.types import State, ProcessModel, VectorInput, Measurement
 import numpy as np
 
 
@@ -117,7 +117,7 @@ class ProcessResidual(Residual):
         self,
         keys: List[Hashable],
         process_model: ProcessModel,
-        u: StampedValue,
+        u: VectorInput,
     ):
         super().__init__(keys)
         self._process_model = process_model
