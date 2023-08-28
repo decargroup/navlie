@@ -646,7 +646,7 @@ def plot_nees(
         s = 1
 
     expected_nees_label = "Expected NEES"
-    ci_label = f"${int(confidence_interval*100)}\%$ CI"
+    ci_label = f"${int(confidence_interval*100)}\%$ conf. int."
     _, exisiting_labels = axs.get_legend_handles_labels()
 
     if expected_nees_label in exisiting_labels:

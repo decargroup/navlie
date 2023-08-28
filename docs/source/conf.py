@@ -18,7 +18,7 @@
 # -- Project information -----------------------------------------------------
 
 project = "navlie"
-copyright = "2022, Charles C. Cossette"
+copyright = "2022"
 author = "Charles C. Cossette"
 
 # The full version, including alpha/beta/rc tags
