@@ -163,20 +163,20 @@ For example, a simple "single integrator" (velocity input) model can be implemen
         def __init__(self, Q: np.ndarray):
             self._Q = Q
 
-        def evaluate(self, x: VectorState, u: StampedValue, dt: float) -> np.ndarray:
+        def evaluate(self, x: VectorState, u: VectorInput, dt: float) -> np.ndarray:
             """
             Returns a state with an updated value according to a process model.
             """
             x.value = x.value + dt * u.value
             return x
 
-        def jacobian(self, x: VectorState, u: StampedValue, dt: float) -> np.ndarray:
+        def jacobian(self, x: VectorState, u: VectorInput, dt: float) -> np.ndarray:
             """
             Jacobian of the process model with respect to the state.
             """
             return np.identity(x.dof)
 
-        def covariance(self, x: VectorState, u: StampedValue, dt: float) -> np.ndarray:
+        def covariance(self, x: VectorState, u: VectorInput, dt: float) -> np.ndarray:
             """
             Returns the covariance of the process model errors.
             """

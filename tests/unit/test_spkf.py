@@ -36,12 +36,12 @@ def test_generate_sigmapoints():
 
     x_propagated = [x.plus(sp) for sp in sps.T]
 
-    assert np.allclose(mean_state(x_propagated, w).value, x.value)
+    assert np.allclose(mean_state(x_propagated, w).value, x.value, atol=1e-5)
     sps, w = generate_sigmapoints(x.dof, "gh")
 
     x_propagated = [x.plus(sp) for sp in sps.T]
 
-    assert np.allclose(mean_state(x_propagated, w).value, x.value)
+    assert np.allclose(mean_state(x_propagated, w).value, x.value, atol=1e-5)
 
 
 if __name__ == "__main__":

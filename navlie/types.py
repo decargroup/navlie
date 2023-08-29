@@ -45,66 +45,6 @@ class Input(ABC):
         pass
 
 
-class StampedValue(Input):
-    """
-    Generic data container for timestamped information.
-    """
-
-    __slots__ = ["value"]
-
-    def __init__(
-        self,
-        value: np.ndarray,
-        stamp: float = None,
-        state_id: Any = None,
-        covariance=None,
-    ):
-        if not isinstance(value, np.ndarray):
-            value = np.array(value, dtype=np.float64)
-
-        #:numpy.ndarray:  Variable containing the data values
-        self.value = value
-
-        super().__init__(
-            dof=value.size,
-            stamp=stamp,
-            state_id=state_id,
-            covariance=covariance,
-        )
-
-    def plus(self, w: np.ndarray) -> "StampedValue":
-        """
-        Generic addition operation to modify the internal value.
-
-        Parameters
-        ----------
-        w : np.ndarray
-            to be added to the instance's .value
-        """
-        new = self.copy()
-        og_shape = new.value.shape
-        new.value = new.value.ravel() + w.ravel()
-        new.value = new.value.reshape(og_shape)
-        return new
-
-    def copy(self) -> "StampedValue":
-        """
-        Returns a copy of the instance with fully seperate memory.
-        """
-        return StampedValue(
-            self.value.copy(), self.stamp, self.state_id, self.covariance
-        )
-
-    def __repr__(self):
-        value_str = str(self.value).split("\n")
-        value_str = "\n".join(["    " + s for s in value_str])
-        s = [
-            f"{self.__class__.__name__}(stamp={self.stamp}, state_id={self.state_id})",
-            f"{value_str}",
-        ]
-        return "\n".join(s)
-
-
 class State(ABC):
     """
     An abstract state :math:`\mathbf{x}` is an object containing the following attributes:

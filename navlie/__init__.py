@@ -4,7 +4,6 @@ from .types import (
     MeasurementModel,
     ProcessModel,
     Input,
-    StampedValue,
     StateWithCovariance,
     Dataset,
 )
@@ -40,3 +39,5 @@ from .utils import (
     randvec,
     jacobian,
 )
+
+from .lib import VectorInput  # for backwards compatibility

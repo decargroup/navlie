@@ -6,9 +6,9 @@ from navlie.types import (
     ProcessModel,
     MeasurementModel,
     Input,
-    StampedValue,
     Measurement,
 )
+from navlie.lib import VectorInput
 
 
 class DataGenerator:
@@ -182,9 +182,9 @@ class DataGenerator:
             u = self.input_func(times[k], x)
             Q = np.atleast_2d(self.input_covariance(times[k]))
 
-            # If just the raw value, converted to a StampedValue object
+            # If just the raw value, converted to a VectorInput object
             if not hasattr(u, "stamp"):
-                u = StampedValue(
+                u = VectorInput(
                     value=self.input_func(times[k], x),
                     stamp=times[k],
                     covariance=Q,

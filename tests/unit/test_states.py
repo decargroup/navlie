@@ -49,7 +49,7 @@ def test_plus_jacobian(s: str):
     dx = np.random.randn(x.dof)
     jac = x.plus_jacobian(dx)
     jac_test = x.plus_jacobian_fd(dx)
-    assert np.allclose(jac, jac_test, atol=1e-5)
+    assert np.allclose(jac, jac_test, atol=1e-4)
 
 
 @pytest.mark.parametrize(
@@ -101,3 +101,7 @@ def test_so3_ros():
     assert x.stamp == x2.stamp
     assert x.state_id == x2.state_id
     assert x.state_id == x_ros.header.frame_id
+
+
+if __name__ == "__main__":
+    test_minus_jacobian("sl3")

@@ -1,10 +1,11 @@
 """Tests for the process and measurement residuals found in batch.py"""
 
-from navlie.types import StampedValue, Measurement
-from navlie.lib.models import (
+from navlie.types import Measurement
+from navlie.lib import (
     SingleIntegrator,
     BodyFrameVelocity,
     GlobalPosition,
+    VectorInput,
 )
 from navlie.batch.estimator import (
     PriorResidual,
@@ -40,7 +41,7 @@ def test_prior_residual_se3():
 
 def test_process_residual_vector_state():
     # Test proccess error for vector state
-    u = StampedValue([1, 2, 3], 0.0)
+    u = VectorInput([1, 2, 3], 0.0)
     x1 = VectorState([4, 5, 6], stamp=0.0)
     dt = 0.1
     model = SingleIntegrator(np.identity(3))
@@ -53,7 +54,7 @@ def test_process_residual_vector_state():
 
 def test_process_residual_se3_state():
     x1 = SE3State(SE3.random(), direction="left", stamp=0.0)
-    u = StampedValue(np.array([1, 2, 3, 4, 5, 6]), stamp=0.0)
+    u = VectorInput(np.array([1, 2, 3, 4, 5, 6]), stamp=0.0)
     dt = 0.1
     model = BodyFrameVelocity(np.identity(6))
     x2 = model.evaluate(x1.copy(), u, dt)

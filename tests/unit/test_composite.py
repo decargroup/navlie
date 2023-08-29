@@ -1,10 +1,12 @@
-from navlie.lib.states import SE2State, CompositeState, VectorState
-from navlie.types import StampedValue
-from navlie.lib.models import (
+from navlie.lib import (
     BodyFrameVelocity,
     CompositeProcessModel,
     RangeRelativePose,
     CompositeInput,
+    VectorInput,
+    SE2State,
+    VectorState,
+    CompositeState,
 )
 from pymlg import SE2
 import numpy as np
@@ -22,8 +24,8 @@ def test_composite_process_model():
     )
     u = CompositeInput(
         [
-            StampedValue(np.array([0.3, 1, 0]), 1),
-            StampedValue(np.array([-0.3, 2, 0]), 1),
+            VectorInput(np.array([0.3, 1, 0]), 1),
+            VectorInput(np.array([-0.3, 2, 0]), 1),
         ]
     )
     dt = 1
@@ -47,8 +49,8 @@ def test_shared_input():
     )
     u = CompositeInput(
         [
-            StampedValue(np.array([0.3, 1, 0]), 1),
-            StampedValue(np.array([0.3, 1, 0]), 1),
+            VectorInput(np.array([0.3, 1, 0]), 1),
+            VectorInput(np.array([0.3, 1, 0]), 1),
         ]
     )
     dt = 1

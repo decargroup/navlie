@@ -102,7 +102,7 @@ class SimulatedPoseRangingDataset(nav.Dataset):
     def get_ground_truth(self) -> List[SE3State]:
         return self.gt_data
 
-    def get_input_data(self) -> List[nav.StampedValue]:
+    def get_input_data(self) -> List[nav.Input]:
         return self.input_data
 
     def get_meas_data(self) -> List[nav.Measurement]:

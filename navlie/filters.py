@@ -670,7 +670,7 @@ class SigmaPointKalmanFilter:
         ----------
         x : StateWithCovariance
             The current state estimate.
-        u: StampedValue
+        u: VectorInput
             Most recent input, to be used to predict the state forward
             if the measurement stamp is larger than the state stamp.
         y : Measurement
