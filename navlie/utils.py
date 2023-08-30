@@ -611,7 +611,7 @@ def plot_nees(
     label : str, optional
         Label to assign to the NEES line, by default None
     color : optional
-        Fed directly to the ````plot(..., color=color)```` function, by default None
+        Fed directly to the ``plot(..., color=color)`` function, by default None
     confidence_interval : float or None, optional
         Desired probability confidence region, by default 0.95. Must lie between
         0 and 1. If None, no confidence interval will be plotted.
@@ -646,7 +646,7 @@ def plot_nees(
         s = 1
 
     expected_nees_label = "Expected NEES"
-    ci_label = f"${int(confidence_interval*100)}\%$ CI"
+    ci_label = f"${int(confidence_interval*100)}\%$ conf. int."
     _, exisiting_labels = axs.get_legend_handles_labels()
 
     if expected_nees_label in exisiting_labels:
@@ -1155,8 +1155,8 @@ def find_nearest_stamp_idx(
     stamps_list: List[float], stamp: Union[float, List[float]]
 ) -> int:
     """
-    Find the index of the nearest stamp in ````stamps_list```` to ````stamp````. If
-    ````stamp```` is a list or array, then the output is a list of indices.
+    Find the index of the nearest stamp in ``stamps_list`` to ``stamp``. If
+    ``stamp`` is a list or array, then the output is a list of indices.
 
     Parameters
     ----------
@@ -1253,8 +1253,8 @@ def jacobian(
     Returns
     -------
     np.ndarray with shape (M, N)
-        Jacobian of the function, where ````M```` is the DOF of the output and
-        ````N```` is the DOF of the input.
+        Jacobian of the function, where ``M`` is the DOF of the output and
+        ``N`` is the DOF of the input.
     """
     x = x.copy()
 

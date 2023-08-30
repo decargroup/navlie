@@ -18,7 +18,7 @@
 # -- Project information -----------------------------------------------------
 
 project = "navlie"
-copyright = "2022, Charles C. Cossette"
+copyright = "2022"
 author = "Charles C. Cossette"
 
 # The full version, including alpha/beta/rc tags
@@ -37,6 +37,7 @@ extensions = [
     "sphinx.ext.autosummary",
     "sphinx.ext.intersphinx",
     "sphinx.ext.githubpages",
+    "nbsphinx",
 ]
 autodoc_default_options = {
     "member-order": "bysource",

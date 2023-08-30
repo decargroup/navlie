@@ -147,7 +147,7 @@ class State(ABC):
         value_str = str(self.value).split("\n")
         value_str = "\n".join(["    " + s for s in value_str])
         s = [
-            f"{self.__class__.__name__}(stamp={self.stamp}, state_id={self.state_id})",
+            f"{self.__class__.__name__}(stamp={self.stamp}, dof={self.dof}, state_id={self.state_id})",
             f"{value_str}",
         ]
         return "\n".join(s)
@@ -205,8 +205,8 @@ class MeasurementModel(ABC):
         m = y.size
         jac_fd = np.zeros((m, N))
         for i in range(N):
-            dx = np.zeros((N, 1))
-            dx[i, 0] = step_size
+            dx = np.zeros((N,))
+            dx[i] = step_size
             x_temp = x.plus(dx)
             jac_fd[:, i] = (self.evaluate(x_temp) - y).flatten() / step_size
 
@@ -254,11 +254,13 @@ class ProcessModel(ABC):
         """
         pass
 
-    @abstractmethod
     def covariance(self, x: State, u: Input, dt: float) -> np.ndarray:
         """
         Covariance matrix math:`\mathbf{Q}_k` of the additive Gaussian
         noise :math:`\mathbf{w}_{k} \sim \mathcal{N}(\mathbf{0}, \mathbf{Q}_k)`.
+        If this method is not overridden, the covariance of the process model
+        error is approximated from the input covariance using a linearization
+        procedure, with the input Jacobian evaluated using finite difference.
 
         Parameters
         ----------
@@ -274,7 +276,9 @@ class ProcessModel(ABC):
         np.ndarray
             Covariance matrix :math:`\mathbf{Q}_k`.
         """
-        pass
+        L = np.atleast_2d(self.input_jacobian_fd(x, u, dt))
+        Q = np.atleast_2d(self.input_covariance(x, u, dt))
+        return L @ Q @ L.T
 
     def jacobian(self, x: State, u: Input, dt: float) -> np.ndarray:
         """
@@ -322,8 +326,8 @@ class ProcessModel(ABC):
         Y_bar = self.evaluate(x.copy(), u, dt, *args, **kwargs)
         jac_fd = np.zeros((x.dof, x.dof))
         for i in range(x.dof):
-            dx = np.zeros((x.dof, 1))
-            dx[i, 0] = step_size
+            dx = np.zeros((x.dof))
+            dx[i] = step_size
             x_pert = x.plus(dx)
             Y: State = self.evaluate(x_pert, u, dt, *args, **kwargs)
             jac_fd[:, i] = Y.minus(Y_bar).flatten() / step_size
@@ -352,6 +356,29 @@ class ProcessModel(ABC):
     def sqrt_information(self, x: State, u: Input, dt: float) -> np.ndarray:
         Q = np.atleast_2d(self.covariance(x, u, dt))
         return np.linalg.cholesky(np.linalg.inv(Q))
+
+    def input_covariance(self, x: State, u: Input, dt: float) -> np.ndarray:
+        """
+        Covariance matrix of additive noise *on the input*.
+
+        Parameters
+        ----------
+        x : State
+            State at time :math:`k-1`.
+        u : Input
+            The input value :math:`\mathbf{u}` provided as a Input object.
+        dt : float
+            The time interval :math:`\Delta t` between the two states.
+
+        Returns
+        -------
+        np.ndarray
+            Covariance matrix :math:`\mathbf{R}_k`.
+        """
+        raise NotImplementedError(
+            "input_covariance must be implemented "
+            + "if the covariance method is not overridden."
+        )
 
 
 class Measurement:

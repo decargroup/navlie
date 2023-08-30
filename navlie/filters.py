@@ -239,7 +239,7 @@ class ExtendedKalmanFilter:
                 # Do the correction
                 K = np.linalg.solve(S.T, (P @ G.T).T).T
                 dx = K @ z
-                x.state = x.state.plus(dx)
+                x.state = x.state.plus(dx.ravel())
                 x.covariance = (np.identity(x.state.dof) - K @ G) @ P
                 x.symmetrize()
 
