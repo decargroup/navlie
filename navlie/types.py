@@ -147,7 +147,7 @@ class State(ABC):
         value_str = str(self.value).split("\n")
         value_str = "\n".join(["    " + s for s in value_str])
         s = [
-            f"{self.__class__.__name__}(stamp={self.stamp}, state_id={self.state_id})",
+            f"{self.__class__.__name__}(stamp={self.stamp}, dof={self.dof}, state_id={self.state_id})",
             f"{value_str}",
         ]
         return "\n".join(s)
@@ -205,8 +205,8 @@ class MeasurementModel(ABC):
         m = y.size
         jac_fd = np.zeros((m, N))
         for i in range(N):
-            dx = np.zeros((N, 1))
-            dx[i, 0] = step_size
+            dx = np.zeros((N,))
+            dx[i] = step_size
             x_temp = x.plus(dx)
             jac_fd[:, i] = (self.evaluate(x_temp) - y).flatten() / step_size
 
@@ -326,8 +326,8 @@ class ProcessModel(ABC):
         Y_bar = self.evaluate(x.copy(), u, dt, *args, **kwargs)
         jac_fd = np.zeros((x.dof, x.dof))
         for i in range(x.dof):
-            dx = np.zeros((x.dof, 1))
-            dx[i, 0] = step_size
+            dx = np.zeros((x.dof))
+            dx[i] = step_size
             x_pert = x.plus(dx)
             Y: State = self.evaluate(x_pert, u, dt, *args, **kwargs)
             jac_fd[:, i] = Y.minus(Y_bar).flatten() / step_size
