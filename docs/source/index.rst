@@ -8,7 +8,7 @@
    :hidden:
 
    Home <self>
-   Tutorial <tutorial>
+   Tutorial <tutorial.rst>
    API <api>
 
 
