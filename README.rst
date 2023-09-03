@@ -28,7 +28,7 @@ The core idea behind this project is to abstract-away the state definition such 
 - Monte Carlo experiment executor with result aggregation
 - A preintegration module for linear, wheel odometry, and IMU process models
 
-By implementing a few classes, the user can model almost any problem. Documentation can be found by https://decargroup.github.io/navlie
+By implementing a few classes, the user can model almost any problem. Documentation can be found at https://decargroup.github.io/navlie
 
 Setup
 -----
@@ -140,14 +140,14 @@ As another more complicated example, a state object belonging to the SE(3) Lie g
 
 Process and Measurement Models
 ------------------------------
-.. image:: system_diagram.png
+.. image:: ./docs/source/system_diagram.png
     :alt: System Diagram
 
 There are a few more core types in this package. The main ones are the `ProcessModel` and `MeasurementModel` classes. Both of these are abstract classes requiring the user to implement
 
-    - an `evaluate()` method, 
-    - a `jacobian()` method,
-    - and a `covariance()` method.
+- an `evaluate()` method, 
+- a `covariance()` method,
+- and optionally a `jacobian()` method.
 
 For example, a simple "single integrator" (velocity input) model can be implemented as follows:
 
@@ -172,7 +172,7 @@ For example, a simple "single integrator" (velocity input) model can be implemen
 
         def jacobian(self, x: VectorState, u: VectorInput, dt: float) -> np.ndarray:
             """
-            Jacobian of the process model with respect to the state.
+            (optional) Jacobian of the process model with respect to the state.
             """
             return np.identity(x.dof)
 
@@ -212,7 +212,7 @@ Similarly, a single distance-to-landmark measurement model can be implemented as
             return self._R
 
 
-In fact, for both `ProcessModel` and `MeasurementModel`, subclasses will inherit a finite-difference numerical differentiation method `jacobian_fd()`, that allows for a seamless way to check your `jacobian()` implementation! (`evaluate()` method must be implemented for this to work, see some of the files in `tests/` for an example of this.)
+In fact, for both `ProcessModel` and `MeasurementModel`, subclasses will inherit a finite-difference numerical differentiation method `jacobian_fd()`, which also serves as the default implementation if `jacobian` is not overriden. Nevertheless, it allows for an easy way to check your `jacobian()` implementation! (`evaluate()` method must be implemented for this to work, see some of the files in `tests/` for an example of this.)
 
 Built-in Library
 ----------------
@@ -274,17 +274,21 @@ The goal of this project is to write general algorithms that work for any implem
 
 Contributing to the Documentation
 ---------------------------------
-The documentation is automatically generated from python docstrings using `sphinx`, which can be installed by following these instructions: https://www.sphinx-doc.org/en/master/usage/installation.html.
+You must first install the dependencies for the documentation. This can be done by running
 
-After sphinx is installed change to the `./docs/` directory and run 
+.. code-block:: bash
+
+    pip install -r docs/requirements.txt
+
+After this is done, change to the `./docs/` directory and run 
 
 .. code-block:: bash
 
     make html
 
-and the documentation will be updated (you may need to install some dependencies... sorry. just follow the error prompts and install whats required. TODO).  In terms of actually writing documentation, we use the numpy format, which can be seen in some of the existing docstrings in the code, and can be used as a template. 
+and the documentation will be updated, and viewable by opening the ``docs/index.html`` file in your browser.  In terms of actually writing documentation, we use the numpy format, which can be seen in some of the existing docstrings in the code, and used as a template. 
 
-Alternatively and prefereably, install the autoDocstring extension for VSCode: https://marketplace.visualstudio.com/items?itemName=njpwerner.autodocstring and change the docstring format in the settings to `numpy`.
+Alternatively and prefereably, install the `autoDocstring extension for VSCode. <https://marketplace.visualstudio.com/items?itemName=njpwerner.autodocstring>` and change the docstring format in the settings to `numpy`.
 
 
 
