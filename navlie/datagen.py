@@ -1,3 +1,7 @@
+""" 
+Tools for data generation.
+"""
+
 from typing import Callable, List, Union, Any
 import numpy as np
 from navlie.utils import randvec
