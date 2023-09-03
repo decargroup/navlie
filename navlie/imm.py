@@ -1,3 +1,7 @@
+""" 
+Module for the Interacting Multiple Model (IMM) filter.
+"""
+
 from typing import List
 
 from navlie.types import (

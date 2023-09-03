@@ -1,3 +1,7 @@
+""" 
+Collection of miscellaneous utility functions and classes.
+"""
+
 from typing import Callable, List, Tuple, Union, Any, Dict
 from joblib import Parallel, delayed
 from navlie.types import State, Measurement, StateWithCovariance

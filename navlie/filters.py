@@ -1,3 +1,7 @@
+""" 
+Module containing many predict-correct style filters.
+"""
+
 from typing import List, Tuple
 from navlie.types import (
     Input,

@@ -1,3 +1,7 @@
+"""
+The built-in library of common state, process model, and measurement model implementations.
+"""
+
 from .states import (
     VectorState,
     SO2State,
