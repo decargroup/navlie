@@ -56,7 +56,7 @@ def main():
         # The data generator will add noise on top of the already random signal if
         # ``input_covariance`` is not zero. So here we remove this.
 
-        u: nav.VectorInput = input_data[k]
+        u: nav.lib.VectorInput = input_data[k]
         u.value = np.zeros(u.value.shape)  # Zero-out the input
 
         # ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
