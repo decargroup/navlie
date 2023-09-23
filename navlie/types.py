@@ -3,7 +3,7 @@ This module contains the core primitive types used throughout navlie.
 """
 
 import numpy as np
-from typing import List, Any
+from typing import List, Any, Tuple
 from abc import ABC, abstractmethod
 
 
@@ -47,15 +47,37 @@ class Input(ABC):
 
 class State(ABC):
     """
-    An abstract state :math:`\mathbf{x}` is an object containing the following attributes:
+    An abstract state :math:`\mathcal{X}` is an object containing the following attributes:
 
-        - a value of some sort;
-        - a certain number of degrees of freedom (dof);
-        - an update rule that modified the state value given an update vector
-          ``dx`` containing ``dof`` elements.
+    - a value of some sort;
+    - a certain number of degrees of freedom (dof);
+    - ``plus`` and ``minus`` methods that generalize addition and subtracting to 
+      to this object. 
 
     Optionally, it is often useful to assign a timestamp (``stamp``) and a label
     (``state_id``) to differentiate state instances from others.
+
+    When implementing a new state type, you should inherit from this class as
+    shown in the tutorial.
+
+    .. note::
+        The ``plus`` and ``minus`` must correspond to each other, in the sense
+        that the following must hold:
+
+        .. math::
+
+            \delta \mathbf{x} = (\mathcal{X} \oplus \delta \mathbf{x}) \ominus \mathcal{X}
+
+        for any state :math:`\mathcal{X}` and any perturbation :math:`\delta \mathbf{x}`.
+        In practice this can be tested with something along the lines of:
+
+        .. code-block:: python
+
+            x = State(...) # some state object
+            dx = np.random.randn(x.dof)
+            dx_test = x.plus(dx).minus(x)
+            assert np.allclose(dx, dx_test)
+
     """
 
     __slots__ = ["value", "dof", "stamp", "state_id"]
@@ -95,14 +117,20 @@ class State(ABC):
 
     def plus_jacobian(self, dx: np.ndarray) -> np.ndarray:
         """
-        Jacobian of the ``plus`` operator. For Lie groups, this is known as the
-        *group Jacobian*.
+        Jacobian of the ``plus`` operator. That is, using Lie derivative notation,
+
+        .. math::
+
+            \mathbf{J} = \\frac{D (\mathcal{X} \oplus \delta \mathbf{x})}{D \delta \mathbf{x}}
+         
+          
+        For Lie groups, this is known as the *group Jacobian*.
         """
         return self.plus_jacobian_fd(dx)
 
     def plus_jacobian_fd(self, dx, step_size=1e-8) -> np.ndarray:
         """
-        Calculates the model jacobian with finite difference.
+        Calculates the plus jacobian with finite difference.
         """
         dx_bar = dx
         jac_fd = np.zeros((self.dof, self.dof))
@@ -117,11 +145,13 @@ class State(ABC):
 
     def minus_jacobian(self, x: "State") -> np.ndarray:
         """
-        Jacobian of the ``minus`` operator with respect to self. That is, if
+        Jacobian of the ``minus`` operator with respect to self.
+         
+        .. math::
 
-            y = x1.minus(x2)
-
-        then this is the Jacobian of ``y`` with respect to ``x1``.
+            \mathbf{J} = \\frac{D (\mathcal{Y} \ominus \mathcal{X})}{D \mathcal{Y}}
+           
+        That is, if ``dx = y.minus(x)`` then this is the Jacobian of ``dx`` with respect to ``y``.
         For Lie groups, this is the inverse of the *group Jacobian* evaluated at
         ``dx = x1.minus(x2)``.
         """
@@ -129,7 +159,7 @@ class State(ABC):
 
     def minus_jacobian_fd(self, x: "State", step_size=1e-8) -> np.ndarray:
         """
-        Calculates the model jacobian with finite difference.
+        Calculates the minus jacobian with finite difference.
         """
         x_bar = x
         jac_fd = np.zeros((self.dof, self.dof))
@@ -159,16 +189,21 @@ class MeasurementModel(ABC):
     of the form
 
     .. math::
-        \mathbf{y} = \mathbf{g}(\mathbf{x}) + \mathbf{v}
 
-    where :math:`\mathbf{v} \sim \mathcal{N}(\mathbf{0}, \mathbf{R})`.
+        \mathbf{y} = \mathbf{g}(\mathcal{X}) + \mathbf{v}
+
+    where :math:`\mathbf{v} \sim \mathcal{N}(\mathbf{0}, \mathbf{R})`. To
+    implement a measurement model, you must inherit from this class and
+    implement the ``evaluate`` method, which *must* return a numpy array. You
+    must also specify covariance matrix :math:`\mathbf{R}` by implementing the
+    ``covariance`` method.
 
     """
 
     @abstractmethod
     def evaluate(self, x: State) -> np.ndarray:
         """
-        Evaluates the measurement model :math:`\mathbf{g}(\mathbf{x})`.
+        Evaluates the measurement model :math:`\mathbf{g}(\mathcal{X})`.
         """
         pass
 
@@ -181,12 +216,15 @@ class MeasurementModel(ABC):
 
     def jacobian(self, x: State) -> np.ndarray:
         """
-        Evaluates the measurement model Jacobian
-        :math:`\mathbf{G} = \partial \mathbf{g}(\mathbf{x})/ \partial \mathbf{x}`.
+        Evaluates the measurement model Jacobian with respect to the state.
+
+        .. math::
+
+            \mathbf{G} = \\frac{D \mathbf{g}(\mathcal{X})}{D \mathcal{X}}
         """
         return self.jacobian_fd(x)
 
-    def evaluate_with_jacobian(self, x: State) -> (np.ndarray, np.ndarray):
+    def evaluate_with_jacobian(self, x: State) -> Tuple[np.ndarray, np.ndarray]:
         """
         Evaluates the measurement model and simultaneously returns the Jacobian
         as its second output argument. This is useful to override for
@@ -225,17 +263,50 @@ class ProcessModel(ABC):
     Abstract process model base class for process models of the form
 
     .. math::
-        \mathbf{x}_k = \mathbf{f}(\mathbf{x}_{k-1}, \mathbf{u}, \Delta t) + \mathbf{w}_{k}
+        \mathcal{X}_k = f(\mathcal{X}_{k-1}, \mathbf{u}_{k-1}, \Delta t) \oplus \mathbf{w}_{k}
 
-    where :math:`\mathbf{u}` is the input, :math:`\Delta t` is the time
-    period between the two states, and :math:`\mathbf{w}_{k} \sim \mathcal{N}(\mathbf{0}, \mathbf{Q}_k)`
-    is additive Gaussian noise.
+    where :math:`\mathbf{u}_{k-1}` is the input, :math:`\Delta t` is the time period
+    between the two states, and :math:`\mathbf{w}_{k} \sim
+    \mathcal{N}(\mathbf{0}, \mathbf{Q}_k)` is additive Gaussian noise.
+
+    To define a process model, you must inherit from this class and implement
+    the ``evaluate`` method. You must also specify covariance information in one
+    of either two ways.
+
+    **1. Specifying the covariance matrix directly:**
+    
+    The first way is to specify the :math:`\mathbf{Q}_k` covariance matrix
+    directly by overriding the ``covariance`` method. This covariance matrix
+    represents the distribution of process model errors directly.
+
+    **2. Specifing the covariance of additive noise on the input:**
+    The second way is to specify the covariance of noise that is additive to
+    the input. That is, if the process model is of the form
+
+    .. math::
+
+            \mathcal{X}_k = f(\mathcal{X}_{k-1}, \mathbf{u}_{k-1} +
+            \mathbf{w}^u_{k-1}, \Delta t)
+
+    where :math:`\mathbf{w}^u_{k-1} \sim \mathcal{N}(\mathbf{0},
+    \mathbf{Q}^u_{k-1})`. In this case, you should override the
+    ``input_covariance`` method, at which point the covariance of the process
+    model error is approximated using a linearization procedure,
+
+    .. math::
+
+        \mathbf{Q}_k = \mathbf{L} \mathbf{Q}^u_{k-1} \mathbf{L}^T
+
+    where :math:`\mathbf{L} = D \mathbf{f}(\mathcal{X}_{k-1}, \mathbf{u}_{k-1}, dt) /
+    D \mathbf{u}_{k-1}` is the *input jacobian*. This is calculated using finite
+    difference by default, but can be overridden by implementing the
+    ``input_jacobian`` method.
     """
 
     @abstractmethod
     def evaluate(self, x: State, u: Input, dt: float) -> State:
         """
-        Implementation of :math:`\mathbf{f}(\mathbf{x}_{k-1}, \mathbf{u}, \Delta t)`.
+        Implementation of :math:`{f}(\mathcal{X}_{k-1}, \mathbf{u}, \Delta t)`.
 
         Parameters
         ----------
@@ -256,7 +327,7 @@ class ProcessModel(ABC):
 
     def covariance(self, x: State, u: Input, dt: float) -> np.ndarray:
         """
-        Covariance matrix math:`\mathbf{Q}_k` of the additive Gaussian
+        Covariance matrix :math:`\mathbf{Q}_k` of the additive Gaussian
         noise :math:`\mathbf{w}_{k} \sim \mathcal{N}(\mathbf{0}, \mathbf{Q}_k)`.
         If this method is not overridden, the covariance of the process model
         error is approximated from the input covariance using a linearization
@@ -285,8 +356,7 @@ class ProcessModel(ABC):
         Implementation of the process model Jacobian with respect to the state.
 
         .. math::
-            \mathbf{F} = \partial \mathbf{f}(\mathbf{x}_{k-1}, \mathbf{u}, \Delta t)
-            / \partial \mathbf{x}_{k-1}
+            \mathbf{F} = \\frac{D {f}(\mathcal{X}_{k-1}, \mathbf{u}, \Delta t)}{D \mathcal{X}_{k-1}}
 
 
         Parameters
@@ -359,7 +429,7 @@ class ProcessModel(ABC):
 
     def input_covariance(self, x: State, u: Input, dt: float) -> np.ndarray:
         """
-        Covariance matrix of additive noise *on the input*.
+        Covariance matrix of additive noise *on the input*. 
 
         Parameters
         ----------
@@ -383,8 +453,9 @@ class ProcessModel(ABC):
 
 class Measurement:
     """
-    A data container containing a generic measurement's value, timestamp,
-    and corresponding model.
+    A simple data container containing a generic measurement's value, timestamp,
+    and corresponding model stored as a ``MeasurementModel`` object. This
+    container can be used as-is without inheritance.
     """
 
     __slots__ = ["value", "stamp", "model", "state_id"]
@@ -435,18 +506,35 @@ class Measurement:
         By default, assumes that the measurement is a column vector,
         and thus, the ``minus`` operator is simply vector subtraction.
         """
-
         return self.value.reshape((-1, 1)) - y_check.reshape((-1, 1))
 
 
 class StateWithCovariance:
     """
-    A data container containing a State object and a covariance array.
+    A data container containing a ``State`` object and a covariance array. 
+    This class can be used as-is without inheritance.
     """
 
     __slots__ = ["state", "covariance"]
 
     def __init__(self, state: State, covariance: np.ndarray):
+        """
+
+        Parameters
+        ----------
+        state : State
+            A state object, usually representing the mean of a distribution.
+        covariance : np.ndarray
+            A square, symmetric covariance matrix associated with the state.
+
+        Raises
+        ------
+        ValueError
+            If the covariance matrix is not square.
+        ValueError
+            If the covariance matrix does not correspond with the state degrees
+            of freedom.
+        """
         if covariance.shape[0] != covariance.shape[1]:
             raise ValueError("covariance must be an n x n array.")
 

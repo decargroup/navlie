@@ -14,7 +14,7 @@ def test_iterated_ekf():
     range_model = nav.lib.RangePointToAnchor([0, 4], R)
     process_model = nav.lib.SingleIntegrator(Q)
     y = nav.generate_measurement(x, range_model)
-    u = nav.VectorInput([1, 2], stamp=0.0)
+    u = nav.lib.VectorInput([1, 2], stamp=0.0)
 
     x = nav.StateWithCovariance(x, P)
     kf = nav.IteratedKalmanFilter(process_model)
@@ -34,7 +34,7 @@ def test_iterated_ekf_no_line_search():
     range_model = nav.lib.RangePointToAnchor([0, 4], R)
     process_model = nav.lib.SingleIntegrator(Q)
     y = nav.generate_measurement(x, range_model)
-    u = nav.VectorInput([1, 2], stamp=0.0)
+    u = nav.lib.VectorInput([1, 2], stamp=0.0)
 
     x = nav.StateWithCovariance(x, P)
     kf = nav.IteratedKalmanFilter(process_model, line_search=False)
@@ -56,7 +56,7 @@ def test_iterated_ekf_equivalence():
     range_model = nav.lib.RangePointToAnchor([0, 4], R)
     process_model = nav.lib.SingleIntegrator(Q)
     y = nav.generate_measurement(x, range_model)
-    u = nav.VectorInput([1, 2], stamp=0.0)
+    u = nav.lib.VectorInput([1, 2], stamp=0.0)
 
     x = nav.StateWithCovariance(x, P)
     kf = nav.IteratedKalmanFilter(process_model, max_iters=1, line_search=False)

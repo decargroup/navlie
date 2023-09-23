@@ -40,4 +40,5 @@ from .utils import (
     jacobian,
 )
 
-from .lib import VectorInput  # for backwards compatibility
+
+from .lib.states import StampedValue # for backwards compatibility

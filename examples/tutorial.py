@@ -9,7 +9,7 @@ Q = np.eye(2) * 0.1**2
 
 # Define the process model
 class BicycleModel(nav.ProcessModel):
-    def evaluate(self, x: VectorState, u: nav.VectorInput, dt: float) -> VectorState:
+    def evaluate(self, x: VectorState, u: nav.lib.VectorInput, dt: float) -> VectorState:
         x_next = x.copy()
         x_next.value[0] += u.value[0] * dt * np.cos(x.value[2])
         x_next.value[1] += u.value[0] * dt * np.sin(x.value[2])
