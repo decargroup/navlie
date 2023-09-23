@@ -275,6 +275,8 @@ If you wish to make some changes, fork this repo, make your changes, and then ma
 
 The goal of this project is to write general algorithms that work for any implementation of the abstract `State`, `ProcessModel` and `MeasurementModel`. As such, please give thought to how this could be done to any algorithm you implement. As a rule of thumb, code outside of the `navlie/lib` folder should not depend on any of the classes in `navlie/lib`, although sometimes this rule is broken. 
 
+If you want to discuss anything regarding this repo, feel free to email `charles.c.cossette@gmail.com`.
+
 
 Contributing to the Documentation
 ---------------------------------
