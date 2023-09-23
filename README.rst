@@ -30,6 +30,10 @@ The core idea behind this project is to abstract-away the state definition such 
 
 By implementing a few classes, the user can model almost any problem. Documentation can be found at https://decargroup.github.io/navlie
 
+Disclaimer
+----------
+While navlie is starting to get some maturity, its still definitely not perfect. The code is probably still simple enough that you can check out the  source directly to get a better understanding. If (when) you find a bug, please feel free to open an Github issue. Contributions/thoughts are welcome, and if anything regarding documentation is still grossly unclear, just let us know :). 
+
 Setup
 -----
 
@@ -264,12 +268,12 @@ Finally, this repo has the following state estimation algorithms implemented:
 
 Contributing
 ------------
-If you wish to make some changes, create a branch, make your changes, and then make a pull request. Here are some conventions that should be followed:
+If you wish to make some changes, fork this repo, make your changes, and then make a pull request. Here are some conventions that should be followed:
 
-- Code style should follow the PEP8 style guide. https://peps.python.org/pep-0008
-- Everything should be type hinted as much as possible. Essentially, in the VS Code dark theme, you should not have any white text anywhere. 
+- Code style should follow the PEP8 style guide. https://peps.python.org/pep-0008. We recommend using `black --line-length 80 .` to format the code.
+- Everything should be type hinted as much as possible. Essentially, in the VS Code dark theme, you should not have any white text. 
 
-The goal of this project is to write general algorithms that work for any implementation of the abstract `State`, `ProcessModel` and `MeasurementModel`. As such, please give thought to how this could be done to any algorithm you implement.
+The goal of this project is to write general algorithms that work for any implementation of the abstract `State`, `ProcessModel` and `MeasurementModel`. As such, please give thought to how this could be done to any algorithm you implement. As a rule of thumb, code outside of the `navlie/lib` folder should not depend on any of the classes in `navlie/lib`, although sometimes this rule is broken. 
 
 
 Contributing to the Documentation
@@ -286,7 +290,7 @@ After this is done, change to the `./docs/` directory and run
 
     make html
 
-and the documentation will be updated, and viewable by opening the ``docs/index.html`` file in your browser.  In terms of actually writing documentation, we use the numpy format, which can be seen in some of the existing docstrings in the code, and used as a template. 
+after which the documentation will be updated, and viewable by opening the ``docs/index.html`` file in your browser.  In terms of actually writing documentation, we use the numpy format, which can be seen in some of the existing docstrings in the code, and used as a template. 
 
 Alternatively and prefereably, install the `autoDocstring extension for VSCode. <https://marketplace.visualstudio.com/items?itemName=njpwerner.autodocstring>` and change the docstring format in the settings to `numpy`.
 
