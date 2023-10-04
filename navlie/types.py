@@ -588,6 +588,6 @@ class Dataset(ABC):
         pass
 
     @abstractmethod
-    def get_meas_data(self) -> List[Measurement]:
+    def get_measurement_data(self) -> List[Measurement]:
         """Returns a list of measurements."""
         pass

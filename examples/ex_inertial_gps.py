@@ -13,7 +13,7 @@ def main():
     data = SimulatedInertialGPSDataset(t_start=0, t_end=20)
     gt_states = data.get_ground_truth()
     input_data = data.get_input_data()
-    meas_data = data.get_meas_data()
+    meas_data = data.get_measurement_data()
 
     # Filter initialization
     P0 = np.eye(15)

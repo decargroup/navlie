@@ -129,6 +129,10 @@ class ExtendedKalmanFilter:
         # If state has no time stamp, load from measurement.
         # usually only happens on estimator start-up
         if x.state.stamp is None:
+            if u.stamp is None:
+                raise ValueError(
+                    "Either state or input must have a time stamp"
+                )
             t_km1 = u.stamp
         else:
             t_km1 = x.state.stamp

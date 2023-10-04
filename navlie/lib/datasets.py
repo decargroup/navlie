@@ -105,7 +105,7 @@ class SimulatedPoseRangingDataset(nav.Dataset):
     def get_input_data(self) -> List[nav.Input]:
         return self.input_data
 
-    def get_meas_data(self) -> List[nav.Measurement]:
+    def get_measurement_data(self) -> List[nav.Measurement]:
         return self.meas_data
 
 
@@ -213,5 +213,5 @@ class SimulatedInertialGPSDataset(nav.Dataset):
     def get_input_data(self) -> List[IMU]:
         return self.input_data
 
-    def get_meas_data(self) -> List[nav.Measurement]:
+    def get_measurement_data(self) -> List[nav.Measurement]:
         return self.meas_data

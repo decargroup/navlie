@@ -77,7 +77,33 @@ class GaussianResultList:
     """
     A data container that accepts a list of ``GaussianResult`` objects and
     stacks the attributes in numpy arrays. Convenient for plotting. This object
-    does nothing more than array-ifying the attributes of ``GaussianResult``
+    does nothing more than array-ifying the attributes of ``GaussianResult``.
+
+    This object also supports slicing, which will return a new ``GaussianResultList``
+    object with the sliced attributes either through time or through the degrees
+    of freedom themselves. For example,
+
+    .. code-block:: python
+
+        results = GaussianResultList.from_estimates(estimates, state_true_list)
+
+        results[0:10] # returns the first 10 time steps
+        results[:, 0] # returns the first degree of freedom
+        results[0:10, 0] # returns the first degree of freedom for the first 10 time steps
+        results[0:10, [0, 1]] # returns the first two degrees of freedom for the first 10 time steps
+        results[:, 3:] # returns all degrees of freedom except the first three
+
+    This can be very useful if you want to examine the nees or rmse of just some
+    states, or if you want to plot the error of just some states. For example, 
+    if you have an SE3State, where the first 3 degrees of freedom are attitude,
+    and the last 3 are position, you can plot only the attitude error with
+
+    .. code-block:: python
+    
+        nav.plot_error(results[:, 0:3])
+
+    and likewise get only the attitude NEES with ``results[:, 0:3].nees``.
+
     """
 
     __slots__ = [
@@ -831,6 +857,7 @@ def plot_poses(
     arrow_length: float = 1,
     step: int = 5,
     label: str = None,
+    linewidth=None,
 ):
     """
     Plots position trajectory in 3D
@@ -858,6 +885,12 @@ def plot_poses(
     # TODO. handle 2D case
     if isinstance(poses, GaussianResultList):
         poses = poses.state
+    
+    if isinstance(poses, StateWithCovariance):
+        poses = [poses.state]
+
+    if not isinstance(poses, list):
+        poses = [poses]
 
     if ax is None:
         fig = plt.figure()
@@ -889,6 +922,7 @@ def plot_poses(
             color=colors[0],
             length=arrow_length,
             arrow_length_ratio=0.1,
+            linewidths=linewidth,
         )
         ax.quiver(
             x,
@@ -900,6 +934,7 @@ def plot_poses(
             color=colors[1],
             length=arrow_length,
             arrow_length_ratio=0.1,
+            linewidths=linewidth,
         )
         ax.quiver(
             x,
@@ -911,6 +946,7 @@ def plot_poses(
             color=colors[2],
             length=arrow_length,
             arrow_length_ratio=0.1,
+            linewidths=linewidth,
         )
 
     set_axes_equal(ax)

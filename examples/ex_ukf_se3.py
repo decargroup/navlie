@@ -25,7 +25,7 @@ def main():
     data = SimulatedPoseRangingDataset(x0=x0, Q=Q, noise_active=noise_active)
     state_true = data.get_ground_truth()
     input_data = data.get_input_data()
-    meas_data = data.get_meas_data()
+    meas_data = data.get_measurement_data()
     if noise_active:
         x0 = x0.plus(randvec(P0))
     # %% #######################################################################
