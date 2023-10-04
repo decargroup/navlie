@@ -91,8 +91,8 @@ def test_ex_sequential_measurements():
     main()
 
 
-def test_ex_ukf_se2():
-    from ex_ukf_se2 import main
+def test_ex_ukf_se3():
+    from ex_ukf_se3 import main
 
     main()
 

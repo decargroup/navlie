@@ -90,7 +90,7 @@ if __name__ == "__main__":
     import matplotlib.pyplot as plt
     import seaborn as sns
 
-    sns.set_theme()
+    sns.set_style("whitegrid")
     fig, ax = plt.subplots(1, 1)
     ax.plot(results.value[:, 0], results.value[:, 1], label="Estimate")
     ax.plot(
@@ -113,4 +113,6 @@ if __name__ == "__main__":
         axs[i].plot(results.stamp, results.error[:, i])
     axs[0].set_title("Estimation error")
     axs[1].set_xlabel("Time (s)")
+    axs[0].set_ylabel("x error (m)")
+    axs[1].set_ylabel("y error (m)")
     plt.show()

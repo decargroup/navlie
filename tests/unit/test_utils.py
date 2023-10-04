@@ -19,6 +19,7 @@ from navlie.lib.models import RangePoseToAnchor
 
 
 def test_gaussian_result_indexing():
+    # Construct a dummy GaussianResultList
     x_true = [SE23State(SE23.random(), stamp=i) for i in range(10)]
     x_hat = [SE23State(SE23.random(), stamp=i) for i in range(10)]
     cov = [(i + 1) * np.eye(9) for i in range(10)]
@@ -32,12 +33,13 @@ def test_gaussian_result_indexing():
     cov_test = grl.covariance[:, slc, slc]
     nees_test = [e**2 / c for e, c in zip(e_test, cov_test)]
     nees_test = np.array(nees_test).squeeze()
-    assert np.alltrue(grl_test.covariance == cov_test)
-    assert np.alltrue(grl_test.error == grl.error[:, slc])
+    assert np.all(grl_test.covariance == cov_test)
+    assert np.all(grl_test.error == grl.error[:, slc])
     assert np.allclose(grl_test.nees, nees_test)
 
 
 def test_gaussian_result_slicing():
+    # Construct a dummy GaussianResultList
     x_true = [SE23State(SE23.random(), stamp=i) for i in range(10)]
     x_hat = [SE23State(SE23.random(), stamp=i) for i in range(10)]
     cov = [(i + 1) * np.eye(9) for i in range(10)]
@@ -54,9 +56,28 @@ def test_gaussian_result_slicing():
         for e, c in zip(e_test, cov_test)
     ]
     nees_test = np.array(nees_test).squeeze()
-    assert np.alltrue(grl_test.covariance == cov_test)
-    assert np.alltrue(grl_test.error == grl.error[:, slc])
+    assert np.all(grl_test.covariance == cov_test)
+    assert np.all(grl_test.error == grl.error[:, slc])
     assert np.allclose(grl_test.nees, nees_test)
+
+def test_gaussian_result_list_slicing_equivalency():
+    # Construct a dummy GaussianResultList
+    x_true = [SE23State(SE23.random(), stamp=i) for i in range(10)]
+    x_hat = [SE23State(SE23.random(), stamp=i) for i in range(10)]
+    cov = [(i + 1) * np.eye(9) for i in range(10)]
+    x_cov = [StateWithCovariance(x, c) for x, c in zip(x_hat, cov)]
+    gr = [GaussianResult(x, t) for x, t in zip(x_cov, x_true)]
+    results = GaussianResultList(gr)    
+
+    results[0:10] # returns the first 10 time steps
+    results[:, 0] # returns the first degree of freedom
+    results[0:10, 0] # returns the first degree of freedom for the first 10 time steps
+    results[0:10, [0, 1]] # returns the first two degrees of freedom for the first 10 time steps
+    results[:, 3:] # returns the all but the first three degrees of freedom
+    
+    assert np.all(results[0:10].error == results[0:10, :].error)
+    assert np.all(results[:, [0,1,2]].error == results[:, 0:3].error)
+    assert np.all(results[:, 3:].error == results[:, 3:9].error)
 
 
 @pytest.mark.parametrize(

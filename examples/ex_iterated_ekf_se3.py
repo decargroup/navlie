@@ -11,7 +11,7 @@ def main():
     data = nav.lib.SimulatedPoseRangingDataset()
     gt_states = data.get_ground_truth()
     input_data = data.get_input_data()
-    meas_data = data.get_meas_data()
+    meas_data = data.get_measurement_data()
 
     # %% ###########################################################################
     # Perturb initial groundtruth state to initialize filter
