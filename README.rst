@@ -13,7 +13,7 @@ navlie
     :target: https://www.python.org/downloads/
     :alt: Python Version
     
-.. image:: ./fun_figs.png 
+.. image:: ./docs/source/fun_figs.png 
     :alt: Demo Figures
     :align: center
     :width: 100%
