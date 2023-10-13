@@ -14,6 +14,7 @@ from scipy.special import eval_hermitenorm
 import scipy.linalg as la
 from tqdm import tqdm
 import matplotlib.pyplot as plt
+import cv2
 
 
 def check_outlier(error: np.ndarray, covariance: np.ndarray):
@@ -210,7 +211,9 @@ class ExtendedKalmanFilter:
         if y.stamp is not None:
             dt = y.stamp - x.state.stamp
             if dt < -1e10:
-                raise RuntimeError("Measurement stamp is earlier than state stamp")
+                raise RuntimeError(
+                    "Measurement stamp is earlier than state stamp"
+                )
             elif u is not None and dt > 1e-11:
                 x = self.predict(x, u, dt)
 
@@ -303,6 +306,7 @@ class IteratedKalmanFilter(ExtendedKalmanFilter):
         u: Input,
         x_jac: State = None,
         reject_outlier=None,
+        R_isconst=False,
     ):
         """
         Fuses an arbitrary measurement to produce a corrected state estimate.
@@ -345,13 +349,17 @@ class IteratedKalmanFilter(ExtendedKalmanFilter):
         if y.stamp is not None:
             dt = y.stamp - x.state.stamp
             if dt < 0:
-                raise RuntimeError("Measurement stamp is earlier than state stamp")
+                raise RuntimeError(
+                    "Measurement stamp is earlier than state stamp"
+                )
             elif dt > 0 and u is not None:
                 x = self.predict(x, u, dt)
 
         dx = np.zeros((x.state.dof,))
         x_op = x.state.copy()  # Operating point
         count = 0
+        R = None
+        R_inv = None
         while count < self.max_iters:
             # Load a dedicated state evaluation point for jacobian
             # if the user supplied it.
@@ -360,37 +368,47 @@ class IteratedKalmanFilter(ExtendedKalmanFilter):
                 x_op_jac = x_jac
             else:
                 x_op_jac = x_op
-
-            R = np.atleast_2d(y.model.covariance(x_op))
+            if R_isconst and R is None:
+                R = np.atleast_2d(y.model.covariance(x_op))
+                R_inv = np.linalg.inv(R)
+            else:
+                R = R = np.atleast_2d(y.model.covariance(x_op))
             G = np.atleast_2d(y.model.jacobian(x_op_jac))
             y_check = y.model.evaluate(x_op)
             z = y.minus(y_check)
-
-            # reject the tails
-            # we want to locate the indices the top and bottom 15% of z, then remove the corresponding rows from G and R
-            p = 0.15
-            z = z.flatten()
-            # sort and keep the sorting key
-            z_sorted, key = zip(*sorted(zip(z, range(len(z)))))
-            n_delete = int(p * len(z_sorted))
-            # remove rows from G and R and z by index
-            G = np.delete(G, key[:n_delete], axis=0)
-            R = np.delete(R, key[:n_delete], axis=0)
-            R = np.delete(R, key[:n_delete], axis=1)
-            z = np.delete(z, key[:n_delete], axis=0)
-            # sort again and keep the sorting key to account for shorter z
-            z_sorted_2, key = zip(*sorted(zip(z, range(len(z)))))
-            G = np.delete(G, key[-n_delete:], axis=0)
-            R = np.delete(R, key[-n_delete:], axis=0)
-            R = np.delete(R, key[-n_delete:], axis=1)
-            z = np.delete(z, key[-n_delete:], axis=0)
-            z = z.reshape((-1, 1))
+            # normalize z
+            z_vis = (z - z.min()) / (z.max() - z.min())
+            cv2.imshow("current IEKF diff", z_vis.reshape(y_check.shape))
+            cv2.waitKey(1)
+            # # reject the tails
+            # # we want to locate the indices the top and bottom 15% of z, then remove the corresponding rows from G and R
+            # p = 0.15
+            # z = z.flatten()
+            # # sort and keep the sorting key
+            # z_sorted, key = zip(*sorted(zip(z, range(len(z)))))
+            # n_delete = int(p * len(z_sorted))
+            # # remove rows from G and R and z by index
+            # G = np.delete(G, key[:n_delete], axis=0)
+            # R = np.delete(R, key[:n_delete], axis=0)
+            # R = np.delete(R, key[:n_delete], axis=1)
+            # z = np.delete(z, key[:n_delete], axis=0)
+            # # sort again and keep the sorting key to account for shorter z
+            # z_sorted_2, key = zip(*sorted(zip(z, range(len(z)))))
+            # G = np.delete(G, key[-n_delete:], axis=0)
+            # R = np.delete(R, key[-n_delete:], axis=0)
+            # R = np.delete(R, key[-n_delete:], axis=1)
+            # z = np.delete(z, key[-n_delete:], axis=0)
+            # z = z.reshape((-1, 1))
             e = x_op.minus(x.state).reshape((-1, 1))
             J = x_op.plus_jacobian(e)
 
             P_inv = np.linalg.inv(x.covariance)
-            R_inv = np.linalg.inv(R)
-            cost_old = np.ndarray.item(0.5 * (e.T @ P_inv @ e + z.T @ R_inv @ z))
+            if not R_isconst:
+                R_inv = np.linalg.inv(R)
+            cost_old = np.ndarray.item(
+                0.5 * (e.T @ P_inv @ e + z.T @ R_inv @ z)
+            )
+            print("cost old", cost_old)
             P = J @ x.covariance @ J.T
 
             # Compute covariance of innovation
@@ -417,13 +435,16 @@ class IteratedKalmanFilter(ExtendedKalmanFilter):
             if self.line_search:
                 alpha = 1
                 step_accepted = False
-                while not step_accepted and alpha > self.step_tol:
+                # XXX MODIFICATION FROM ORIGINAL
+                alpha_tol = alpha * 0.9**20
+                while not step_accepted and alpha > alpha_tol:
                     x_new = x_op.plus(alpha * dx)
                     y_check = y.model.evaluate(x_new)
                     z_new = y.minus(y_check)
                     e_new = x_new.minus(x.state).reshape((-1, 1))
                     cost_new = np.ndarray.item(
-                        0.5 * (e_new.T @ P_inv @ e_new + z_new.T @ R_inv @ z_new)
+                        0.5
+                        * (e_new.T @ P_inv @ e_new + z_new.T @ R_inv @ z_new)
                     )
                     if cost_new < cost_old:
                         step_accepted = True
@@ -463,14 +484,234 @@ class IteratedKalmanFilter(ExtendedKalmanFilter):
             S = 0.5 * (S + S.T)
             K = np.linalg.solve(S.T, (P @ G.T).T).T
             x.state = x_op
-            x.covariance = (np.identity(x.state.dof) - K @ G) @ (J @ x.covariance @ J.T)
+            x.covariance = (np.identity(x.state.dof) - K @ G) @ (
+                J @ x.covariance @ J.T
+            )
+
+        x.symmetrize()
+
+        return x
+
+    def correct_scalar(
+        self,
+        x: StateWithCovariance,
+        y: Measurement,
+        u: Input,
+        x_jac: State = None,
+        reject_outlier=None,
+        R_isconst=False,
+    ):
+        """
+        Fuses an arbitrary measurement to produce a corrected state estimate.
+
+        Parameters
+        ----------
+        x : StateWithCovariance
+            The current state estimate.
+        u: Input
+            Most recent input, to be used to predict the state forward
+            if the measurement stamp is larger than the state stamp.
+        y : Measurement
+            Measurement to be fused into the current state estimate.
+        x_jac : State, optional
+            valuation point for the process model Jacobian. If not provided, the
+            current state estimate will be used.
+        reject_outlier : bool, optional
+            Whether to apply the NIS test to this measurement, by default None,
+            in which case the value of `self.reject_outliers` will be used.
+
+        Returns
+        -------
+        StateWithCovariance
+            The corrected state estimate
+        """
+        # Make copy to avoid modifying the input
+        x = x.copy()
+
+        # Load default outlier rejection option
+        if reject_outlier is None:
+            reject_outlier = self.reject_outliers
+
+        # If state has no time stamp, load form measurement.
+        # usually only happens on estimator start-up
+        if x.state.stamp is None:
+            x.state.stamp = y.stamp
+
+        # If measurement stamp is later than state stamp, do prediction step
+        # until current time.
+        if y.stamp is not None:
+            dt = y.stamp - x.state.stamp
+            if dt < 0:
+                raise RuntimeError(
+                    "Measurement stamp is earlier than state stamp"
+                )
+            elif dt > 0 and u is not None:
+                x = self.predict(x, u, dt)
+
+        dx = np.zeros((x.state.dof,))
+        x_op = x.state.copy()  # Operating point
+        count = 0
+        R = None
+        R_inv = None
+        while count < self.max_iters:
+            # Load a dedicated state evaluation point for jacobian
+            # if the user supplied it.
+
+            if x_jac is not None:
+                x_op_jac = x_jac
+            else:
+                x_op_jac = x_op
+            if R_isconst and R is None:
+                R = np.atleast_2d(y.model.covariance(x_op))
+                R_inv = np.linalg.inv(R)
+            else:
+                R = np.atleast_2d(y.model.covariance(x_op))
+            G = np.atleast_2d(y.model.jacobian(x_op_jac))
+            y_check = y.model.evaluate(x_op)
+            z = y.minus(y_check)
+
+            # normalize z
+            z_vis = (z - z.min()) / (z.max() - z.min())
+            cv2.imshow("current IEKF diff", z_vis.reshape(y_check.shape))
+            cv2.waitKey(1)
+
+            # # reject the tails
+            # # we want to locate the indices the top and bottom 15% of z, then remove the corresponding rows from G and R
+            # p = 0.15
+            # z = z.flatten()
+            # # sort and keep the sorting key
+            # z_sorted, key = zip(*sorted(zip(z, range(len(z)))))
+            # n_delete = int(p * len(z_sorted))
+            # # remove rows from G and R and z by index
+            # G = np.delete(G, key[:n_delete], axis=0)
+            # R = np.delete(R, key[:n_delete], axis=0)
+            # R = np.delete(R, key[:n_delete], axis=1)
+            # z = np.delete(z, key[:n_delete], axis=0)
+            # # sort again and keep the sorting key to account for shorter z
+            # z_sorted_2, key = zip(*sorted(zip(z, range(len(z)))))
+            # G = np.delete(G, key[-n_delete:], axis=0)
+            # R = np.delete(R, key[-n_delete:], axis=0)
+            # R = np.delete(R, key[-n_delete:], axis=1)
+            # z = np.delete(z, key[-n_delete:], axis=0)
+            # z = z.reshape((-1, 1))
+
+            x_old = x_op.copy()
+            outlier_count = 0
+            for i in range(len(z)):
+                P_inv = np.linalg.inv(x.covariance)
+                # if not R_isconst:
+                #     R_inv = np.linalg.inv(R)
+                cost_old = np.ndarray.item(
+                     0.5 * (e.T @ P_inv @ e + z.T @ R_inv @ z)
+                )
+                # print("cost old", cost_old)
+
+                # TEST: try computing all these things at every iter
+                e = x_op.minus(x.state).reshape((-1, 1))
+                J = x_op.plus_jacobian(e)
+                P = J @ x.covariance @ J.T
+                G = np.atleast_2d(y.model.jacobian(x_op))
+                y_check = y.model.evaluate(x_op)
+                z = y.minus(y_check)
+
+                S = G[i, :] @ P @ G[i, :].T + R[i, i]
+                S = 0.5 * (S + S.T)
+
+                # Test for outlier if requested.
+                outlier = False
+                if reject_outlier:
+                    outlier = check_outlier(np.array(z[i]), np.array([[S]]))
+
+                # If outlier, immediately exit.
+                if outlier:
+                    outlier_count += 1
+                    continue
+
+                K = ((P @ G[i, :].T) / S).reshape(-1, 1)
+                dx = -J @ e + (K @ (z[i] + G[i, :] @ J @ e)).reshape(-1, 1)
+
+                # Perform backtracking line search
+                # TODO: either perform line search for every element, or perform the line search on the final dx
+                if self.line_search:
+                    alpha = 1
+                    step_accepted = False
+                    while not step_accepted and alpha > self.step_tol:
+                        x_new = x_op.plus(alpha * dx)
+                        y_check = y.model.evaluate(x_new)
+                        z_new = y.minus(y_check)
+                        e_new = x_new.minus(x.state).reshape((-1, 1))
+                        cost_new = np.ndarray.item(
+                            0.5
+                            * (
+                                e_new.T @ P_inv @ e_new
+                                + z_new.T @ R_inv @ z_new
+                            )
+                        )
+                        if cost_new < cost_old:
+                            step_accepted = True
+
+                        else:
+                            alpha *= 0.9
+                else:
+                    # If line search is disabled, step is accepted by default.
+                    # Take full step.
+                    step_accepted = True
+                    x_new = x_op.plus(dx)
+
+                # If step accepted, set new operating point. Otherwise,
+                # immediately halt iterations, x_op will be the latest valid step.
+                if step_accepted:
+                    x_op = x_new
+                else:
+                    break
+
+                y_check = y.model.evaluate(x_op)
+                z = y.minus(y_check)
+
+                # normalize z
+                z_vis = (z - z.min()) / (z.max() - z.min())
+                cv2.imshow("current IEKF diff", z_vis.reshape(y_check.shape))
+                cv2.waitKey(1)
+
+                # Posterior covariance
+                x.covariance = (np.identity(x.state.dof) - K @ G[[i], :]) @ P
+            # print(outlier_count)
+            step_norm = np.linalg.norm(x_op.minus(x_old))
+            if not step_accepted or step_norm < self.step_tol:
+                break
+
+            count += 1
+
+        if not outlier:
+            # We need to recompute some stuff for covariance
+            # calculation purposes.
+            if x_jac is not None:
+                x_op_jac = x_jac
+            else:
+                x_op_jac = x_op
+
+            # Re-evaluate the jacobians at our latest operating point
+            G = np.atleast_2d(y.model.jacobian(x_op_jac))
+            R = np.atleast_2d(y.model.covariance(x_op_jac))
+            e = x_op.minus(x.state).reshape((-1, 1))
+            J = x_op.plus_jacobian(e)
+            P = J @ x.covariance @ J.T
+            S = G @ P @ G.T + R
+            S = 0.5 * (S + S.T)
+            K = np.linalg.solve(S.T, (P @ G.T).T).T
+            x.state = x_op
+            x.covariance = (np.identity(x.state.dof) - K @ G) @ (
+                J @ x.covariance @ J.T
+            )
 
         x.symmetrize()
 
         return x
 
 
-def generate_sigmapoints(dof: int, method: str) -> Tuple[np.ndarray, np.ndarray]:
+def generate_sigmapoints(
+    dof: int, method: str
+) -> Tuple[np.ndarray, np.ndarray]:
     """Generates unit sigma points from three available
     methods.
 
@@ -625,7 +866,9 @@ class SigmaPointKalmanFilter:
             if u.covariance is not None:
                 input_covariance = u.covariance
             else:
-                raise ValueError("Input covariance information must be provided.")
+                raise ValueError(
+                    "Input covariance information must be provided."
+                )
 
         if dt is None:
             dt = u.stamp - x.state.stamp
@@ -725,7 +968,9 @@ class SigmaPointKalmanFilter:
         if y.stamp is not None:
             dt = y.stamp - x.state.stamp
             if dt < 0:
-                raise RuntimeError("Measurement stamp is earlier than state stamp")
+                raise RuntimeError(
+                    "Measurement stamp is earlier than state stamp"
+                )
             elif u is not None:
                 x = self.predict(x, u, dt)
 
@@ -750,7 +995,8 @@ class SigmaPointKalmanFilter:
 
         if y_check is not None:
             y_propagated = [
-                y.model.evaluate(x.state.plus(sp)).ravel() for sp in sigmapoints.T
+                y.model.evaluate(x.state.plus(sp)).ravel()
+                for sp in sigmapoints.T
             ]
 
             # predicted measurement mean
@@ -885,7 +1131,9 @@ def run_filter(
         u = input_data[k]
         # Fuse any measurements that have occurred.
         if len(meas_data) > 0:
-            while y.stamp < input_data[k + 1].stamp and meas_idx < len(meas_data):
+            while y.stamp < input_data[k + 1].stamp and meas_idx < len(
+                meas_data
+            ):
                 x = filter.correct(x, y, u)
                 meas_idx += 1
                 if meas_idx < len(meas_data):
