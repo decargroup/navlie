@@ -81,3 +81,37 @@ class CauchyLoss(LossFunction):
             Robust weight
         """
         return 1.0 / (1.0 + (e / self.c) ** 2)
+
+class GeneralAdaptiveLoss(LossFunction):
+    def __init__(self, alpha: float, c: float):
+        self.alpha = alpha
+        self.c = c
+
+    def loss(self, e: float) -> float:
+        # alpha approaches 2 - L2 Loss
+        if (self.alpha == 2.0):
+            return 0.5 * (e / self.c)**2
+        # alpha approaches 0 - Cauchy Loss
+        elif (np.isclose(self.alpha, 0.0)):
+            return np.log(1.0 + 0.5 * (e / self.c)**2)
+        # alpha approaches -infty - Weslch loss
+        elif (self.alpha < -1e10):
+            return 1 - np.exp(-0.5 * (e / self.c)**2)
+        # The general cost function
+        else:
+            term_1 = (abs(self.alpha - 2.0) / self.alpha)
+            term_2 = ((e / self.c)**2.0 / (abs(self.alpha - 2.0)) + 1)**(self.alpha / 2.0) - 1.0
+            cost =  term_1 * term_2
+            return cost
+    
+    def weight(self, e: float) -> float:
+        if (self.alpha == 2.0):
+            return 1 / self.c**2
+        if (self.alpha == 0.0):
+            return 2 / (e**2 + 2*self.c**2)
+        if (self.alpha < 1e-10):
+            return (1 / self.c**2) * np.exp(-0.5 * (e / self.c)**2)
+        else:
+            term_1 = 1 / self.c**2
+            term_2 = (((e / self.c) **2) / (abs(self.alpha - 2.0)) + 1.0)**(self.alpha/2.0 - 1.0)
+            return term_1 * term_2
