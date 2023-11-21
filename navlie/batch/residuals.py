@@ -67,9 +67,9 @@ class Residual(ABC):
         Parameters
         ----------
         states : List[State]
-            Evaluation point of Jacobians, a list of states that 
+            Evaluation point of Jacobians, a list of states that
             the residual is a function of.
-        
+
         Returns
         -------
         List[np.ndarray]
@@ -78,7 +78,7 @@ class Residual(ABC):
             w.r.t states[0], the second element is the Jacobian of the residual w.r.t states[1], etc.
         """
         jac_list: List[np.ndarray] = [None] * len(states)
-        
+
         # Compute the Jacobian for each state via finite difference
         for state_num, X_bar in enumerate(states):
             e_bar = self.evaluate(states)
@@ -100,6 +100,12 @@ class Residual(ABC):
             jac_list[state_num] = jac_fd
 
         return jac_list
+
+    def sqrt_info_matrix(self, states: List[State]):
+        """
+        Returns the information matrix
+        """
+        pass
 
 
 class PriorResidual(Residual):
@@ -145,6 +151,12 @@ class PriorResidual(Residual):
             return error, jacobians
 
         return error
+
+    def sqrt_info_matrix(self, states: List[State]):
+        """
+        Returns the square root of the information matrix
+        """
+        return self._L
 
 
 class ProcessResidual(Residual):
@@ -201,9 +213,7 @@ class ProcessResidual(Residual):
         if compute_jacobians:
             jac_list = [None] * len(states)
             if compute_jacobians[0]:
-                jac_list[0] = -L.T @ self._process_model.jacobian(
-                    x_km1, self._u, dt
-                )
+                jac_list[0] = -L.T @ self._process_model.jacobian(x_km1, self._u, dt)
             if compute_jacobians[1]:
                 jac_list[1] = L.T @ x_k.minus_jacobian(x_k_hat)
 

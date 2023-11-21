@@ -28,11 +28,15 @@ class OptimizationSummary:
         size_state: int,
         size_error: int,
         cost: List[float],
+        entire_cost: List[float],
+        iterate_history: List[List[State]],
         time: float,
     ):
         self.size_state = size_state
         self.size_error = size_error
         self.cost = cost
+        self.entire_cost = entire_cost
+        self.iterate_history = iterate_history
         self.time = time
 
     def __repr__(self):
@@ -60,6 +64,7 @@ class Problem:
         step_tol: float = 1e-7,
         tau: float = 1e-11,
         verbose: bool = True,
+        save_histories: bool = True,
     ):
         # Set solver parameters
         self.solver = solver
@@ -67,6 +72,7 @@ class Problem:
         self.step_tol = step_tol
         self.tau = tau
         self.verbose = verbose
+        self.save_histories = save_histories
 
         # Initial value of all the variables
         self.variables_init: Dict[str, State] = {}
@@ -86,6 +92,8 @@ class Problem:
 
         # History of the cost
         self._cost_history = None
+        self._entire_cost_history = None  # Rejected and accepted steps
+        self._iterate_history: List[List[State]] = []  # History of states
         # Information matrix upon convergence
         self._information_matrix: np.ndarray = None
         # Inverse of information matrix
@@ -150,6 +158,7 @@ class Problem:
         # Solve using solver of choice
         # TODO: these two _solve functions still have much repeated code.
         # there is probably a way to refactor slightly to reduce this.
+        print(self.solver == "GN")
         if self.solver == "GN":
             self._solve_gauss_newton()
         elif self.solver == "LM":
@@ -160,7 +169,12 @@ class Problem:
 
         # Create optimization summary
         summary = OptimizationSummary(
-            self._size_state, self._size_errors, self._cost_history, total_time
+            self._size_state,
+            self._size_errors,
+            self._cost_history,
+            self._entire_cost_history,
+            self._iterate_history,
+            total_time,
         )
 
         # Return result
@@ -180,7 +194,7 @@ class Problem:
         Dict[Hashable, State]
             New dictionary of optimized variables.
         """
-
+        print("INSIDE GAUSS NEWTON")
         dx = 10
         iter_idx = 0
         cost_list = []
@@ -206,7 +220,6 @@ class Problem:
 
             e, H, cost = self.compute_error_jac_cost()
             cost_list.append(cost)
-
             dx = np.linalg.norm(delta_x)
             if self.verbose:
                 self._display_header(iter_idx, cost, dx)
@@ -218,6 +231,7 @@ class Problem:
         cost_list.append(cost)
 
         self._cost_history = np.array(cost_list).reshape((-1))
+        self._entire_cost_history = self._cost_history
         self._information_matrix = A
 
         return self.variables
@@ -233,6 +247,7 @@ class Problem:
 
         e, H, cost = self.compute_error_jac_cost()
         cost_list = [cost]
+        entire_cost_list = [cost]
 
         H_spr = sparse.csr_matrix(H)
 
@@ -262,9 +277,7 @@ class Problem:
             # Compute the new value of the cost function after the update
             e, H, cost = self.compute_error_jac_cost(variables=variables_test)
 
-            gain_ratio = (prev_cost - cost) / (
-                0.5 * delta_x.T @ (mu * delta_x - b)
-            )
+            gain_ratio = (prev_cost - cost) / (0.5 * delta_x.T @ (mu * delta_x - b))
             gain_ratio = gain_ratio.item(0)
 
             # If the gain ratio is above zero, accept the step
@@ -275,6 +288,7 @@ class Problem:
 
                 e, H, cost = self.compute_error_jac_cost()
                 cost_list.append(cost)
+                entire_cost_list.append(cost)
                 prev_cost = cost
 
                 H_spr = sparse.csr_matrix(H)
@@ -283,6 +297,7 @@ class Problem:
                 b = H_spr.T @ e
                 status = "Accepted."
             else:
+                entire_cost_list.append(cost)
                 mu = mu * nu
                 nu = 2 * nu
                 status = "Rejected."
@@ -299,6 +314,7 @@ class Problem:
         cost_list.append(cost)
 
         self._cost_history = np.array(cost_list).reshape((-1))
+        self._entire_cost_history = np.array(entire_cost_list).reshape((-1))
         self._information_matrix = A
 
         return self.variables
@@ -333,9 +349,7 @@ class Problem:
         cost_list = []
 
         # For each factor, evaluate error and Jacobian
-        for i, (residual, loss) in enumerate(
-            zip(self.residual_list, self.loss_list)
-        ):
+        for i, (residual, loss) in enumerate(zip(self.residual_list, self.loss_list)):
             variables_list = [variables[key] for key in residual.keys]
 
             # Do not compute Jacobian for variables that are held fixed
@@ -345,9 +359,7 @@ class Problem:
             ]
 
             # Evaluate current factor at states
-            error, jacobians = residual.evaluate(
-                variables_list, compute_jacobians
-            )
+            error, jacobians = residual.evaluate(variables_list, compute_jacobians)
 
             # Compute the robust loss weight and then weight the error
             u = np.linalg.norm(error)
@@ -368,9 +380,7 @@ class Problem:
                     # Correctly weight the Jacobian
                     jacobian = sqrt_loss_weight * jacobian
 
-                    H[
-                        self.residual_slices[i], self.variable_slices[key]
-                    ] = jacobian
+                    H[self.residual_slices[i], self.variable_slices[key]] = jacobian
 
         # Sum up costs from each residual
         cost = np.sum(np.array(cost_list))
@@ -430,15 +440,18 @@ class Problem:
         if variables is None:
             variables = self.variables
 
+        if self.save_histories and not self._iterate_history:
+            self._iterate_history.append([variables.copy()])
+
         for key, var in variables.items():
             if not key in self.constant_variable_keys:
                 slc = self.variable_slices[key]
                 delta_xi_current = delta_x[slc, [0]]
                 variables[key] = var.plus(delta_xi_current)
+        if self.save_histories:
+            self._iterate_history.append([variables.copy()])
 
-    def get_covariance_block(
-        self, key_1: Hashable, key_2: Hashable
-    ) -> np.ndarray:
+    def get_covariance_block(self, key_1: Hashable, key_2: Hashable) -> np.ndarray:
         """Retrieve the covariance block corresponding to two variables.
 
         Parameters
