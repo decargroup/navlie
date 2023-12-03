@@ -1,7 +1,17 @@
+""" 
+A module for IMU data and kinematics.
+
+Note that the treatment of IMU kinematics in this module is different from
+typical treatments in the sense that it is done directly on :math:`SE_2(3)`. A
+PDF describing the detailed derivations can be found at the
+`following link. <https://decargroup.github.io/navlie/_build/html/_static/imu.pdf>`_
+
+"""
+
 from pymlg import SO3, SE23
 import numpy as np
 from navlie.types import ProcessModel, Input
-from typing import Any, List, Tuple
+from typing import Any, List
 from navlie.lib.states import CompositeState, VectorState, SE23State
 from math import factorial
 
@@ -21,6 +31,24 @@ class IMU(Input):
         state_id: Any = None,
         covariance: np.ndarray = None,
     ):
+        """ 
+        Parameters
+        ----------
+        gyro : np.ndarray with size 3
+            Gyro reading
+        accel : np.ndarray with size 3
+            Accelerometer reading
+        stamp : float
+            Timestamp
+        bias_gyro_walk : np.ndarray with size 3, optional
+            Driving input for gyro bias random walk, by default [0, 0, 0]
+        bias_accel_walk : np.ndarray with size 3, optional
+            Driving input for accel bias random walk, by default [0, 0, 0]
+        state_id : Any, optional
+            State ID associated with the reading, by default None
+        covariance : np.ndarray with size 12x12, optional
+            Covariance matrix describing the IMU noise, by default None. 
+        """
         super().__init__(dof=12, stamp=stamp, covariance=covariance)
         self.gyro = np.array(gyro).ravel()  #:np.ndarray: Gyro reading
         self.accel = np.array(
@@ -94,6 +122,9 @@ class IMU(Input):
 
     @staticmethod
     def random():
+        """
+        Returns a random IMU measurement.
+        """
         return IMU(
             np.random.normal(size=3),
             np.random.normal(size=3),
@@ -104,6 +135,12 @@ class IMU(Input):
 
 
 class IMUState(CompositeState):
+    """
+    The IMU state is a composite state that contains the navigation state
+    (attitude, velocity, position), and the gyro and accelerometer biases. The 
+    navigation state is stored as an element of :math:`SE_2(3)`, and the biases
+    are stored as vectors.
+    """
     def __init__(
         self,
         nav_state: np.ndarray,
@@ -114,8 +151,6 @@ class IMUState(CompositeState):
         direction="right",
     ):
         """
-        Instantiate and IMUState object.
-
         Parameters
         ----------
         nav_state : np.ndarray with shape (5, 5)
@@ -238,6 +273,13 @@ class IMUState(CompositeState):
         bias_gyro: np.ndarray = None,
         bias_accel: np.ndarray = None,
     ):
+        """
+        Returns the jacobian of the IMU state with respect to the given blocks.
+        In other words, this function takes care of the state vector ordering
+        for you.
+        """
+
+
         for jac in [attitude, position, velocity, bias_gyro, bias_accel]:
             if jac is not None:
                 dim = jac.shape[0]
@@ -298,14 +340,17 @@ def N_matrix(phi_vec: np.ndarray):
 
 
 def M_matrix(phi_vec):
-    phi_mat = SO3.wedge(phi_vec)
+    """
+    The M matrix from `derivation document
+    <https://decargroup.github.io/navlie/_build/html/_static/imu.pdf>`_
+    """
+    phi_mat = SO3.wedge(phi_vec) 
     M = np.sum(
         [
-            (2 / factorial(n + 2)) * np.linalg.matrix_power(phi_mat, n)
-            for n in range(100)
-        ],
-        axis=0,
-    )
+            (2 / factorial(n + 2)) * np.linalg.matrix_power(phi_mat, n) for n in
+            range(100)
+        ], axis=0,
+    ) 
     return M
 
 

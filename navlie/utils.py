@@ -620,7 +620,7 @@ def plot_error(
 
 def plot_nees(
     results: GaussianResultList,
-    axs: List[plt.Axes] = None,
+    ax: plt.Axes = None,
     label: str = None,
     color=None,
     confidence_interval: float = 0.95,
@@ -635,7 +635,7 @@ def plot_nees(
     ----------
     results : GaussianResultList or MonteCarloResult
         Results to plot
-    axs : List[plt.Axes], optional
+    ax : plt.Axes, optional
         Axes on which to draw, by default None. If None, new axes will be
         created.
     label : str, optional
@@ -656,16 +656,16 @@ def plot_nees(
         Axes on which the plot was drawn
     """
 
-    if axs is None:
-        fig, axs = plt.subplots(
+    if ax is None:
+        fig, ax = plt.subplots(
             1,
             1,
             sharex=True,
         )
     else:
-        fig = axs.get_figure()
+        fig = ax.get_figure()
 
-    axs_og = axs
+    axs_og = ax
     kwargs = {}
     if color is not None:
         kwargs["color"] = color
@@ -676,23 +676,23 @@ def plot_nees(
         s = 1
 
     expected_nees_label = "Expected NEES"
-    ci_label = f"${int(confidence_interval*100)}\%$ conf. int."
-    _, exisiting_labels = axs.get_legend_handles_labels()
+    _, exisiting_labels = ax.get_legend_handles_labels()
 
     if expected_nees_label in exisiting_labels:
         expected_nees_label = None
-    if ci_label in exisiting_labels:
-        ci_label = None
 
     # fmt:off
-    axs.plot(results.stamp, results.nees/s, label=label, **kwargs)
+    ax.plot(results.stamp, results.nees/s, label=label, **kwargs)
     if confidence_interval:
-        axs.plot(results.stamp, results.dof/s, label=expected_nees_label, color=expected_nees_color)
-        axs.plot(results.stamp, results.nees_upper_bound(confidence_interval)/s, "--", color="k", label=ci_label)
-        axs.plot(results.stamp, results.nees_lower_bound(confidence_interval)/s, "--", color="k")
+        ci_label = f"${int(confidence_interval*100)}\%$ conf. bounds"
+        if ci_label in exisiting_labels:
+            ci_label = None
+        ax.plot(results.stamp, results.dof/s, label=expected_nees_label, color=expected_nees_color)
+        ax.plot(results.stamp, results.nees_upper_bound(confidence_interval)/s, "--", color="k", label=ci_label)
+        ax.plot(results.stamp, results.nees_lower_bound(confidence_interval)/s, "--", color="k")
     # fmt:on
 
-    axs.legend()
+    ax.legend()
 
     return fig, axs_og
 
