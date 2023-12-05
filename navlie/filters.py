@@ -130,9 +130,7 @@ class ExtendedKalmanFilter:
         # usually only happens on estimator start-up
         if x.state.stamp is None:
             if u.stamp is None:
-                raise ValueError(
-                    "Either state or input must have a time stamp"
-                )
+                raise ValueError("Either state or input must have a time stamp")
             t_km1 = u.stamp
         else:
             t_km1 = x.state.stamp
@@ -150,9 +148,7 @@ class ExtendedKalmanFilter:
         details_dict = {}
         if u is not None:
             Q = self.process_model.covariance(x_jac, u, dt)
-            x_new.state, A = self.process_model.evaluate_with_jacobian(
-                x.state, u, dt
-            )
+            x_new.state, A = self.process_model.evaluate_with_jacobian(x.state, u, dt)
             x_new.covariance = A @ x.covariance @ A.T + Q
             x_new.symmetrize()
             x_new.state.stamp = t_km1 + dt
@@ -218,9 +214,7 @@ class ExtendedKalmanFilter:
         if y.stamp is not None:
             dt = y.stamp - x.state.stamp
             if dt < -1e10:
-                raise RuntimeError(
-                    "Measurement stamp is earlier than state stamp"
-                )
+                raise RuntimeError("Measurement stamp is earlier than state stamp")
             elif u is not None and dt > 1e-11:
                 x = self.predict(x, u, dt)
 
@@ -335,9 +329,7 @@ class IteratedKalmanFilter(ExtendedKalmanFilter):
         if y.stamp is not None:
             dt = y.stamp - x.state.stamp
             if dt < 0:
-                raise RuntimeError(
-                    "Measurement stamp is earlier than state stamp"
-                )
+                raise RuntimeError("Measurement stamp is earlier than state stamp")
             elif dt > 0 and u is not None:
                 x = self.predict(x, u, dt)
 
@@ -362,9 +354,7 @@ class IteratedKalmanFilter(ExtendedKalmanFilter):
 
             P_inv = np.linalg.inv(x.covariance)
             R_inv = np.linalg.inv(R)
-            cost_old = np.ndarray.item(
-                0.5 * (e.T @ P_inv @ e + z.T @ R_inv @ z)
-            )
+            cost_old = np.ndarray.item(0.5 * (e.T @ P_inv @ e + z.T @ R_inv @ z))
             P = J @ x.covariance @ J.T
 
             # Compute covariance of innovation
@@ -397,8 +387,7 @@ class IteratedKalmanFilter(ExtendedKalmanFilter):
                     z_new = y.minus(y_check)
                     e_new = x_new.minus(x.state).reshape((-1, 1))
                     cost_new = np.ndarray.item(
-                        0.5
-                        * (e_new.T @ P_inv @ e_new + z_new.T @ R_inv @ z_new)
+                        0.5 * (e_new.T @ P_inv @ e_new + z_new.T @ R_inv @ z_new)
                     )
                     if cost_new < cost_old:
                         step_accepted = True
@@ -439,18 +428,14 @@ class IteratedKalmanFilter(ExtendedKalmanFilter):
             S = 0.5 * (S + S.T)
             K = np.linalg.solve(S.T, (P @ G.T).T).T
             x.state = x_op
-            x.covariance = (np.identity(x.state.dof) - K @ G) @ (
-                J @ x.covariance @ J.T
-            )
+            x.covariance = (np.identity(x.state.dof) - K @ G) @ (J @ x.covariance @ J.T)
 
         x.symmetrize()
 
         return x
 
 
-def generate_sigmapoints(
-    dof: int, method: str
-) -> Tuple[np.ndarray, np.ndarray]:
+def generate_sigmapoints(dof: int, method: str) -> Tuple[np.ndarray, np.ndarray]:
     """Generates unit sigma points from three available
     methods.
 
@@ -605,9 +590,7 @@ class SigmaPointKalmanFilter:
             if u.covariance is not None:
                 input_covariance = u.covariance
             else:
-                raise ValueError(
-                    "Input covariance information must be provided."
-                )
+                raise ValueError("Input covariance information must be provided.")
 
         if dt is None:
             dt = u.stamp - x.state.stamp
@@ -707,9 +690,7 @@ class SigmaPointKalmanFilter:
         if y.stamp is not None:
             dt = y.stamp - x.state.stamp
             if dt < 0:
-                raise RuntimeError(
-                    "Measurement stamp is earlier than state stamp"
-                )
+                raise RuntimeError("Measurement stamp is earlier than state stamp")
             elif u is not None:
                 x = self.predict(x, u, dt)
 
@@ -731,10 +712,7 @@ class SigmaPointKalmanFilter:
 
         if y_check is not None:
             y_propagated = np.array(
-                [
-                    y.model.evaluate(x.state.plus(sp)).ravel()
-                    for sp in sigmapoints.T
-                ]
+                [y.model.evaluate(x.state.plus(sp)).ravel() for sp in sigmapoints.T]
             )
 
             # predicted measurement mean
@@ -744,10 +722,7 @@ class SigmaPointKalmanFilter:
             err = y_propagated - y_mean
             sigmapoints = sigmapoints.T
             Pyy = (
-                np.sum(
-                    w[:, None, None] * err[:, :, None] * err[:, None, :], axis=0
-                )
-                + R
+                np.sum(w[:, None, None] * err[:, :, None] * err[:, None, :], axis=0) + R
             )
             Pxy = np.sum(
                 w[:, None, None] * sigmapoints[:, :, None] * err[:, None, :],
@@ -871,9 +846,7 @@ def run_filter(
         u = input_data[k]
         # Fuse any measurements that have occurred.
         if len(meas_data) > 0:
-            while y.stamp < input_data[k + 1].stamp and meas_idx < len(
-                meas_data
-            ):
+            while y.stamp < input_data[k + 1].stamp and meas_idx < len(meas_data):
                 x = filter.correct(x, y, u)
                 meas_idx += 1
                 if meas_idx < len(meas_data):

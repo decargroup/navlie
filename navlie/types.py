@@ -51,8 +51,8 @@ class State(ABC):
 
     - a value of some sort;
     - a certain number of degrees of freedom (dof);
-    - ``plus`` and ``minus`` methods that generalize addition and subtracting to 
-      to this object. 
+    - ``plus`` and ``minus`` methods that generalize addition and subtracting to
+      to this object.
 
     Optionally, it is often useful to assign a timestamp (``stamp``) and a label
     (``state_id``) to differentiate state instances from others.
@@ -82,15 +82,11 @@ class State(ABC):
 
     __slots__ = ["value", "dof", "stamp", "state_id"]
 
-    def __init__(
-        self, value: Any, dof: int, stamp: float = None, state_id=None
-    ):
+    def __init__(self, value: Any, dof: int, stamp: float = None, state_id=None):
         self.value = value  #:Any: State value
         self.dof = dof  #:int: Degree of freedom of the state
         self.stamp = stamp  #:float: Timestamp
-        self.state_id = (
-            state_id  #:Any: Some identifier associated with the state
-        )
+        self.state_id = state_id  #:Any: Some identifier associated with the state
 
     @abstractmethod
     def plus(self, dx: np.ndarray) -> "State":
@@ -122,8 +118,8 @@ class State(ABC):
         .. math::
 
             \mathbf{J} = \\frac{D (\mathcal{X} \oplus \delta \mathbf{x})}{D \delta \mathbf{x}}
-         
-          
+
+
         For Lie groups, this is known as the *group Jacobian*.
         """
         return self.plus_jacobian_fd(dx)
@@ -146,11 +142,11 @@ class State(ABC):
     def minus_jacobian(self, x: "State") -> np.ndarray:
         """
         Jacobian of the ``minus`` operator with respect to self.
-         
+
         .. math::
 
             \mathbf{J} = \\frac{D (\mathcal{Y} \ominus \mathcal{X})}{D \mathcal{Y}}
-           
+
         That is, if ``dx = y.minus(x)`` then this is the Jacobian of ``dx`` with respect to ``y``.
         For Lie groups, this is the inverse of the *group Jacobian* evaluated at
         ``dx = x1.minus(x2)``.
@@ -274,7 +270,7 @@ class ProcessModel(ABC):
     of either two ways.
 
     **1. Specifying the covariance matrix directly:**
-    
+
     The first way is to specify the :math:`\mathbf{Q}_k` covariance matrix
     directly by overriding the ``covariance`` method. This covariance matrix
     represents the distribution of process model errors directly.
@@ -429,7 +425,7 @@ class ProcessModel(ABC):
 
     def input_covariance(self, x: State, u: Input, dt: float) -> np.ndarray:
         """
-        Covariance matrix of additive noise *on the input*. 
+        Covariance matrix of additive noise *on the input*.
 
         Parameters
         ----------
@@ -511,7 +507,7 @@ class Measurement:
 
 class StateWithCovariance:
     """
-    A data container containing a ``State`` object and a covariance array. 
+    A data container containing a ``State`` object and a covariance array.
     This class can be used as-is without inheritance.
     """
 
@@ -539,9 +535,7 @@ class StateWithCovariance:
             raise ValueError("covariance must be an n x n array.")
 
         if covariance.shape[0] != state.dof:
-            raise ValueError(
-                "Covariance matrix does not correspond with state DOF."
-            )
+            raise ValueError("Covariance matrix does not correspond with state DOF.")
 
         #:navlie.types.State: state object
         self.state = state

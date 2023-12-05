@@ -30,9 +30,7 @@ def test_van_loan_double_integrator():
 
     # Compare to analytical solution
     A_d_test = np.array([[1, dt], [0, 1]])
-    Q_d_test = np.array(
-        [[1 / 3 * dt**3, 1 / 2 * dt**2], [1 / 2 * dt**2, dt]]
-    )
+    Q_d_test = np.array([[1 / 3 * dt**3, 1 / 2 * dt**2], [1 / 2 * dt**2, dt]])
 
     assert np.allclose(A_d, A_d_test)
     assert np.allclose(Q_d, Q_d_test)

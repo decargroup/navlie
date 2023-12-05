@@ -58,9 +58,7 @@ def make_range_models_iterated_ekf(R):
 def make_filter_trial_prediction_noiseless(dg, x0_true, P0, t_max, ekf):
     def ekf_trial(trial_number: int) -> List[GaussianResult]:
         np.random.seed(trial_number)
-        state_true, input_data, meas_data = dg.generate(
-            x0_true, 0, t_max, noise=False
-        )
+        state_true, input_data, meas_data = dg.generate(x0_true, 0, t_max, noise=False)
         x0_check = x0_true.copy()
         estimate_list = run_filter(ekf, x0_check, P0, input_data, meas_data)
 

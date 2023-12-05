@@ -6,12 +6,12 @@ from navlie.lib import (
     VectorInput,
     SE2State,
     VectorState,
-    CompositeState,
 )
 from pymlg import SE2
 import numpy as np
 import pickle
 import os
+from navlie import CompositeState
 
 
 def test_composite_process_model():
@@ -19,9 +19,7 @@ def test_composite_process_model():
     T13 = SE2State(SE2.Exp([-0.5, 1, 1]), stamp=0.0, state_id=3)
     Q = np.diag([0.1**2, 0.1**2, 0.001**2])
     x0 = CompositeState([T12, T13])
-    process_model = CompositeProcessModel(
-        [BodyFrameVelocity(Q), BodyFrameVelocity(Q)]
-    )
+    process_model = CompositeProcessModel([BodyFrameVelocity(Q), BodyFrameVelocity(Q)])
     u = CompositeInput(
         [
             VectorInput(np.array([0.3, 1, 0]), 1),

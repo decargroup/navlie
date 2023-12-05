@@ -1,13 +1,10 @@
-from navlie.lib.states import (
+from navlie.lib import (
     MatrixLieGroupState,
     SO3State,
     SE2State,
     SE3State,
     SE23State,
-    CompositeState,
-)
-from navlie.lib.imu import IMUState
-from navlie.lib.models import (
+    IMUState,
     Altitude,
     GlobalPosition,
     InvariantMeasurement,
@@ -18,7 +15,7 @@ from navlie.lib.models import (
     Gravitometer,
     AbsoluteVelocity,
 )
-from navlie.types import Measurement, MeasurementModel
+from navlie import Measurement, MeasurementModel, CompositeState
 from pymlg import SO3, SE3, SE2, SE3, SE23
 import numpy as np
 import pytest
@@ -111,9 +108,7 @@ def test_range_pose_to_pose_se23(direction):
 
 @pytest.mark.parametrize("direction", ["right", "left"])
 def test_global_position_se2(direction):
-    x = SE2State(
-        SE2.Exp([0.5, 1, 2]), stamp=0.0, state_id=2, direction=direction
-    )
+    x = SE2State(SE2.Exp([0.5, 1, 2]), stamp=0.0, state_id=2, direction=direction)
     model = GlobalPosition(np.identity(3))
     _jacobian_test(x, model, atol=1e-5)
 
@@ -188,9 +183,7 @@ def test_altitude_se23(direction):
 
 @pytest.mark.parametrize("direction", ["right", "left"])
 def test_gravity_so3(direction):
-    x = SO3State(
-        SO3.Exp([0.3, 0.1, 0.2]), stamp=0.0, state_id=2, direction=direction
-    )
+    x = SO3State(SO3.Exp([0.3, 0.1, 0.2]), stamp=0.0, state_id=2, direction=direction)
     model = Gravitometer(np.identity(3))
     _jacobian_test(x, model)
 
@@ -218,9 +211,7 @@ def test_gravity_se23(direction):
 
 @pytest.mark.parametrize("direction", ["right", "left"])
 def test_magnetometer_so3(direction):
-    x = SO3State(
-        SO3.Exp([0.3, 0.1, 0.2]), stamp=0.0, state_id=2, direction=direction
-    )
+    x = SO3State(SO3.Exp([0.3, 0.1, 0.2]), stamp=0.0, state_id=2, direction=direction)
     model = Magnetometer(np.identity(3))
     _jacobian_test(x, model)
 
@@ -247,9 +238,7 @@ def test_magnetometer_se23(direction):
 
 
 def test_invariant_magnetometer_so3():
-    x = SO3State(
-        SO3.Exp([0.3, 0.1, 0.2]), stamp=0.0, state_id=2, direction="left"
-    )
+    x = SO3State(SO3.Exp([0.3, 0.1, 0.2]), stamp=0.0, state_id=2, direction="left")
 
     b = [1, 0, 0]
     y = np.array(b)
@@ -261,9 +250,7 @@ def test_invariant_magnetometer_so3():
 
 
 def test_invariant_magnetometer_se3():
-    x = SE3State(
-        SE3.Exp([0, 1, 2, 4, 5, 6]), stamp=0.0, state_id=2, direction="left"
-    )
+    x = SE3State(SE3.Exp([0, 1, 2, 4, 5, 6]), stamp=0.0, state_id=2, direction="left")
 
     b = [1, 0, 0]
     y = np.array(b)

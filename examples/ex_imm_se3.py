@@ -102,9 +102,7 @@ def imm_trial(trial_number: int) -> List[nav.GaussianResult]:
 
     x0_check = x0.plus(nav.randvec(P0))
 
-    estimate_list = nav.imm.run_imm_filter(
-        imm, x0_check, P0, input_list, meas_list
-    )
+    estimate_list = nav.imm.run_imm_filter(imm, x0_check, P0, input_list, meas_list)
 
     results = [
         nav.imm.IMMResult(estimate_list[i], state_true[i])
@@ -144,12 +142,8 @@ if __name__ == "__main__":
 
     fig, ax = plt.subplots(1, 1)
     ax.plot(results.stamp, results.average_nees, label="IMM NEES")
-    ax.plot(
-        results.stamp, results_ekf.average_nees, label="EKF using GT Q NEES"
-    )
-    ax.plot(
-        results.stamp, results.expected_nees, color="r", label="Expected NEES"
-    )
+    ax.plot(results.stamp, results_ekf.average_nees, label="EKF using GT Q NEES")
+    ax.plot(results.stamp, results.expected_nees, color="r", label="Expected NEES")
     ax.plot(
         results.stamp,
         results.nees_lower_bound(0.99),
@@ -199,9 +193,7 @@ if __name__ == "__main__":
     fig, ax = plt.subplots(1, 1)
     Q_ = np.zeros(results.stamp.shape)
     for lv1 in range(n_models):
-        Q_ = (
-            Q_ + average_model_probabilities[lv1, :] * c_list[lv1] * Q_ref[0, 0]
-        )
+        Q_ = Q_ + average_model_probabilities[lv1, :] * c_list[lv1] * Q_ref[0, 0]
 
     ax.plot(results.stamp, Q_, label=r"$Q_{00}$, Estimated")
     ax.plot(

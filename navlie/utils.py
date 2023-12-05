@@ -94,12 +94,12 @@ class GaussianResultList:
         results[:, 3:] # returns all degrees of freedom except the first three
 
     This can be very useful if you want to examine the nees or rmse of just some
-    states, or if you want to plot the error of just some states. For example, 
+    states, or if you want to plot the error of just some states. For example,
     if you have an SE3State, where the first 3 degrees of freedom are attitude,
     and the last 3 are position, you can plot only the attitude error with
 
     .. code-block:: python
-    
+
         nav.plot_error(results[:, 0:3])
 
     and likewise get only the attitude NEES with ``results[:, 0:3].nees``.
@@ -138,13 +138,9 @@ class GaussianResultList:
         #:numpy.ndarray with shape (N,): numpy array of State objects
         self.state: List[State] = np.array([r.state for r in result_list])
         #:numpy.ndarray with shape (N,): numpy array of true State objects
-        self.state_true: List[State] = np.array(
-            [r.state_true for r in result_list]
-        )
+        self.state_true: List[State] = np.array([r.state_true for r in result_list])
         #:numpy.ndarray with shape (N,dof,dof): covariance
-        self.covariance: np.ndarray = np.array(
-            [r.covariance for r in result_list]
-        )
+        self.covariance: np.ndarray = np.array([r.covariance for r in result_list])
         #:numpy.ndarray with shape (N, dof): error throughout trajectory
         self.error = np.array([r.error for r in result_list])
         #:numpy.ndarray with shape (N,): EES throughout trajectory
@@ -207,9 +203,7 @@ class GaussianResultList:
             out.dof = out.error.shape[1] * np.ones_like(out.stamp)
 
         out.md = np.sqrt(out.nees)
-        out.three_sigma = 3 * np.sqrt(
-            np.diagonal(out.covariance, axis1=1, axis2=2)
-        )
+        out.three_sigma = 3 * np.sqrt(np.diagonal(out.covariance, axis1=1, axis2=2))
         out.rmse = np.sqrt(out.ees / out.dof)
         out.value = self.value[key1]
         out.value_true = self.value_true[key1]
@@ -356,9 +350,7 @@ class MonteCarloResult:
         self.ees = self.average_ees
         #:numpy.ndarray with shape (N,dof): root-mean-squared error of each component
         self.rmse: np.ndarray = np.sqrt(
-            np.average(
-                np.power(np.array([t.error for t in trial_results]), 2), axis=0
-            )
+            np.average(np.power(np.array([t.error for t in trial_results]), 2), axis=0)
         )
         #:numpy.ndarray with shape (N,): Total RMSE, this can be meaningless if units differ in a state
         self.total_rmse: np.ndarray = np.sqrt(self.average_ees)
@@ -780,9 +772,7 @@ def plot_meas(
         axs[i].scatter(
             y_stamps, y_meas[:, i], color="b", alpha=0.7, s=2, label="Measured"
         )
-        axs[i].plot(
-            y_stamps, y_true[:, i], color="r", alpha=1, label="Modelled"
-        )
+        axs[i].plot(y_stamps, y_true[:, i], color="r", alpha=1, label="Modelled")
         axs[i].fill_between(
             y_stamps,
             y_true[:, i] + three_sigma[:, i],
@@ -885,7 +875,7 @@ def plot_poses(
     # TODO. handle 2D case
     if isinstance(poses, GaussianResultList):
         poses = poses.state
-    
+
     if isinstance(poses, StateWithCovariance):
         poses = [poses.state]
 
@@ -1360,8 +1350,7 @@ def jacobian(
 
         else:
             raise ValueError(
-                f"Unknown method '{method}'. "
-                "Must be 'forward', 'central' or 'cs"
+                f"Unknown method '{method}'. " "Must be 'forward', 'central' or 'cs"
             )
 
     return jac_fd

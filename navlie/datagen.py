@@ -51,7 +51,9 @@ class DataGenerator:
         input_func: Callable[[float], np.ndarray],
         input_covariance: np.ndarray,
         input_freq: float,
-        meas_model_list: List[MeasurementModel] = [], # TODO: fix mutable default argument
+        meas_model_list: List[
+            MeasurementModel
+        ] = [],  # TODO: fix mutable default argument
         meas_freq_list: Union[float, List[float]] = None,
         meas_offset_list: Union[float, List[float]] = [],
     ):
@@ -277,9 +279,7 @@ def generate_measurement(
         if noise:
             y = y.reshape((-1, 1)) + randvec(R)
 
-        meas_list.append(
-            Measurement(y.reshape(og_shape), x.stamp, model, state_id)
-        )
+        meas_list.append(Measurement(y.reshape(og_shape), x.stamp, model, state_id))
 
     if not received_list:
         meas_list = meas_list[0]

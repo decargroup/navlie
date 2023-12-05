@@ -2,7 +2,7 @@ from pymlg import SO2, SO3, SE2, SE3, SE23, SL3
 from pymlg.numpy.base import MatrixLieGroup
 import numpy as np
 from navlie.types import State, Input
-from typing import Any, List
+from typing import Any
 
 try:
     # We do not want to make ROS a hard dependency, so we import it only if
@@ -13,6 +13,9 @@ except ImportError:
     pass  # ROS is not installed
 except:
     raise
+
+
+from navlie.composite import CompositeState  # For backwards compatibility
 
 
 class VectorState(State):
@@ -185,25 +188,19 @@ class MatrixLieGroupState(State):
     @property
     def attitude(self) -> np.ndarray:
         raise NotImplementedError(
-            "{0} does not have attitude property".format(
-                self.__class__.__name__
-            )
+            "{0} does not have attitude property".format(self.__class__.__name__)
         )
 
     @property
     def position(self) -> np.ndarray:
         raise NotImplementedError(
-            "{0} does not have position property".format(
-                self.__class__.__name__
-            )
+            "{0} does not have position property".format(self.__class__.__name__)
         )
 
     @property
     def velocity(self) -> np.ndarray:
         raise NotImplementedError(
-            "{0} does not have velocity property".format(
-                self.__class__.__name__
-            )
+            "{0} does not have velocity property".format(self.__class__.__name__)
         )
 
     def jacobian_from_blocks(self, **kwargs) -> np.ndarray:
@@ -211,15 +208,16 @@ class MatrixLieGroupState(State):
 
 
 class SO2State(MatrixLieGroupState):
-    """ 
+    """
     A state object for rotations in 2D. The value of this state is stored as a
     2x2 numpy array representing a direct element of the SO2 group. I.e.,
-    
+
     .. math::
-        \mathbf{C} \in \mathbb{R}^{2 \times 2}, \quad 
+        \mathbf{C} \in \mathbb{R}^{2 \times 2}, \quad
         \mathbf{C}^T \mathbf{C} = \mathbf{I}, \quad \det(\mathbf{C}) = \mathbf{1}
-        
+
     """
+
     group = SO2
 
     def __init__(
@@ -250,16 +248,17 @@ class SO2State(MatrixLieGroupState):
 
 
 class SO3State(MatrixLieGroupState):
-    """ 
+    """
     A state object for rotations in 3D. The value of this state is stored as a
     3x3 numpy array representing a direct element of the SO3 group. I.e.,
-    
+
     .. math::
-    
+
         \mathbf{C} \in \mathbb{R}^{3 \times 3}, \quad
         \mathbf{C}^T \mathbf{C} = \mathbf{I}, \quad \det(\mathbf{C}) = \mathbf{1}
-        
+
     """
+
     group = SO3
 
     def __init__(
@@ -351,6 +350,7 @@ class SE2State(MatrixLieGroupState):
 
 
     """
+
     group = SE2
 
     def __init__(
@@ -387,9 +387,7 @@ class SE2State(MatrixLieGroupState):
         self.value = T
 
     @staticmethod
-    def jacobian_from_blocks(
-        attitude: np.ndarray = None, position: np.ndarray = None
-    ):
+    def jacobian_from_blocks(attitude: np.ndarray = None, position: np.ndarray = None):
         for jac in [attitude, position]:
             if jac is not None:
                 dim = jac.shape[0]
@@ -422,7 +420,8 @@ class SE3State(MatrixLieGroupState):
             \end{bmatrix}, \quad \mathbf{C} \in SO(3), \quad \mathbf{r} \in \mathbb{R}^3.
     
     
-    """ 
+    """
+
     group = SE3
 
     def __init__(
@@ -451,9 +450,7 @@ class SE3State(MatrixLieGroupState):
         self.value[0:3, 3] = r
 
     @staticmethod
-    def jacobian_from_blocks(
-        attitude: np.ndarray = None, position: np.ndarray = None
-    ):
+    def jacobian_from_blocks(attitude: np.ndarray = None, position: np.ndarray = None):
         for jac in [attitude, position]:
             if jac is not None:
                 dim = jac.shape[0]
@@ -629,10 +626,11 @@ class SL3State(MatrixLieGroupState):
     the SL3 group. I.e.,
 
     .. math::
-    
+
             \mathbf{C} \in SL(3), \quad \mathbf{C} \in \mathbb{R}^{3 \times 3}, \quad
             \det(\mathbf{C}) = \mathbf{1}.
-    """ 
+    """
+
     group = SL3
 
     def __init__(
@@ -643,347 +641,6 @@ class SL3State(MatrixLieGroupState):
         direction="right",
     ):
         super().__init__(value, self.group, stamp, state_id, direction)
-
-
-class CompositeState(State):
-    """
-    A "composite" state object intended to hold a list of State objects as a
-    single conceptual "state". The intended use is to hold a list of states
-    as a single state at a specific time, of potentially different types, 
-    and this class will take care of defining the appropriate operations on
-    the composite state such as the ``plus`` and ``minus`` methods, as well 
-    as the ``plus_jacobian`` and ``minus_jacobian`` methods.
-
-    Each state in the provided list has an index (the index in the list), as
-    well as a state_id, which is found as an attribute in the corresponding State
-    object.
-
-    It is possible to access sub-states in the composite states both by index
-    and by ID.
-    """
-
-    def __init__(
-        self, state_list: List[State], stamp: float = None, state_id=None
-    ):
-        """
-        Parameters
-        ----------
-        state_list: List[State]
-            List of State that forms this composite state
-        stamp: float, optional
-            Timestamp of the composite state. This can technically be different
-            from the timestamps of the substates.
-        state_id: Any, optional
-            State ID of the composite state. This can be different from the
-            state IDs of the substates.
-        """
-        if isinstance(state_list, tuple):
-            state_list = list(state_list)
-            
-        #:List[State]: The substates are the CompositeState's value.
-        self.value = state_list
-
-        self.stamp = stamp
-        self.state_id = state_id
-
-    def __getstate__(self):
-        """
-        Get the state of the object for pickling.
-        """
-        # When using __slots__ the pickle module expects a tuple from __getstate__.
-        # See https://stackoverflow.com/questions/1939058/simple-example-of-use-of-setstate-and-getstate/41754104#41754104
-        return (
-            None,
-            {
-                "value": self.value,
-                "stamp": self.stamp,
-                "state_id": self.state_id,
-            },
-        )
-
-    def __setstate__(self, attributes):
-        """
-        Set the state of the object for unpickling.
-        """
-        # When using __slots__ the pickle module sends a tuple for __setstate__.
-        # See https://stackoverflow.com/questions/1939058/simple-example-of-use-of-setstate-and-getstate/41754104#41754104
-
-        attributes = attributes[1]
-        self.value = attributes["value"]
-        self.stamp = attributes["stamp"]
-        self.state_id = attributes["state_id"]
-
-    @property
-    def dof(self):
-        return sum([x.dof for x in self.value])
-
-    def get_index_by_id(self, state_id):
-        """
-        Get index of a particular state_id in the list of states.
-        """
-        return [x.state_id for x in self.value].index(state_id)
-
-    def get_slices(self) -> List[slice]:
-        """
-        Get slices for each state in the list of states.
-        """
-        slices = []
-        counter = 0
-        for state in self.value:
-            slices.append(slice(counter, counter + state.dof))
-            counter += state.dof
-
-        return slices
-
-    def add_state(self, state: State, stamp: float = None, state_id=None):
-        """Adds a state and it's corresponding slice to the composite state."""
-        self.value.append(state)
-
-    def remove_state_by_id(self, state_id):
-        """Removes a given state by ID."""
-        idx = self.get_index_by_id(state_id)
-        self.value.pop(idx)
-
-    def get_slice_by_id(self, state_id, slices=None):
-        """
-        Get slice of a particular state_id in the list of states.
-        """
-
-        if slices is None:
-            slices = self.get_slices()
-
-        idx = self.get_index_by_id(state_id)
-        return slices[idx]
-
-    def get_matrix_block_by_ids(
-        self, mat: np.ndarray, state_id_1: Any, state_id_2: Any = None
-    ) -> np.ndarray:
-        """Gets the portion of a matrix corresponding to two states.
-
-        This function is useful when extract specific blocks of a covariance
-        matrix, for example.
-
-        Parameters
-        ----------
-        mat : np.ndarray
-            N x N matrix
-        state_id_1 : Any
-            State ID of state 1.
-        state_id_2 : Any, optional
-            State ID of state 2. If None, state_id_2 is set to state_id_1.
-
-        Returns
-        -------
-        np.ndarray
-            Subblock of mat corrsponding to
-            slices of state_id_1 and state_id_2.
-        """
-
-        if state_id_2 is None:
-            state_id_2 = state_id_1
-
-        slice_1 = self.get_slice_by_id(state_id_1)
-        slice_2 = self.get_slice_by_id(state_id_2)
-
-        return mat[slice_1, slice_2]
-
-    def set_matrix_block_by_ids(
-        self,
-        new_mat_block: np.ndarray,
-        mat: np.ndarray,
-        state_id_1: Any,
-        state_id_2: Any = None,
-    ) -> np.ndarray:
-        """Sets the portion of the covariance block corresponding to two states.
-
-        Parameters
-        ----------
-        new_mat_block : np.ndarray
-            A subblock to be entered into mat.
-        mat : np.ndarray
-            Full matrix.
-        state_id_1 : Any
-            State ID of state 1.
-        state_id_2 : Any, optional
-            State ID of state 2. If None, state_id_2 is set to state_id_1.
-
-        Returns
-        -------
-        np.ndarray
-            mat with updated subblock.
-        """
-
-        if state_id_2 is None:
-            state_id_2 = state_id_1
-
-        slice_1 = self.get_slice_by_id(state_id_1)
-        slice_2 = self.get_slice_by_id(state_id_2)
-
-        mat[slice_1, slice_2] = new_mat_block
-        return mat
-
-    def get_value_by_id(self, state_id) -> Any:
-        """
-        Get state value by id.
-        """
-        idx = self.get_index_by_id(state_id)
-        return self.value[idx].value
-
-    def get_state_by_id(self, state_id) -> State:
-        """
-        Get state object by id.
-        """
-        idx = self.get_index_by_id(state_id)
-        return self.value[idx]
-
-    def get_dof_by_id(self, state_id) -> int:
-        """
-        Get degrees of freedom of sub-state by id.
-        """
-        idx = self.get_index_by_id(state_id)
-        return self.value[idx].dof
-
-    def get_stamp_by_id(self, state_id) -> float:
-        """
-        Get timestamp of sub-state by id.
-        """
-        idx = self.get_index_by_id(state_id)
-        return self.value[idx].stamp
-
-    def set_stamp_by_id(self, stamp: float, state_id):
-        """
-        Set the timestamp of a sub-state by id.
-        """
-        idx = self.get_index_by_id(state_id)
-        self.value[idx].stamp = stamp
-
-    def set_state_by_id(self, state: State, state_id):
-        """
-        Set the whole sub-state by id.
-        """
-        idx = self.get_index_by_id(state_id)
-        self.value[idx] = state
-
-    def set_value_by_id(self, value: Any, state_id: Any):
-        """
-        Set the value of a sub-state by id.
-        """
-        idx = self.get_index_by_id(state_id)
-        self.value[idx].value = value
-
-    def set_stamp_for_all(self, stamp: float):
-        """
-        Set the timestamp of all substates.
-        """
-        for state in self.value:
-            state.stamp = stamp
-
-    def to_list(self):
-        """
-        Converts the CompositeState object back into a list of states.
-        """
-        return self.value
-
-    def copy(self) -> "CompositeState":
-        """
-        Returns a new composite state object where the state values have also
-        been copied.
-        """
-        return self.__class__(
-            [state.copy() for state in self.value], self.stamp, self.state_id
-        )
-
-    def plus(self, dx, new_stamp: float = None) -> "CompositeState":
-        """
-        Updates the value of each sub-state given a dx. Interally parses
-        the dx vector.
-        """
-        new = self.copy()
-        for i, state in enumerate(new.value):
-            new.value[i] = state.plus(dx[: state.dof])
-            dx = dx[state.dof :]
-
-        if new_stamp is not None:
-            new.set_stamp_for_all(new_stamp)
-
-        return new
-
-    def minus(self, x: "CompositeState") -> np.ndarray:
-        dx = []
-        for i, v in enumerate(x.value):
-            dx.append(
-                self.value[i].minus(x.value[i]).reshape((self.value[i].dof,))
-            )
-
-        return np.concatenate(dx).reshape((-1, 1))
-
-    def plus_by_id(
-        self, dx, state_id: int, new_stamp: float = None
-    ) -> "CompositeState":
-        """
-        Updates a specific sub-state.
-        """
-        new = self.copy()
-        idx = new.get_index_by_id(state_id)
-        new.value[idx].plus(dx)
-        if new_stamp is not None:
-            new.set_stamp_by_id(new_stamp, state_id)
-
-        return new
-
-    def jacobian_from_blocks(self, block_dict: dict):
-        """
-        Returns the jacobian of the entire composite state given jacobians
-        associated with some of the substates. These are provided as a dictionary
-        with the the keys being the substate IDs.
-        """
-        block: np.ndarray = list(block_dict.values())[0]
-        m = block.shape[0]  # Dimension of "y" value
-        jac = np.zeros((m, self.dof))
-        slices = self.get_slices()
-        for state_id, block in block_dict.items():
-            slc = self.get_slice_by_id(state_id, slices)
-            jac[:, slc] = block
-
-        return jac
-
-    def plus_jacobian(self, dx: np.ndarray) -> np.ndarray:
-        dof = self.dof
-        jac = np.zeros((dof, dof))
-        counter = 0
-        for state in self.value:
-            jac[
-                counter : counter + state.dof,
-                counter : counter + state.dof,
-            ] = state.plus_jacobian(dx[: state.dof])
-            dx = dx[state.dof :]
-            counter += state.dof
-
-        return jac
-
-    def minus_jacobian(self, x: "CompositeState") -> np.ndarray:
-        dof = self.dof
-        jac = np.zeros((dof, dof))
-        counter = 0
-        for i, state in enumerate(self.value):
-            jac[
-                counter : counter + state.dof,
-                counter : counter + state.dof,
-            ] = state.minus_jacobian(x.value[i])
-            counter += state.dof
-
-        return jac
-
-    def __repr__(self):
-        substate_line_list = []
-        for v in self.value:
-            substate_line_list.extend(v.__repr__().split("\n"))
-        substates_str = "\n".join(["    " + s for s in substate_line_list])
-        s = [
-            f"{self.__class__.__name__}(stamp={self.stamp}, state_id={self.state_id}) with substates:",
-            substates_str,
-        ]
-        return "\n".join(s)
 
 
 class VectorInput(Input):
@@ -1000,7 +657,7 @@ class VectorInput(Input):
         state_id: Any = None,
         covariance=None,
     ):
-        """ 
+        """
         Parameters
         ----------
         value : np.ndarray

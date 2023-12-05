@@ -135,9 +135,7 @@ class IMUIncrement(RelativeMotionIncrement):
 
     @property
     def value(self):
-        db = self.new_bias.reshape((-1, 1)) - self.original_bias.reshape(
-            (-1, 1)
-        )
+        db = self.new_bias.reshape((-1, 1)) - self.original_bias.reshape((-1, 1))
         return self.original_value @ SE23.Exp(self.bias_jacobian @ db)
 
     def increment(self, u: IMU, dt: float):
@@ -172,9 +170,7 @@ class IMUIncrement(RelativeMotionIncrement):
             A_full = A_full[0:9, 9:9]
             L_full = L_full[0:9, 0:6]
 
-        self.covariance = (
-            A_full @ self.covariance @ A_full.T + L_full @ Q @ L_full.T
-        )
+        self.covariance = A_full @ self.covariance @ A_full.T + L_full @ Q @ L_full.T
         self.bias_jacobian = A @ self.bias_jacobian - L
         self.symmetrize()
 
@@ -299,9 +295,7 @@ class PreintegratedIMUKinematics(ProcessModel):
         dt = rmi.stamps[1] - rmi.stamps[0]
         DG = G_matrix(self.gravity, dt)
         DU = rmi.value
-        J = SE23.right_jacobian(
-            rmi.bias_jacobian @ (x.bias - rmi.original_bias)
-        )
+        J = SE23.right_jacobian(rmi.bias_jacobian @ (x.bias - rmi.original_bias))
         A = np.identity(15)
         if x.direction == "right":
             A[0:9, 0:9] = adjoint_IE3(inverse_IE3(DU))
@@ -395,9 +389,7 @@ class BodyVelocityIncrement(RelativeMotionIncrement):
         # Increment the covariance
         A = self.group.adjoint(self.group.inverse(U))
         L = dt * self.group.left_jacobian(-unbiased_velocity * dt)
-        self.covariance = (
-            A @ self.covariance @ A.T + L @ self.input_covariance @ L.T
-        )
+        self.covariance = A @ self.covariance @ A.T + L @ self.input_covariance @ L.T
 
         # Increment the bias jacobian
         self.bias_jacobian = A @ self.bias_jacobian + L
@@ -864,9 +856,7 @@ class PreintegratedLinearModel(ProcessModel):
     def __init__(self):
         pass
 
-    def evaluate(
-        self, x: VectorState, rmi: LinearIncrement, dt=None
-    ) -> VectorState:
+    def evaluate(self, x: VectorState, rmi: LinearIncrement, dt=None) -> VectorState:
         x = x.copy()
         A_ij = rmi.value[0]
         Du_ij = rmi.value[1]
@@ -879,16 +869,12 @@ class PreintegratedLinearModel(ProcessModel):
         x_j = A_ij @ x_i + Du_ij
 
         if rmi.original_bias is not None:
-            x_j = np.vstack(
-                (x_j, x.value[-rmi.original_bias.size :].reshape((-1, 1)))
-            )
+            x_j = np.vstack((x_j, x.value[-rmi.original_bias.size :].reshape((-1, 1))))
 
         x.value = x_j.ravel()
         return x
 
-    def jacobian(
-        self, x: VectorState, rmi: LinearIncrement, dt=None
-    ) -> np.ndarray:
+    def jacobian(self, x: VectorState, rmi: LinearIncrement, dt=None) -> np.ndarray:
         if rmi.original_bias is not None:
             A_ij = rmi.value[0]
             B_ij = rmi.bias_jacobian
@@ -902,7 +888,5 @@ class PreintegratedLinearModel(ProcessModel):
 
         return A
 
-    def covariance(
-        self, x: VectorState, rmi: LinearIncrement, dt=None
-    ) -> np.ndarray:
+    def covariance(self, x: VectorState, rmi: LinearIncrement, dt=None) -> np.ndarray:
         return rmi.covariance

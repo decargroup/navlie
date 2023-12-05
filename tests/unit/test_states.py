@@ -64,9 +64,7 @@ def test_minus_jacobian(s: str):
     assert np.allclose(jac, jac_test, atol=1e-5)
 
 
-@pytest.mark.parametrize(
-    "s", ["so2", "so3", "se2", "se3", "se23", "sl3", "mlg"]
-)
+@pytest.mark.parametrize("s", ["so2", "so3", "se2", "se3", "se23", "sl3", "mlg"])
 def test_mlg_dot(s: str):
     x = sample_states[s]
     dx = np.random.randn(x.dof)
