@@ -54,8 +54,9 @@ class VectorState(State):
 
 class MatrixLieGroupState(State):
     """
-    The MatrixLieGroupState class. Although this class can be used directly,
-    it is recommended to use one of the subclasses, such as SE2State or SO3State.
+    The MatrixLieGroupState class. Although this class can technically be used
+    directly, it is recommended to use one of the subclasses instead, such as
+    ``SE2State`` or ``SO3State``.
     """
 
     # TODO. Add identity() and random() functions to this
@@ -210,6 +211,15 @@ class MatrixLieGroupState(State):
 
 
 class SO2State(MatrixLieGroupState):
+    """ 
+    A state object for rotations in 2D. The value of this state is stored as a
+    2x2 numpy array representing a direct element of the SO2 group. I.e.,
+    
+    .. math::
+        \mathbf{C} \in \mathbb{R}^{2 \times 2}, \quad 
+        \mathbf{C}^T \mathbf{C} = \mathbf{I}, \quad \det(\mathbf{C}) = \mathbf{1}
+        
+    """
     group = SO2
 
     def __init__(
@@ -240,6 +250,16 @@ class SO2State(MatrixLieGroupState):
 
 
 class SO3State(MatrixLieGroupState):
+    """ 
+    A state object for rotations in 3D. The value of this state is stored as a
+    3x3 numpy array representing a direct element of the SO3 group. I.e.,
+    
+    .. math::
+    
+        \mathbf{C} \in \mathbb{R}^{3 \times 3}, \quad
+        \mathbf{C}^T \mathbf{C} = \mathbf{I}, \quad \det(\mathbf{C}) = \mathbf{1}
+        
+    """
     group = SO3
 
     def __init__(
@@ -317,6 +337,20 @@ class SO3State(MatrixLieGroupState):
 
 
 class SE2State(MatrixLieGroupState):
+    """ 
+    A state object for 2D rigid body transformations. The value of this state
+    is stored as a 3x3 numpy array representing a direct element of the SE2
+    group. I.e.,
+    
+    .. math::
+
+        \mathbf{T} = \begin{bmatrix}
+            \mathbf{C} & \mathbf{r} \\
+            \mathbf{0} & 1
+        \end{bmatrix}, \quad \mathbf{C} \in SO(2), \quad \mathbf{r} \in \mathbb{R}^2.
+
+
+    """
     group = SE2
 
     def __init__(
@@ -375,6 +409,20 @@ class SE2State(MatrixLieGroupState):
 
 
 class SE3State(MatrixLieGroupState):
+    """
+    A state object for 3D rigid body transformations. The value of this state
+    is stored as a 4x4 numpy array representing a direct element of the SE3
+    group. I.e.,
+
+    .. math::
+    
+            \mathbf{T} = \begin{bmatrix}
+                \mathbf{C} & \mathbf{r} \\
+                \mathbf{0} & 1
+            \end{bmatrix}, \quad \mathbf{C} \in SO(3), \quad \mathbf{r} \in \mathbb{R}^3.
+    
+    
+    """ 
     group = SE3
 
     def __init__(
@@ -490,6 +538,21 @@ class SE3State(MatrixLieGroupState):
 
 
 class SE23State(MatrixLieGroupState):
+    """
+    A state object for 2D rigid body transformations with velocity. The value
+    of this state is stored as a 5x5 numpy array representing a direct element
+    of the SE23 group. I.e.,
+
+    .. math::
+
+        \mathbf{T} = \begin{bmatrix}
+            \mathbf{C} & \mathbf{v} & \mathbf{r} \\
+            \mathbf{0} & 1 & 0 \\
+            \mathbf{0} & 0 & 1
+        \end{bmatrix}, \quad \mathbf{C} \in SO(3), \quad 
+        \mathbf{v}, \mathbf{r} \in \mathbb{R}^3.
+    """
+
     group = SE23
 
     def __init__(
@@ -560,6 +623,16 @@ class SE23State(MatrixLieGroupState):
 
 
 class SL3State(MatrixLieGroupState):
+    """
+    A state object representing the special linear group in 3D. The value of
+    this state is stored as a 3x3 numpy array representing a direct element of
+    the SL3 group. I.e.,
+
+    .. math::
+    
+            \mathbf{C} \in SL(3), \quad \mathbf{C} \in \mathbb{R}^{3 \times 3}, \quad
+            \det(\mathbf{C}) = \mathbf{1}.
+    """ 
     group = SL3
 
     def __init__(
@@ -575,14 +648,11 @@ class SL3State(MatrixLieGroupState):
 class CompositeState(State):
     """
     A "composite" state object intended to hold a list of State objects as a
-    single conceptual "state". The intended use is to hold a list of poses
-    as a single state at a specific time.
-
-    Parameters
-    ----------
-    state_list: List[State]
-        List of State that forms this composite state
-
+    single conceptual "state". The intended use is to hold a list of states
+    as a single state at a specific time, of potentially different types, 
+    and this class will take care of defining the appropriate operations on
+    the composite state such as the ``plus`` and ``minus`` methods, as well 
+    as the ``plus_jacobian`` and ``minus_jacobian`` methods.
 
     Each state in the provided list has an index (the index in the list), as
     well as a state_id, which is found as an attribute in the corresponding State
@@ -595,6 +665,21 @@ class CompositeState(State):
     def __init__(
         self, state_list: List[State], stamp: float = None, state_id=None
     ):
+        """
+        Parameters
+        ----------
+        state_list: List[State]
+            List of State that forms this composite state
+        stamp: float, optional
+            Timestamp of the composite state. This can technically be different
+            from the timestamps of the substates.
+        state_id: Any, optional
+            State ID of the composite state. This can be different from the
+            state IDs of the substates.
+        """
+        if isinstance(state_list, tuple):
+            state_list = list(state_list)
+            
         #:List[State]: The substates are the CompositeState's value.
         self.value = state_list
 
@@ -903,7 +988,7 @@ class CompositeState(State):
 
 class VectorInput(Input):
     """
-    Generic data container for timestamped information.
+    A standard vector-based input, with value represented by a 1D numpy array.
     """
 
     __slots__ = ["value"]
@@ -915,6 +1000,22 @@ class VectorInput(Input):
         state_id: Any = None,
         covariance=None,
     ):
+        """ 
+        Parameters
+        ----------
+        value : np.ndarray
+            Value of of the input.
+        stamp : float, optional
+            timestamp, by default None
+        state_id : Any, optional
+            optional container for identifying information, can be useful to
+            associate an input with a state. This has no functionality unless
+            the user uses it in a process model, or something else. By default
+            None.
+        covariance : np.ndarray, optional
+            covariance matrix describing additive noise on the input, by default
+            None
+        """
         if not isinstance(value, np.ndarray):
             value = np.array(value, dtype=np.float64)
 

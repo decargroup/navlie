@@ -16,7 +16,7 @@ from navlie.lib.models import (
     RangePoseToAnchor,
     RangePoseToPose,
     Gravitometer,
-    GlobalVelocity,
+    AbsoluteVelocity,
 )
 from navlie.types import Measurement, MeasurementModel
 from pymlg import SO3, SE3, SE2, SE3, SE23
@@ -147,7 +147,7 @@ def test_global_velocity_se23(direction):
         state_id=2,
         direction=direction,
     )
-    model = GlobalVelocity(np.identity(3))
+    model = AbsoluteVelocity(np.identity(3))
     _jacobian_test(x, model, atol=1e-5)
 
 
@@ -161,7 +161,7 @@ def test_global_velocity_imu_state(direction):
         state_id=2,
         direction=direction,
     )
-    model = GlobalVelocity(np.identity(3))
+    model = AbsoluteVelocity(np.identity(3))
     _jacobian_test(x, model, atol=1e-5)
 
 

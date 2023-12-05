@@ -71,6 +71,7 @@ class DoubleIntegrator(ProcessModel):
 
     .. math::
         \dot{\mathbf{r}} = \mathbf{v}
+
         \dot{\mathbf{v}} = \mathbf{u}
 
     where :math:`\mathbf{u}` is the input.
@@ -78,7 +79,9 @@ class DoubleIntegrator(ProcessModel):
 
     def __init__(self, Q: np.ndarray):
         """
-        inputs:
+        Parameters
+        ----------
+        Q : np.ndarray
             Q: Discrete time covariance on the input u.
         """
         if Q.shape[0] != Q.shape[1]:
@@ -88,9 +91,6 @@ class DoubleIntegrator(ProcessModel):
         self.dim = Q.shape[0]
 
     def evaluate(self, x: VectorState, u: VectorInput, dt: float) -> np.ndarray:
-        """
-        Evaluate discrete-time process model
-        """
         x_new = x.copy()
         Ad = self.jacobian(None, None, dt)
         Ld = self.input_jacobian(dt)
@@ -101,26 +101,16 @@ class DoubleIntegrator(ProcessModel):
         return x_new
 
     def jacobian(self, x, u, dt) -> np.ndarray:
-        """
-        Discrete-time state Jacobian
-        """
-
         Ad = np.identity(2 * self.dim)
         Ad[0 : self.dim, self.dim :] = dt * np.identity(self.dim)
         return Ad
 
     def covariance(self, x, u, dt) -> np.ndarray:
-        """
-        Discrete-time covariance on process model
-        """
 
         Ld = self.input_jacobian(dt)
         return Ld @ self._Q @ Ld.T
 
     def input_jacobian(self, dt):
-        """
-        Discrete-time input Jacobian
-        """
         Ld = np.zeros((2 * self.dim, self.dim))
         Ld[0 : self.dim, :] = 0.5 * dt**2 * np.identity(self.dim)
         Ld[self.dim :, :] = dt * np.identity(self.dim)
@@ -131,10 +121,16 @@ class DoubleIntegratorWithBias(DoubleIntegrator):
     """
     The double-integrator process model, but with an additional bias on the input.
 
-        x_dot = v
-        v_dot = u - b
-        b_dot = w (noise)
+    .. math::
 
+        \dot{\mathbf{r}} = \mathbf{v}
+
+        \dot{\mathbf{v}} = \mathbf{u} - \mathbf{b}
+
+        \dot{\mathbf{b}} = \mathbf{w}
+
+    where :math:`\mathbf{u}` is the input and :math:`\mathbf{b}` is the bias.
+    The bias is assumed to be a random walk with covariance :math:`\mathbf{Q}`.
     """
 
     def __init__(self, Q: np.ndarray):
@@ -159,9 +155,6 @@ class DoubleIntegratorWithBias(DoubleIntegrator):
     def evaluate(
         self, x: VectorState, u: VectorInput, dt: float
     ) -> VectorState:
-        """
-        Evaluate discrete-time process model
-        """
         x = x.copy()
         u = u.copy()
         Ad = super().jacobian(x, u, dt)
@@ -184,9 +177,6 @@ class DoubleIntegratorWithBias(DoubleIntegrator):
         return x
 
     def jacobian(self, x, u, dt) -> np.ndarray:
-        """
-        Discrete-time state Jacobian
-        """
         Ad = super().jacobian(x, u, dt)
         Ld = super().input_jacobian(dt)
 
@@ -199,9 +189,6 @@ class DoubleIntegratorWithBias(DoubleIntegrator):
         return A
 
     def covariance(self, x, u, dt) -> np.ndarray:
-        """
-        Discrete-time covariance on process model
-        """
 
         L = self.input_jacobian(dt)
         return L @ self._Q @ L.T
@@ -215,9 +202,7 @@ class DoubleIntegratorWithBias(DoubleIntegrator):
 
 
 class OneDimensionalPositionVelocityRange(MeasurementModel):
-    """
-    A 1D range measurement for a state consisting of position and velocity
-    """
+    # A 1D range measurement for a state consisting of position and velocity
 
     # TODO. We should remove this. Double integrator and RangePointToAnchor should
     # satisfy these needs
@@ -243,7 +228,9 @@ class BodyFrameVelocity(ProcessModel):
     .. math::
         \mathbf{T}_k = \mathbf{T}_{k-1} \exp(\Delta t \mathbf{u}_{k-1}^\wedge)
 
-    This is commonly the process model associated with SE(n).
+    This is commonly the process model associated with SE(n). 
+
+    This class is comptabile with ``SO2State, SO3State, SE2State, SE3State, SE23State``.
     """
 
     def __init__(self, Q: np.ndarray):
@@ -277,13 +264,57 @@ class BodyFrameVelocity(ProcessModel):
 
 
 class RelativeBodyFrameVelocity(ProcessModel):
+    """
+    The relative body-frame velocity process model is of the form 
+
+    .. math::
+        \mathbf{T}_k = \exp(\Delta t \mathbf{u}_{1,k-1}^\wedge)
+        \mathbf{T}_{k-1} \exp(\Delta t \mathbf{u}_{2,k-1}^\wedge)
+
+    where :math:`\mathbf{u}_{1,k-1}` and :math:`\mathbf{u}_{2,k-1}` are inputs
+    resolved in the world frame and body frame, respectively.
+
+    To be honest, I'm not sure if this is a useful process model for many people.
+    We were using this for a while to model the relative motion of two robots
+    given the body-frame-velocity of each robot.
+
+    This class is comptabile with ``SO2State, SO3State, SE2State, SE3State, SE23State``.
+
+    """
+
     def __init__(self, Q1: np.ndarray, Q2: np.ndarray):
+        """ 
+        Parameters
+        ----------
+        Q1 : np.ndarray
+            Covariance of first input.
+        Q2 : np.ndarray
+            Covariance of second input.
+        """
         self._Q1 = Q1
         self._Q2 = Q2
 
     def evaluate(
         self, x: MatrixLieGroupState, u: VectorInput, dt: float
     ) -> MatrixLieGroupState:
+        """
+        Evaluate discrete-time process model.
+
+        Parameters
+        ----------
+        x : MatrixLieGroupState
+            Any valid matrix Lie group state.
+        u : VectorInput
+            Stacked input :math:`[\mathbf{u}_1, \mathbf{u}_2]`.
+        dt : float
+            Time step.
+
+        Returns
+        -------
+        MatrixLieGroupState
+            New state.
+
+        """
         x = x.copy()
         u = u.value.reshape((2, round(u.value.size / 2)))
         x.value = x.group.Exp(-u[0] * dt) @ x.value @ x.group.Exp(u[1] * dt)
@@ -321,7 +352,26 @@ class RelativeBodyFrameVelocity(ProcessModel):
 
 
 class LinearMeasurement(MeasurementModel):
+    """
+    A generic linear measurement model of the form
+
+    .. math::
+        \mathbf{y} = \mathbf{C} \mathbf{x} + \mathbf{v}
+
+    where :math:`\mathbf{C}` is a matrix and :math:`\mathbf{v}` is a zero-mean
+    Gaussian noise vector with covariance :math:`\mathbf{R}`.
+
+    This class is comptabile with ``VectorState``.
+    """
     def __init__(self, C: np.ndarray, R: np.ndarray):
+        """
+        Parameters
+        ----------
+        C : np.ndarray
+            Measurement matrix.
+        R : np.ndarray
+            Measurement covariance.
+        """
         self._C = C
         self._R = R
 
@@ -336,6 +386,9 @@ class LinearMeasurement(MeasurementModel):
 
 
 class CompositeInput(Input):
+    """
+    <under development>
+    """
     # TODO: add tests to new methods
     def __init__(self, input_list: List[Input]) -> None:
         self.input_list = input_list
@@ -430,6 +483,7 @@ class CompositeInput(Input):
 
 class CompositeProcessModel(ProcessModel):
     """
+    <under development>
     Should this be called a StackedProcessModel?
     # TODO: Add documentation and tests
     """
@@ -561,10 +615,26 @@ class CompositeMeasurement(Measurement):
 class RangePointToAnchor(MeasurementModel):
     """
     Range measurement from a point state to an anchor (which is also another
-    point).
+    point). I.e., the state is a vector with the first ``dim`` elements being
+    the position of the point. This model is of the form 
+
+    .. math::
+        y = ||\mathbf{r}_a - \mathbf{r}||
+
+    where :math:`\mathbf{r}_a` is the anchor position and :math:`\mathbf{r}`
+    is the point position.
     """
 
     def __init__(self, anchor_position: List[float], R: float):
+        """ 
+        Parameters
+        ----------
+        
+        anchor_position : np.ndarray or List[float]
+            Position of anchor.
+        R : float
+            Variance of measurement noise.
+        """
         self._r_cw_a = np.array(anchor_position).flatten()
         self._R = np.array(R)
         self.dim = self._r_cw_a.size
@@ -590,7 +660,17 @@ class RangePointToAnchor(MeasurementModel):
 class PointRelativePosition(MeasurementModel):
     """
     Measurement model describing the position of a known landmark relative
-    to the robot, resolved in the body frame.
+    to the robot, resolved in the body frame. That is, the state must describe
+    the pose of the robot, and the measurement is the position of the landmark.
+
+    .. math::
+        \mathbf{y} = \mathbf{C}_{ab}^T (\mathbf{r}_\ell - \mathbf{r})
+
+    where :math:`\mathbf{C}` is the attitude of the robot, :math:`\mathbf{r}_\ell`
+    is the position of the landmark, and :math:`\mathbf{r}` is the position of
+    the robot.
+
+    This class is comptabile with ``SE2State, SE3State, SE23State, IMUState``.
     """
 
     def __init__(
@@ -598,11 +678,18 @@ class PointRelativePosition(MeasurementModel):
         landmark_position: np.ndarray,
         R: np.ndarray,
     ):
+        """
+        Parameters
+        ----------
+        landmark_position : np.ndarray
+            Position of landmark in body frame.
+        R : np.ndarray
+            Measurement covariance.
+        """
         self._landmark_position = np.array(landmark_position).ravel()
         self._R = R
 
     def evaluate(self, x: MatrixLieGroupState) -> np.ndarray:
-        """Evaluates the measurement model of a landmark from a given pose."""
         r_zw_a = x.position.reshape((-1, 1))
         C_ab = x.attitude
         r_pw_a = self._landmark_position.reshape((-1, 1))
@@ -692,7 +779,17 @@ class InvariantPointRelativePosition(MeasurementModel):
 
 class RangePoseToAnchor(MeasurementModel):
     """
-    Range measurement from a pose state to an anchor.
+    Range measurement from a pose state to an anchor. I.e., the state is a
+    matrix Lie group state, and the measurement is the range from the pose
+    to the anchor. This model is of the form
+
+    .. math::
+        y = ||\mathbf{r}_a - \mathbf{r}||
+
+    where :math:`\mathbf{r}_a` is the anchor position and :math:`\mathbf{r}`
+    is the position of the robot stored in the pose state.
+
+    This class is comptabile with ``SE2State, SE3State, SE23State, IMUState``.
     """
 
     def __init__(
@@ -744,7 +841,8 @@ class RangePoseToAnchor(MeasurementModel):
 
 class RangePoseToPose(MeasurementModel):
     """
-    Range model given two absolute poses of rigid bodies, each containing a tag.
+    Range model given two absolute poses of rigid bodies, each containing a
+    ranging tag.
     """
 
     # TODO. tag_body_positions should be optional. argh but this will be
@@ -860,9 +958,16 @@ class RangeRelativePose(CompositeMeasurementModel):
         return f"RangeRelativePose (of substate {self.state_id})"
 
 
-class GlobalPosition(MeasurementModel):
+class AbsolutePosition(MeasurementModel):
     """
-    Global, world-frame, or "absolute" position measurement.
+    World-frame, or "absolute" position measurement. This model is of the form
+
+    .. math::
+        \mathbf{y} = \mathbf{r}
+
+    where :math:`\mathbf{r}` is the position of the robot.
+
+    Compatible with ``SE2State, SE3State, SE23State, IMUState``.
     """
 
     def __init__(self, R: np.ndarray):
@@ -892,10 +997,20 @@ class GlobalPosition(MeasurementModel):
         else:
             return self.R
 
-
-class GlobalVelocity(MeasurementModel):
+class GlobalPosition(AbsolutePosition):
+    """ 
+    This class is deprecated. Use ``AbsolutePosition`` instead.
     """
-    Global, world-frame, or "absolute" position measurement.
+    pass # alias
+
+class AbsoluteVelocity(MeasurementModel):
+    """
+    World-frame, or "absolute" velocity measurement. This model is of the form
+
+    .. math::
+        \mathbf{y} = \mathbf{v}
+
+    where :math:`\mathbf{v}` is the velocity of the robot.
 
     Compatible with SE23State, IMUState
     """
@@ -930,7 +1045,15 @@ class GlobalVelocity(MeasurementModel):
 
 class Altitude(MeasurementModel):
     """
-    A model that returns that z component of a position vector.
+    A model that returns the z component of a position vector. This model is of
+    the form
+
+    .. math::
+        \mathbf{y} = [0, 0, 1] \mathbf{r}
+
+    where :math:`\mathbf{r}` is the position of the robot.
+
+    Compatible with ``SE3State, SE23State, IMUState``.
     """
 
     def __init__(self, R: np.ndarray, minimum=None, bias=0.0):
@@ -980,6 +1103,8 @@ class Gravitometer(MeasurementModel):
         \mathbf{y} = \mathbf{C}_{ab}^T \mathbf{g}_a + \mathbf{v}
 
     where :math:`\mathbf{g}_a` is the magnetic field vector in a world frame `a`.
+
+    Compatible with ``SO3State, SE3State, SE23State, IMUState``.
     """
 
     def __init__(self, R: np.ndarray, gravity_vector: List[float] = None):
@@ -1026,6 +1151,8 @@ class Magnetometer(MeasurementModel):
         \mathbf{y} = \mathbf{C}_{ab}^T \mathbf{m}_a + \mathbf{v}
 
     where :math:`\mathbf{m}_a` is the magnetic field vector in a world frame `a`.
+
+    Compatible with ``SO3State, SE3State, SE23State, IMUState``.
     """
 
     def __init__(self, R: np.ndarray, magnetic_vector: List[float] = None):
@@ -1036,10 +1163,10 @@ class Magnetometer(MeasurementModel):
         R : np.ndarray
             Covariance associated with :math:`\mathbf{v}`
         magnetic_vector : list[float] or numpy.ndarray, optional
-            local magnetic field vector, by default [1, 0, 0]
+            local magnetic field vector, by default [0, 1, 0]
         """
         if magnetic_vector is None:
-            magnetic_vector = [1, 0, 0]
+            magnetic_vector = [0, 1, 0]
 
         self.R = R
         self._m_a = np.array(magnetic_vector).reshape((-1, 1))
