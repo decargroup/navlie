@@ -618,13 +618,32 @@ class RangePoseToPose(MeasurementModel):
     """
     Range model given two absolute poses of rigid bodies, each containing a
     ranging tag.
-    """
 
-    # TODO. tag_body_positions should be optional. argh but this will be
-    # a breaking change since the argument order needs to be different.
+    Compatible with ``SE2State, SE3State, SE23State, IMUState``.
+    """
     def __init__(
         self, tag_body_position1, tag_body_position2, state_id1, state_id2, R
     ):
+        """ 
+        Parameters
+        ----------
+        tag_body_position1 : np.ndarray
+            Position of tag in body frame of Robot 1.
+        tag_body_position2 : np.ndarray
+            Position of tag in body frame of Robot 2. 
+        state_id1 : Any
+            State ID of Robot 1.
+        state_id2 : Any
+            State ID of Robot 2.
+        R : float or np.ndarray with size 1
+            Covariance associated with range measurement error.
+        """
+        # TODO. Make tag_body_position1 and tag_body_position2 optional, with a
+        # default value of either [0,0] or [0,0,0] (depending on the dimension
+        # of the passed state). Unfortunately, changing argument order is a
+        # breaking change.
+
+
         self.tag_body_position1 = np.array(tag_body_position1).flatten()
         self.tag_body_position2 = np.array(tag_body_position2).flatten()
         self.state_id1 = state_id1

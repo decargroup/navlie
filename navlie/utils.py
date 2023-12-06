@@ -165,7 +165,6 @@ class GaussianResultList:
         self.value_true = np.array([r.state_true.value for r in result_list])
 
     def __getitem__(self, key):
-        # TODO need more tests for all cases!
         if isinstance(key, tuple):
             if not len(key) == 2:
                 raise IndexError("Only two dimensional indexing is supported")
