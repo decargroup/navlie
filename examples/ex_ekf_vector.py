@@ -93,7 +93,9 @@ if __name__ == "__main__":
     sns.set_style("whitegrid")
     fig, ax = plt.subplots(1, 1)
     ax.plot(results.value[:, 0], results.value[:, 1], label="Estimate")
-    ax.plot(results.value_true[:, 0], results.value_true[:, 1], label="Ground truth")
+    ax.plot(
+        results.value_true[:, 0], results.value_true[:, 1], label="Ground truth"
+    )
     ax.set_title("Trajectory")
     ax.set_xlabel("x (m)")
     ax.set_ylabel("y (m)")

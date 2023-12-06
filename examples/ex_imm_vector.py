@@ -58,9 +58,9 @@ def main():
     # Set up probability transition matrix
     off_diag_p = 0.02
     prob_trans_matrix = np.ones((n_models, n_models)) * off_diag_p
-    prob_trans_matrix = prob_trans_matrix + (1 - off_diag_p * (n_models)) * np.diag(
-        np.ones(n_models)
-    )
+    prob_trans_matrix = prob_trans_matrix + (
+        1 - off_diag_p * (n_models)
+    ) * np.diag(np.ones(n_models))
     imm = InteractingModelFilter(kf_list, prob_trans_matrix)
 
     # Generate some data with varying Q matrix

@@ -31,7 +31,9 @@ def main():
     # %% #######################################################################
     # Run Filter
 
-    ukf = SigmaPointKalmanFilter(process_model, method="unscented", iterate_mean=False)
+    ukf = SigmaPointKalmanFilter(
+        process_model, method="unscented", iterate_mean=False
+    )
     # ukf = UnscentedKalmanFilter(process_model, iterate_mean=False) # Equivalent syntax!
 
     start_time = time.time()

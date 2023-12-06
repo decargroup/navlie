@@ -43,7 +43,9 @@ if __name__ == "__main__":
 
     fig = plt.figure()
     ax = plt.axes(projection="3d")
-    nav.plot_poses(results.state, ax, line_color="tab:blue", step=20, label="Estimate")
+    nav.plot_poses(
+        results.state, ax, line_color="tab:blue", step=20, label="Estimate"
+    )
     nav.plot_poses(
         results.state_true,
         ax,

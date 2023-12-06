@@ -79,7 +79,9 @@ def main():
         """
 
         np.random.seed(trial_number)
-        state_true, input_data, meas_data = dg.generate(x0_true, 0, t_max, noise=True)
+        state_true, input_data, meas_data = dg.generate(
+            x0_true, 0, t_max, noise=True
+        )
 
         x0_check = x0_true.plus(randvec(P0))
 

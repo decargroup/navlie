@@ -188,19 +188,25 @@ class MatrixLieGroupState(State):
     @property
     def attitude(self) -> np.ndarray:
         raise NotImplementedError(
-            "{0} does not have attitude property".format(self.__class__.__name__)
+            "{0} does not have attitude property".format(
+                self.__class__.__name__
+            )
         )
 
     @property
     def position(self) -> np.ndarray:
         raise NotImplementedError(
-            "{0} does not have position property".format(self.__class__.__name__)
+            "{0} does not have position property".format(
+                self.__class__.__name__
+            )
         )
 
     @property
     def velocity(self) -> np.ndarray:
         raise NotImplementedError(
-            "{0} does not have velocity property".format(self.__class__.__name__)
+            "{0} does not have velocity property".format(
+                self.__class__.__name__
+            )
         )
 
     def jacobian_from_blocks(self, **kwargs) -> np.ndarray:
@@ -387,7 +393,9 @@ class SE2State(MatrixLieGroupState):
         self.value = T
 
     @staticmethod
-    def jacobian_from_blocks(attitude: np.ndarray = None, position: np.ndarray = None):
+    def jacobian_from_blocks(
+        attitude: np.ndarray = None, position: np.ndarray = None
+    ):
         for jac in [attitude, position]:
             if jac is not None:
                 dim = jac.shape[0]
@@ -450,7 +458,9 @@ class SE3State(MatrixLieGroupState):
         self.value[0:3, 3] = r
 
     @staticmethod
-    def jacobian_from_blocks(attitude: np.ndarray = None, position: np.ndarray = None):
+    def jacobian_from_blocks(
+        attitude: np.ndarray = None, position: np.ndarray = None
+    ):
         for jac in [attitude, position]:
             if jac is not None:
                 dim = jac.shape[0]

@@ -39,13 +39,20 @@ def banana_plot(ax=None):
 
         # random greyscale color
         color = np.random.uniform(0.3, 0.9)
-        ax.plot(traj_pos[:, 0], traj_pos[:, 1], color=(color, color, color), zorder=1)
+        ax.plot(
+            traj_pos[:, 0],
+            traj_pos[:, 1],
+            color=(color, color, color),
+            zorder=1,
+        )
 
         # save the final state
         final_states.append(x_traj[-1])
 
     final_positions = np.array([x.position for x in final_states])
-    ax.scatter(final_positions[:, 0], final_positions[:, 1], color="C0", zorder=2)
+    ax.scatter(
+        final_positions[:, 0], final_positions[:, 1], color="C0", zorder=2
+    )
 
     # Propagate the mean with EKF
     kf = nav.ExtendedKalmanFilter(process_model)
@@ -150,14 +157,20 @@ if __name__ == "__main__":
 
     # Set spacing to the above values
     fig.subplots_adjust(
-        top=0.975, bottom=0.097, left=0.025, right=0.992, hspace=0.2, wspace=0.117
+        top=0.975,
+        bottom=0.097,
+        left=0.025,
+        right=0.992,
+        hspace=0.2,
+        wspace=0.117,
     )
 
     # Save the figure with transparent background, next to this file
     import os
 
     fig.savefig(
-        os.path.join(os.path.dirname(__file__), "fun_figs.png"), transparent=True
+        os.path.join(os.path.dirname(__file__), "fun_figs.png"),
+        transparent=True,
     )
 
     plt.show()

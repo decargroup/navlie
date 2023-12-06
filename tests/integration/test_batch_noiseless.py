@@ -110,7 +110,9 @@ def test_noiseless_batch(
 
     # Run batch
     estimator = BatchEstimator(max_iters=20)
-    estimate_list = estimator.solve(x0, P0, input_list, meas_list, process_model)
+    estimate_list = estimator.solve(
+        x0, P0, input_list, meas_list, process_model
+    )
     results = GaussianResultList(
         [
             GaussianResult(estimate_list[i], state_true[i])

@@ -279,7 +279,9 @@ def generate_measurement(
         if noise:
             y = y.reshape((-1, 1)) + randvec(R)
 
-        meas_list.append(Measurement(y.reshape(og_shape), x.stamp, model, state_id))
+        meas_list.append(
+            Measurement(y.reshape(og_shape), x.stamp, model, state_id)
+        )
 
     if not received_list:
         meas_list = meas_list[0]

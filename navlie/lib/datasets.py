@@ -143,7 +143,9 @@ class SimulatedInertialGPSDataset(nav.Dataset):
             Q_c = np.eye(12)
             Q_c[0:3, 0:3] *= 0.01**2  # Gyro continuous-time covariance
             Q_c[3:6, 3:6] *= 0.01**2  # Accel continuous-time covariance
-            Q_c[6:9, 6:9] *= 0.0001**2  # Gyro random-walk continuous-time covariance
+            Q_c[6:9, 6:9] *= (
+                0.0001**2
+            )  # Gyro random-walk continuous-time covariance
             Q_c[9:12, 9:12] *= (
                 0.0001**2
             )  # Accel random-walk continuous-time covariance

@@ -45,7 +45,9 @@ def main():
     # Run the regular filter
     ekf = nav.ExtendedKalmanFilter(process_model=process_model)
     estimate_list = nav.run_filter(ekf, x0, P0, input_list, meas_list)
-    results_ekf = nav.GaussianResultList.from_estimates(estimate_list, state_true)
+    results_ekf = nav.GaussianResultList.from_estimates(
+        estimate_list, state_true
+    )
 
     # ##########################################################################
     # Run the invariant filter
@@ -57,7 +59,9 @@ def main():
     ekf = nav.ExtendedKalmanFilter(process_model=process_model)
     estimate_list = nav.run_filter(ekf, x0, P0, input_list, invariants)
 
-    results_invariant = nav.GaussianResultList.from_estimates(estimate_list, state_true)
+    results_invariant = nav.GaussianResultList.from_estimates(
+        estimate_list, state_true
+    )
     return results_ekf, results_invariant
 
 

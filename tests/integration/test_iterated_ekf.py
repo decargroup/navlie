@@ -31,7 +31,9 @@ test1_kwargs = {
     ),
     "input_freq": 50,
     "input_covariance": Q,
-    "measurement_models": [GlobalPosition(np.diag([0.1**2, 0.1**2, 0.1**2]))],
+    "measurement_models": [
+        GlobalPosition(np.diag([0.1**2, 0.1**2, 0.1**2]))
+    ],
     "measurement_freq": 10,
     "filter": IteratedKalmanFilter,
 }
@@ -46,7 +48,9 @@ test2_kwargs = {
     ),
     "input_freq": 50,
     "input_covariance": Q,
-    "measurement_models": [GlobalPosition(np.diag([0.1**2, 0.1**2, 0.1**2]))],
+    "measurement_models": [
+        GlobalPosition(np.diag([0.1**2, 0.1**2, 0.1**2]))
+    ],
     "measurement_freq": 10,
     "filter": IteratedKalmanFilter,
 }
@@ -61,7 +65,9 @@ test3_kwargs = {
     ),
     "input_freq": 50,
     "input_covariance": Q,
-    "measurement_models": [GlobalPosition(np.diag([0.1**2, 0.1**2, 0.1**2]))],
+    "measurement_models": [
+        GlobalPosition(np.diag([0.1**2, 0.1**2, 0.1**2]))
+    ],
     "measurement_freq": 10,
     "filter": ExtendedKalmanFilter,
 }

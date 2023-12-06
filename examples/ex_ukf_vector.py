@@ -56,7 +56,9 @@ def main():
     if noise_active:
         x0 = x0.plus(randvec(P0))
 
-    ukf = SigmaPointKalmanFilter(process_model, method="cubature", iterate_mean=False)
+    ukf = SigmaPointKalmanFilter(
+        process_model, method="cubature", iterate_mean=False
+    )
     # ukf = UnscentedKalmanFilter(process_model, iterate_mean=False) # Equivalent syntax!
 
     start_time = time.time()
@@ -73,7 +75,9 @@ if __name__ == "__main__":
 
     fig, ax = plt.subplots(1, 1)
     ax.plot(results.value[:, 0], results.value[:, 1], label="Estimate")
-    ax.plot(results.value_true[:, 0], results.value_true[:, 1], label="Ground truth")
+    ax.plot(
+        results.value_true[:, 0], results.value_true[:, 1], label="Ground truth"
+    )
     ax.set_title("Trajectory")
     ax.set_xlabel("x (m)")
     ax.set_ylabel("y (m)")

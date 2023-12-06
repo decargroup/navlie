@@ -312,7 +312,9 @@ class InteractingModelFilter:
         mu_mix = np.zeros((n_modes, n_modes))
         for i in range(n_modes):
             for j in range(n_modes):
-                mu_mix[i, j] = 1.0 / c[j] * self.transition_matrix[i, j] * mu_models[i]
+                mu_mix[i, j] = (
+                    1.0 / c[j] * self.transition_matrix[i, j] * mu_models[i]
+                )
         x_mix = []
 
         for j in range(n_modes):
@@ -380,17 +382,23 @@ class InteractingModelFilter:
         c_bar = np.zeros(n_modes)
         for i in range(n_modes):
             for j in range(n_modes):
-                c_bar[j] = c_bar[j] + self.transition_matrix[i, j] * mu_km_models[i]
+                c_bar[j] = (
+                    c_bar[j] + self.transition_matrix[i, j] * mu_km_models[i]
+                )
 
         # Correct and update model probabilities
         x_hat = []
         for lv1, kf in enumerate(self.kf_list):
-            x, details_dict = kf.correct(x_models_check[lv1], y, u, output_details=True)
+            x, details_dict = kf.correct(
+                x_models_check[lv1], y, u, output_details=True
+            )
             x_hat.append(x)
             z = details_dict["z"]
             S = details_dict["S"]
             z = z.ravel()
-            model_likelihood = multivariate_normal.pdf(z, mean=np.zeros(z.shape), cov=S)
+            model_likelihood = multivariate_normal.pdf(
+                z, mean=np.zeros(z.shape), cov=S
+            )
             mu_k[lv1] = model_likelihood * c_bar[lv1]
 
         # If all model likelihoods are zero to machine tolerance, np.sum(mu_k)=0 and it fails
@@ -465,7 +473,9 @@ def run_imm_filter(
         u = input_data[k]
         # Fuse any measurements that have occurred.
         if len(meas_data) > 0:
-            while y.stamp < input_data[k + 1].stamp and meas_idx < len(meas_data):
+            while y.stamp < input_data[k + 1].stamp and meas_idx < len(
+                meas_data
+            ):
                 x = filter.interaction(x)
                 x = filter.correct(x, y, u)
                 meas_idx += 1

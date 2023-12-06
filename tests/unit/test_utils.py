@@ -72,7 +72,9 @@ def test_gaussian_result_list_slicing_equivalency():
 
     results[0:10]  # returns the first 10 time steps
     results[:, 0]  # returns the first degree of freedom
-    results[0:10, 0]  # returns the first degree of freedom for the first 10 time steps
+    results[
+        0:10, 0
+    ]  # returns the first degree of freedom for the first 10 time steps
     results[
         0:10, [0, 1]
     ]  # returns the first two degrees of freedom for the first 10 time steps

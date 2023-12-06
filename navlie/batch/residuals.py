@@ -160,7 +160,9 @@ class ProcessResidual(Residual):
         if compute_jacobians:
             jac_list = [None] * len(states)
             if compute_jacobians[0]:
-                jac_list[0] = -L.T @ self._process_model.jacobian(x_km1, self._u, dt)
+                jac_list[0] = -L.T @ self._process_model.jacobian(
+                    x_km1, self._u, dt
+                )
             if compute_jacobians[1]:
                 jac_list[1] = L.T @ x_k.minus_jacobian(x_k_hat)
 

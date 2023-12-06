@@ -154,7 +154,9 @@ class DoubleIntegratorWithBias(DoubleIntegrator):
         self._Q = Q
         self.dim = int(Q.shape[0] / 2)
 
-    def evaluate(self, x: VectorState, u: VectorInput, dt: float) -> VectorState:
+    def evaluate(
+        self, x: VectorState, u: VectorInput, dt: float
+    ) -> VectorState:
         x = x.copy()
         u = u.copy()
         Ad = super().jacobian(x, u, dt)
@@ -242,7 +244,9 @@ class BodyFrameVelocity(ProcessModel):
         x.value = x.value @ x.group.Exp(u.value * dt)
         return x
 
-    def jacobian(self, x: MatrixLieGroupState, u: VectorInput, dt: float) -> np.ndarray:
+    def jacobian(
+        self, x: MatrixLieGroupState, u: VectorInput, dt: float
+    ) -> np.ndarray:
         if x.direction == "right":
             return x.group.adjoint(x.group.Exp(-u.value * dt))
         elif x.direction == "left":
@@ -317,12 +321,16 @@ class RelativeBodyFrameVelocity(ProcessModel):
         x.value = x.group.Exp(-u[0] * dt) @ x.value @ x.group.Exp(u[1] * dt)
         return x
 
-    def jacobian(self, x: MatrixLieGroupState, u: VectorInput, dt: float) -> np.ndarray:
+    def jacobian(
+        self, x: MatrixLieGroupState, u: VectorInput, dt: float
+    ) -> np.ndarray:
         u = u.value.reshape((2, round(u.value.size / 2)))
         if x.direction == "right":
             return x.group.adjoint(x.group.Exp(-u[1] * dt))
         else:
-            raise NotImplementedError("TODO: left jacobian not yet implemented.")
+            raise NotImplementedError(
+                "TODO: left jacobian not yet implemented."
+            )
 
     def covariance(
         self, x: MatrixLieGroupState, u: VectorInput, dt: float
@@ -339,7 +347,9 @@ class RelativeBodyFrameVelocity(ProcessModel):
             L2 = dt * x.group.left_jacobian(-dt * u2)
             return L1 @ self._Q1 @ L1.T + L2 @ self._Q2 @ L2.T
         else:
-            raise NotImplementedError("TODO: left covariance not yet implemented.")
+            raise NotImplementedError(
+                "TODO: left covariance not yet implemented."
+            )
 
 
 class LinearMeasurement(MeasurementModel):
@@ -612,7 +622,9 @@ class RangePoseToPose(MeasurementModel):
 
     # TODO. tag_body_positions should be optional. argh but this will be
     # a breaking change since the argument order needs to be different.
-    def __init__(self, tag_body_position1, tag_body_position2, state_id1, state_id2, R):
+    def __init__(
+        self, tag_body_position1, tag_body_position2, state_id1, state_id2, R
+    ):
         self.tag_body_position1 = np.array(tag_body_position1).flatten()
         self.tag_body_position2 = np.array(tag_body_position2).flatten()
         self.state_id1 = state_id1
@@ -628,7 +640,9 @@ class RangePoseToPose(MeasurementModel):
         C_a2 = x2.attitude
         r_t1_1 = self.tag_body_position1.reshape((-1, 1))
         r_t2_2 = self.tag_body_position2.reshape((-1, 1))
-        r_t1t2_a: np.ndarray = (C_a1 @ r_t1_1 + r_1w_a) - (C_a2 @ r_t2_2 + r_2w_a)
+        r_t1t2_a: np.ndarray = (C_a1 @ r_t1_1 + r_1w_a) - (
+            C_a2 @ r_t2_2 + r_2w_a
+        )
         return np.array(np.linalg.norm(r_t1t2_a.flatten()))
 
     def jacobian(self, x: CompositeState) -> np.ndarray:
@@ -640,16 +654,18 @@ class RangePoseToPose(MeasurementModel):
         C_a2 = x2.attitude
         r_t1_1 = self.tag_body_position1.reshape((-1, 1))
         r_t2_2 = self.tag_body_position2.reshape((-1, 1))
-        r_t1t2_a: np.ndarray = (C_a1 @ r_t1_1 + r_1w_a) - (C_a2 @ r_t2_2 + r_2w_a)
+        r_t1t2_a: np.ndarray = (C_a1 @ r_t1_1 + r_1w_a) - (
+            C_a2 @ r_t2_2 + r_2w_a
+        )
 
         if C_a1.shape == (2, 2):
             att_group = SO2
         elif C_a1.shape == (3, 3):
             att_group = SO3
 
-        rho: np.ndarray = (r_t1t2_a / np.linalg.norm(r_t1t2_a.flatten())).reshape(
-            (-1, 1)
-        )
+        rho: np.ndarray = (
+            r_t1t2_a / np.linalg.norm(r_t1t2_a.flatten())
+        ).reshape((-1, 1))
 
         if x1.direction == "right":
             jac1 = x1.jacobian_from_blocks(
@@ -673,7 +689,9 @@ class RangePoseToPose(MeasurementModel):
                 position=-rho.T @ np.identity(r_t2_2.size),
             )
 
-        return x.jacobian_from_blocks({self.state_id1: jac1, self.state_id2: jac2})
+        return x.jacobian_from_blocks(
+            {self.state_id1: jac1, self.state_id2: jac2}
+        )
 
     def covariance(self, x: CompositeState) -> np.ndarray:
         return self._R
@@ -841,7 +859,9 @@ class Altitude(MeasurementModel):
 
     def jacobian(self, x: MatrixLieGroupState):
         if x.direction == "right":
-            return x.jacobian_from_blocks(position=x.attitude[2, :].reshape((1, -1)))
+            return x.jacobian_from_blocks(
+                position=x.attitude[2, :].reshape((1, -1))
+            )
         elif x.direction == "left":
             return x.jacobian_from_blocks(
                 attitude=SO3.odot(x.position)[2, :].reshape((1, -1)),
@@ -885,9 +905,13 @@ class Gravitometer(MeasurementModel):
 
     def jacobian(self, x: MatrixLieGroupState):
         if x.direction == "right":
-            return x.jacobian_from_blocks(attitude=-SO3.odot(x.attitude.T @ self._g_a))
+            return x.jacobian_from_blocks(
+                attitude=-SO3.odot(x.attitude.T @ self._g_a)
+            )
         elif x.direction == "left":
-            return x.jacobian_from_blocks(attitude=x.attitude.T @ -SO3.odot(self._g_a))
+            return x.jacobian_from_blocks(
+                attitude=x.attitude.T @ -SO3.odot(self._g_a)
+            )
 
     def covariance(self, x: MatrixLieGroupState) -> np.ndarray:
         if np.isscalar(self.R):
@@ -930,9 +954,13 @@ class Magnetometer(MeasurementModel):
 
     def jacobian(self, x: MatrixLieGroupState):
         if x.direction == "right":
-            return x.jacobian_from_blocks(attitude=-SO3.odot(x.attitude.T @ self._m_a))
+            return x.jacobian_from_blocks(
+                attitude=-SO3.odot(x.attitude.T @ self._m_a)
+            )
         elif x.direction == "left":
-            return x.jacobian_from_blocks(attitude=-x.attitude.T @ SO3.odot(self._m_a))
+            return x.jacobian_from_blocks(
+                attitude=-x.attitude.T @ SO3.odot(self._m_a)
+            )
 
     def covariance(self, x: MatrixLieGroupState) -> np.ndarray:
         if np.isscalar(self.R):
@@ -942,7 +970,9 @@ class Magnetometer(MeasurementModel):
 
 
 class _InvariantInnovation(MeasurementModel):
-    def __init__(self, y: np.ndarray, model: MeasurementModel, direction="right"):
+    def __init__(
+        self, y: np.ndarray, model: MeasurementModel, direction="right"
+    ):
         self.measurement_model = model
         self.y = y.ravel()
         self.direction = direction
@@ -993,7 +1023,9 @@ class _InvariantInnovation(MeasurementModel):
             elif x.direction == "right":
                 direction = "left"
         else:
-            raise ValueError("Invalid direction. Must be 'left', 'right' or 'auto'")
+            raise ValueError(
+                "Invalid direction. Must be 'left', 'right' or 'auto'"
+            )
         return direction
 
 

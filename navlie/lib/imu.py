@@ -52,7 +52,9 @@ class IMU(Input):
         """
         super().__init__(dof=12, stamp=stamp, covariance=covariance)
         self.gyro = np.array(gyro).ravel()  #:np.ndarray: Gyro reading
-        self.accel = np.array(accel).ravel()  #:np.ndarray: Accelerometer reading
+        self.accel = np.array(
+            accel
+        ).ravel()  #:np.ndarray: Accelerometer reading
 
         if bias_accel_walk is None:
             bias_accel_walk = np.zeros((3, 1))

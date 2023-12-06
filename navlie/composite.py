@@ -21,7 +21,9 @@ class CompositeState(State):
     and by ID.
     """
 
-    def __init__(self, state_list: List[State], stamp: float = None, state_id=None):
+    def __init__(
+        self, state_list: List[State], stamp: float = None, state_id=None
+    ):
         """
         Parameters
         ----------
@@ -268,7 +270,9 @@ class CompositeState(State):
     def minus(self, x: "CompositeState") -> np.ndarray:
         dx = []
         for i, v in enumerate(x.value):
-            dx.append(self.value[i].minus(x.value[i]).reshape((self.value[i].dof,)))
+            dx.append(
+                self.value[i].minus(x.value[i]).reshape((self.value[i].dof,))
+            )
 
         return np.concatenate(dx).reshape((-1, 1))
 
@@ -564,4 +568,6 @@ class CompositeMeasurement(Measurement):
             as per the CompositeMeasurementModel.
         """
         model = CompositeMeasurementModel(y.model, state_id)
-        super().__init__(value=y.value, stamp=y.stamp, model=model, state_id=y.state_id)
+        super().__init__(
+            value=y.value, stamp=y.stamp, model=model, state_id=y.state_id
+        )
