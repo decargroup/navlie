@@ -38,6 +38,11 @@ class OptimizationSummary:
         self.entire_cost = entire_cost
         self.iterate_history = iterate_history
         self.time = time
+        # result = {
+        #     "variables": self.variables,
+        #     "info_matrix": self._information_matrix,
+        #     "summary": summary,
+        # }
 
     def __repr__(self):
         string = (
