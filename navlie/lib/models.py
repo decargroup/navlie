@@ -677,6 +677,7 @@ class PointRelativePosition(MeasurementModel):
         self,
         landmark_position: np.ndarray,
         R: np.ndarray,
+        landmark_id: Any = None,
     ):
         """
         Parameters
@@ -685,9 +686,13 @@ class PointRelativePosition(MeasurementModel):
             Position of landmark in body frame.
         R : np.ndarray
             Measurement covariance.
+        landmark_id: Any, optional
+            A unique identifier for the landmark that this measurement
+            is of.
         """
         self._landmark_position = np.array(landmark_position).ravel()
         self._R = R
+        self._landmark_id = landmark_id
 
     def evaluate(self, x: MatrixLieGroupState) -> np.ndarray:
         r_zw_a = x.position.reshape((-1, 1))
@@ -714,6 +719,78 @@ class PointRelativePosition(MeasurementModel):
     def covariance(self, x: MatrixLieGroupState) -> np.ndarray:
         return self._R
 
+class PointRelativePositionSLAM(MeasurementModel):
+    """
+    Measurement model describing the position of an unknown landmark relative
+    to the robot, resolved in the body frame. That is, the state is the pose of
+    the robot and the inertial lndmark position, and the measurement is relative
+    landmark measurements resolved in the robot frame.
+
+    .. math::
+        \mathbf{y} = \mathbf{C}_{ab}^T (\mathbf{r}_\ell - \mathbf{r})
+
+    where :math:`\mathbf{C}` is the attitude of the robot, :math:`\mathbf{r}_\ell`
+    is the position of the landmark, and :math:`\mathbf{r}` is the position of
+    the robot.
+
+    This class is comptabile with ``SE2State, SE3State, SE23State, IMUState``.
+    """
+    def __init__(
+        self,
+        pose_state_id: Any,
+        landmark_state_id: Any,
+        R: np.ndarray,
+    ):
+        self._pose_state_id = pose_state_id
+        self._landmark_state_id = landmark_state_id
+        self._R = R
+
+    def evaluate(self, x: CompositeState) -> np.ndarray:
+        """Evaluates the measurement model for the landmark state."""
+
+        # The pose is always assumed to be the first element
+        # TODO: is there a better way to do this? The
+        # Measurement class already hold on to the IDs of these two
+        # states
+        pose: MatrixLieGroupState = x.get_state_by_id(self._pose_state_id)
+        landmark: VectorState = x.get_state_by_id(self._landmark_state_id)
+
+        r_zw_a = pose.position.reshape((-1, 1))
+        C_ab = pose.attitude
+        r_pw_a = landmark.value.reshape((-1, 1))
+        return C_ab.T @ (r_pw_a - r_zw_a)
+
+    def jacobian(self, x: CompositeState) -> np.ndarray:
+        pose: MatrixLieGroupState = x.get_state_by_id(self._pose_state_id)
+        landmark: VectorState = x.get_state_by_id(self._landmark_state_id)
+
+        r_zw_a = pose.position.reshape((-1, 1))
+        C_ab = pose.attitude
+        r_pw_a = landmark.value.reshape((-1, 1))
+        y = C_ab.T @ (r_pw_a - r_zw_a)
+
+        # Compute Jacobian of measurement model with respect to the state
+        if pose.direction == "right":
+            pose_jacobian = pose.jacobian_from_blocks(
+                attitude=-SO3.odot(y), position=-np.identity(r_zw_a.shape[0])
+            )
+        elif pose.direction == "left":
+            pose_jacobian = pose.jacobian_from_blocks(
+                attitude=-C_ab.T @ SO3.odot(r_pw_a), position=-C_ab.T
+            )
+
+        # Compute jacobian of measurement model with respect to the landmark
+        landmark_jacobian = pose.attitude.T
+
+        # Build full Jacobian
+        state_ids = [state.state_id for state in x.value]
+        jac_dict = {}
+        jac_dict[state_ids[0]] = pose_jacobian
+        jac_dict[state_ids[1]] = landmark_jacobian
+        return x.jacobian_from_blocks(jac_dict)
+    
+    def covariance(self, x: CompositeState) -> np.ndarray:
+        return self._R
 
 class InvariantPointRelativePosition(MeasurementModel):
     def __init__(self, y: np.ndarray, model: PointRelativePosition):
