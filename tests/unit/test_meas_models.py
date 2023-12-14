@@ -10,6 +10,7 @@ from navlie.lib import (
     InvariantMeasurement,
     Magnetometer,
     PointRelativePosition,
+    PointRelativePositionSLAM,
     RangePoseToAnchor,
     RangePoseToPose,
     Gravitometer,
@@ -296,6 +297,34 @@ def test_landmark_relative_position_se3(direction):
     )
     model = PointRelativePosition([1, 2, 3], np.identity(3))
     _jacobian_test(x, model)
+
+
+@pytest.mark.parametrize("direction", ["right", "left"])
+def test_landmark_relative_position_slam_se3(direction):
+    x = SE3State(
+        SE3.Exp([0, 1, 2, 4, 5, 6]),
+        stamp=0.0,
+        state_id="p",
+        direction=direction,
+    )
+    landmark = VectorState([1, 2, 3], 0.0, "l")
+    slam_state = CompositeState([x, landmark], stamp=0.0)
+    model = PointRelativePositionSLAM("p", "l", np.identity(3))
+    _jacobian_test(slam_state, model)
+
+
+@pytest.mark.parametrize("direction", ["right", "left"])
+def test_landmark_relative_position_slam_se23(direction: str):
+    x = SE23State(
+        SE23.Exp([0, 1, 2, 4, 5, 6, 7, 8, 9]),
+        stamp=0.0,
+        state_id="p",
+        direction=direction,
+    )
+    landmark = VectorState([1, 2, 3], 0.0, "l")
+    slam_state = CompositeState([x, landmark], stamp=0.0)
+    model = PointRelativePositionSLAM("p", "l", np.identity(3))
+    _jacobian_test(slam_state, model)
 
 
 @pytest.mark.parametrize("direction", ["right", "left"])

@@ -3,7 +3,7 @@ from navlie.utils import (
     GaussianResultList,
     schedule_sequential_measurements,
 )
-from navlie.types import StateWithCovariance
+from navlie.types import StateWithCovariance, Measurement
 from navlie.lib.states import (
     SE23State,
     SE3State,
@@ -13,10 +13,10 @@ from pymlg import SE23, SE3, SO3
 import numpy as np
 
 from navlie.utils import jacobian
+from navlie.batch.residuals import Residual, MeasurementResidual
 import numpy as np
 import pytest
-from navlie.lib.models import RangePoseToAnchor
-
+from navlie.lib.models import RangePoseToAnchor, GlobalPosition
 
 def test_gaussian_result_indexing():
     # Construct a dummy GaussianResultList
@@ -151,6 +151,26 @@ def test_meas_scheduling():
 
     assert new_freq == 10
     assert (np.array(offset_list) == np.array([0, 1, 2, 3, 4]) / freq).all()
+
+def test_residual_jacobian_fd():
+    # Test the finite difference for a measurement residual.
+
+    meas_model = GlobalPosition(np.identity(3))
+    measurement = Measurement(value=np.array([0.1, 0.2, 0.3]), stamp=0.0, model=meas_model)
+    residual = MeasurementResidual(["pose"], measurement)
+
+    # Create an SE(3) state
+    se3_state = SE3State(value=SE3.random(), direction="right")
+    jac_list = residual.jacobian_fd([se3_state])
+    jac_numerical = jac_list[0]
+
+    # Evaluate the Jacobian of the measurement model itself
+    jac_analytical = meas_model.jacobian(se3_state)
+
+    # For measurement residuals, the Jacobian of the residual should just be the 
+    # negative of the analytical measurement model Jacobian
+    assert (np.allclose(-jac_analytical, jac_numerical))
+
 
 
 if __name__ == "__main__":
