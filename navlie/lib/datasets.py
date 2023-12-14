@@ -11,6 +11,7 @@ from navlie.lib import (
     RangePoseToAnchor,
     BodyFrameVelocity,
     GlobalPosition,
+    PointRelativePosition,
 )
 import numpy as np
 from pymlg import SE3, SE23
@@ -143,9 +144,7 @@ class SimulatedInertialGPSDataset(nav.Dataset):
             Q_c = np.eye(12)
             Q_c[0:3, 0:3] *= 0.01**2  # Gyro continuous-time covariance
             Q_c[3:6, 3:6] *= 0.01**2  # Accel continuous-time covariance
-            Q_c[6:9, 6:9] *= (
-                0.0001**2
-            )  # Gyro random-walk continuous-time covariance
+            Q_c[6:9, 6:9] *= 0.0001**2  # Gyro random-walk continuous-time covariance
             Q_c[9:12, 9:12] *= (
                 0.0001**2
             )  # Accel random-walk continuous-time covariance
@@ -215,3 +214,169 @@ class SimulatedInertialGPSDataset(nav.Dataset):
 
     def get_measurement_data(self) -> List[nav.Measurement]:
         return self.meas_data
+
+
+class SimulatedInertialLandmarkDataset(nav.Dataset):
+    def __init__(
+        self,
+        x0: IMUState = None,
+        Q: np.ndarray = None,
+        R: np.ndarray = 0.01,
+        input_freq: int = 200,
+        meas_freq: int = 10,
+        t_start: int = 0,
+        t_end: int = 50,
+        noise_active: bool = True,
+        cylinder_radius: float = 5,
+        max_height: float = 5,
+        n_level: int = 5,
+        n_landmarks_per_level: int = 5,
+    ):
+        if x0 is None:
+            init_nav_state = SE23.from_components(
+                np.identity(3),
+                np.array([0, 3, 3]).reshape((-1, 1)),
+                np.array([3, 0, 0]).reshape((-1, 1)),
+            )
+            init_gyro_bias = np.array([0.02, 0.03, -0.04]).reshape((-1, 1))
+            init_accel_bias = np.array([0.01, 0.02, 0.05]).reshape((-1, 1))
+            x0 = IMUState(
+                init_nav_state,
+                init_gyro_bias,
+                init_accel_bias,
+                stamp=t_start,
+                state_id=0,
+                direction="left",
+            )
+
+        if Q is None:
+            imu_freq = 200
+            Q_c = np.eye(12)
+            Q_c[0:3, 0:3] *= 0.01**2  # Gyro continuous-time covariance
+            Q_c[3:6, 3:6] *= 0.01**2  # Accel continuous-time covariance
+            Q_c[6:9, 6:9] *= 0.0001**2  # Gyro random-walk continuous-time covariance
+            Q_c[9:12, 9:12] *= (
+                0.0001**2
+            )  # Accel random-walk continuous-time covariance
+            dt = 1 / imu_freq
+            Q = Q_c / dt
+
+        if isinstance(R, float):
+            R = R * np.identity(3)
+
+        def input_profile(stamp: float, x: IMUState) -> np.ndarray:
+            """Generates an IMU measurement for a circular trajectory,
+            where the robot only rotates about the z-axis and the acceleration
+            points towards the center of the circle.
+            """
+
+            # Add biases to true angular velocity and acceleration
+            bias_gyro = x.bias_gyro.reshape((-1, 1))
+            bias_accel = x.bias_accel.reshape((-1, 1))
+
+            C_ab = x.attitude
+            g_a = np.array([0, 0, -9.80665]).reshape((-1, 1))
+            omega = np.array([0.1, 0, 0.5]).reshape((-1, 1)) + bias_gyro
+            a_a = np.array(
+                [-3 * np.cos(stamp), -3 * np.sin(stamp), -9 * np.sin(3 * stamp)]
+            ).reshape((-1, 1))
+            accel = C_ab.T @ a_a + bias_accel - C_ab.T @ g_a
+
+            # Generate a random input to drive the bias random walk
+            Q_bias = Q[6:, 6:]
+            bias_noise = nav.randvec(Q_bias)
+
+            u = IMU(omega, accel, stamp, bias_noise[0:3], bias_noise[3:6])
+            return u
+
+        # Generate the landmark positions
+        landmarks = generate_landmark_positions(
+            cylinder_radius,
+            max_height,
+            n_level,
+            n_landmarks_per_level,
+        )
+
+        # Create process and measurement models and generate data
+        process_model = IMUKinematics(Q)
+        meas_model_list = [PointRelativePosition(pos, R, i) for i, pos in enumerate(landmarks)]
+        data_gen = DataGenerator(
+            process_model,
+            input_func=input_profile,
+            input_covariance=Q,
+            input_freq=input_freq,
+            meas_model_list=meas_model_list,
+            meas_freq_list=meas_freq,
+        )
+        # Generate all data
+        gt_data, input_data, meas_data = data_gen.generate(
+            x0, t_start, t_end, noise=noise_active
+        )
+
+        # Zero-out the random walk values (thus creating "noise")
+        if noise_active:
+            for u in input_data:
+                u.bias_gyro_walk = np.array([0, 0, 0])
+                u.bias_accel_walk = np.array([0, 0, 0])
+        # Save all data and process model
+        self.gt_data = gt_data
+        self.input_data = input_data
+        self.meas_data = meas_data
+        self.process_model = process_model
+        self.landmarks = landmarks
+
+    def get_ground_truth(self) -> List[IMUState]:
+        return self.gt_data
+
+    def get_input_data(self) -> List[IMU]:
+        return self.input_data
+
+    def get_measurement_data(self) -> List[nav.Measurement]:
+        return self.meas_data
+
+    def get_groundtruth_landmarks(self) -> List[np.ndarray]:
+        return self.landmarks
+
+
+def generate_landmark_positions(
+    cylinder_radius: float,
+    max_height: float,
+    n_levels: int,
+    n_landmarks_per_level: int,
+) -> List[np.ndarray]:
+    """Generates landmarks arranged in a cylinder.
+
+    Parameters
+    ----------
+    cylinder_radius : float
+        Radius of the cylinder that the landmarks are arranged in.
+    max_height : float
+        Top of cylinder.
+    n_levels : int
+        Number of discrete levels to place landmarks at vertically.
+    n_landmarks_per_level : int
+        Number of landmarks per level
+
+    Returns
+    -------
+    List[np.ndarray]
+        List of landmarks.
+    """
+
+    z = np.linspace(0, max_height, n_levels)
+
+    angles = np.linspace(0, 2 * np.pi, n_landmarks_per_level + 1)
+    angles = angles[0:-1]
+    x = cylinder_radius * np.cos(angles)
+    y = cylinder_radius * np.sin(angles)
+
+    # Generate landmarks
+    landmarks = []
+    for level_idx in range(n_levels):
+        for landmark_idx in range(n_landmarks_per_level):
+            cur_landmark = np.array(
+                [x[landmark_idx], y[landmark_idx], z[level_idx]]
+            ).reshape((3, -1))
+            landmarks.append(cur_landmark)
+
+    return landmarks

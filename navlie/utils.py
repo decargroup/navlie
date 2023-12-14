@@ -888,10 +888,13 @@ def plot_poses(
     
     if isinstance(poses, StateWithCovariance):
         poses = [poses.state]
-
+    
+    if isinstance(poses, np.ndarray):
+        poses = poses.tolist()
+        
     if not isinstance(poses, list):
         poses = [poses]
-
+ 
     if ax is None:
         fig = plt.figure()
         ax = plt.axes(projection="3d")
