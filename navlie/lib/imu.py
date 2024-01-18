@@ -4,7 +4,7 @@ A module for IMU data and kinematics.
 Note that the treatment of IMU kinematics in this module is different from
 typical treatments in the sense that it is done directly on :math:`SE_2(3)`. A
 PDF describing the detailed derivations can be found at the
-`following link. <https://decargroup.github.io/navlie/source/_static/imu.pdf>`_
+:download:`following link. <../../../docs/source/_static/imu.pdf>`
 
 """
 
@@ -342,8 +342,7 @@ def N_matrix(phi_vec: np.ndarray):
 
 def M_matrix(phi_vec):
     """
-    The M matrix from `derivation document
-    <https://decargroup.github.io/navlie/source/_static/imu.pdf>`_
+    The M matrix from the :download:`derivation document <../../../docs/source/_static/imu.pdf>`.
     """
     phi_mat = SO3.wedge(phi_vec)
     M = np.sum(
