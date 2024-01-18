@@ -38,6 +38,7 @@ from .models import (
     PointRelativePosition,
     AbsoluteVelocity,
     AbsolutePosition,
+    PointRelativePositionSLAM,
 )
 
 from .preintegration import (

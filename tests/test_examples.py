@@ -20,6 +20,7 @@ examples/ex_sequential_measurements.py
 examples/ex_ukf_se2.py
 examples/ex_ukf_vector.py
 examples/ex_varying_noise.py
+examples/ex_slam.py
 """
 
 
@@ -105,5 +106,10 @@ def test_ex_ukf_vector():
 
 def test_ex_varying_noise():
     from ex_varying_noise import main
+
+    main()
+
+def test_ex_slam():
+    from ex_slam import main
 
     main()

@@ -60,6 +60,47 @@ class Residual(ABC):
         # corresponding state names than as a list.
         pass
 
+    def jacobian_fd(self, states: List[State], step_size=1e-6) -> List[np.ndarray]:
+        """
+        Calculates the model jacobian with finite difference.
+
+        Parameters
+        ----------
+        states : List[State]
+            Evaluation point of Jacobians, a list of states that 
+            the residual is a function of.
+        
+        Returns
+        -------
+        List[np.ndarray]
+            A list of Jacobians of the measurement model with respect to each of the input states.
+            For example, the first element of the return list is the Jacobian of the residual
+            w.r.t states[0], the second element is the Jacobian of the residual w.r.t states[1], etc.
+        """
+        jac_list: List[np.ndarray] = [None] * len(states)
+        
+        # Compute the Jacobian for each state via finite difference
+        for state_num, X_bar in enumerate(states):
+            e_bar = self.evaluate(states)
+            size_error = e_bar.ravel().size
+            jac_fd = np.zeros((size_error, X_bar.dof))
+
+            for i in range(X_bar.dof):
+                dx = np.zeros((X_bar.dof, 1))
+                dx[i, 0] = step_size
+                X_temp = X_bar.plus(dx)
+                state_list_pert: List[State] = []
+                for state in states:
+                    state_list_pert.append(state.copy())
+
+                state_list_pert[state_num] = X_temp
+                e_temp = self.evaluate(state_list_pert)
+                jac_fd[:, i] = (e_temp - e_bar).flatten() / step_size
+
+            jac_list[state_num] = jac_fd
+
+        return jac_list
+
 
 class PriorResidual(Residual):
     """
