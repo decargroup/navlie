@@ -36,6 +36,9 @@ from .models import (
     GlobalPosition,
     InvariantMeasurement,
     PointRelativePosition,
+    AbsoluteVelocity,
+    AbsolutePosition,
+    PointRelativePositionSLAM,
 )
 
 from .preintegration import (

@@ -1,14 +1,10 @@
-from navlie.lib.states import (
+from navlie.lib import (
     MatrixLieGroupState,
     SO3State,
     SE2State,
     SE3State,
     SE23State,
-    CompositeState,
-    VectorState,
-)
-from navlie.lib.imu import IMUState
-from navlie.lib.models import (
+    IMUState,
     Altitude,
     GlobalPosition,
     InvariantMeasurement,
@@ -19,8 +15,9 @@ from navlie.lib.models import (
     RangePoseToPose,
     Gravitometer,
     AbsoluteVelocity,
+    VectorState
 )
-from navlie.types import Measurement, MeasurementModel
+from navlie import Measurement, MeasurementModel, CompositeState
 from pymlg import SO3, SE3, SE2, SE3, SE23
 import numpy as np
 import pytest

@@ -94,12 +94,12 @@ class GaussianResultList:
         results[:, 3:] # returns all degrees of freedom except the first three
 
     This can be very useful if you want to examine the nees or rmse of just some
-    states, or if you want to plot the error of just some states. For example, 
+    states, or if you want to plot the error of just some states. For example,
     if you have an SE3State, where the first 3 degrees of freedom are attitude,
     and the last 3 are position, you can plot only the attitude error with
 
     .. code-block:: python
-    
+
         nav.plot_error(results[:, 0:3])
 
     and likewise get only the attitude NEES with ``results[:, 0:3].nees``.
@@ -165,7 +165,6 @@ class GaussianResultList:
         self.value_true = np.array([r.state_true.value for r in result_list])
 
     def __getitem__(self, key):
-        # TODO need more tests for all cases!
         if isinstance(key, tuple):
             if not len(key) == 2:
                 raise IndexError("Only two dimensional indexing is supported")

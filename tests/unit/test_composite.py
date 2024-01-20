@@ -6,12 +6,12 @@ from navlie.lib import (
     VectorInput,
     SE2State,
     VectorState,
-    CompositeState,
 )
 from pymlg import SE2
 import numpy as np
 import pickle
 import os
+from navlie import CompositeState
 
 
 def test_composite_process_model():

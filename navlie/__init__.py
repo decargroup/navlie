@@ -40,5 +40,11 @@ from .utils import (
     jacobian,
 )
 
+from .composite import (
+    CompositeState,
+    CompositeProcessModel,
+    CompositeMeasurementModel,
+    CompositeInput,
+)
 
-from .lib.states import StampedValue # for backwards compatibility
+from .lib.states import StampedValue  # for backwards compatibility

@@ -51,9 +51,11 @@ class DataGenerator:
         input_func: Callable[[float], np.ndarray],
         input_covariance: np.ndarray,
         input_freq: float,
-        meas_model_list: List[MeasurementModel] = [], # TODO: fix mutable default argument
+        meas_model_list: List[
+            MeasurementModel
+        ] = None,
         meas_freq_list: Union[float, List[float]] = None,
-        meas_offset_list: Union[float, List[float]] = [],
+        meas_offset_list: Union[float, List[float]] = None,
     ):
         # Make input covariance a callable if it isnt
         if callable(input_covariance):
@@ -62,6 +64,12 @@ class DataGenerator:
             self.input_covariance = lambda t: input_covariance
         else:
             raise ValueError("Input covariance must be a function or a matrix.")
+
+        if meas_model_list is None:
+            meas_model_list = []
+
+        if meas_offset_list is None:
+            meas_offset_list = []
 
         if isinstance(meas_model_list, MeasurementModel):
             meas_model_list = [meas_model_list]
@@ -111,7 +119,8 @@ class DataGenerator:
     def add_measurement_model(
         self, model: MeasurementModel, freq: float, offset: float = 0.0
     ):
-        """Adds a new measurement model to the existing list of measurement models.
+        """
+        Adds a new measurement model to the existing list of measurement models.
 
         Parameters
         ----------

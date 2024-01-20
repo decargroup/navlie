@@ -2,18 +2,21 @@ from navlie.types import (
     Measurement,
     ProcessModel,
     MeasurementModel,
-    Input,
 )
 from navlie.lib.states import (
-    CompositeState,
     MatrixLieGroupState,
     VectorState,
     VectorInput,
 )
+from navlie.composite import CompositeState, CompositeMeasurementModel
 from pymlg import SO2, SO3
 import numpy as np
 from typing import List, Any
-from scipy.linalg import block_diag
+
+from navlie.composite import (
+    CompositeInput,
+    CompositeProcessModel,
+)  # For backwards compatibility, since these was moved
 
 
 class SingleIntegrator(ProcessModel):
@@ -106,7 +109,6 @@ class DoubleIntegrator(ProcessModel):
         return Ad
 
     def covariance(self, x, u, dt) -> np.ndarray:
-
         Ld = self.input_jacobian(dt)
         return Ld @ self._Q @ Ld.T
 
@@ -189,7 +191,6 @@ class DoubleIntegratorWithBias(DoubleIntegrator):
         return A
 
     def covariance(self, x, u, dt) -> np.ndarray:
-
         L = self.input_jacobian(dt)
         return L @ self._Q @ L.T
 
@@ -228,7 +229,7 @@ class BodyFrameVelocity(ProcessModel):
     .. math::
         \mathbf{T}_k = \mathbf{T}_{k-1} \exp(\Delta t \mathbf{u}_{k-1}^\wedge)
 
-    This is commonly the process model associated with SE(n). 
+    This is commonly the process model associated with SE(n).
 
     This class is comptabile with ``SO2State, SO3State, SE2State, SE3State, SE23State``.
     """
@@ -265,7 +266,7 @@ class BodyFrameVelocity(ProcessModel):
 
 class RelativeBodyFrameVelocity(ProcessModel):
     """
-    The relative body-frame velocity process model is of the form 
+    The relative body-frame velocity process model is of the form
 
     .. math::
         \mathbf{T}_k = \exp(\Delta t \mathbf{u}_{1,k-1}^\wedge)
@@ -283,7 +284,7 @@ class RelativeBodyFrameVelocity(ProcessModel):
     """
 
     def __init__(self, Q1: np.ndarray, Q2: np.ndarray):
-        """ 
+        """
         Parameters
         ----------
         Q1 : np.ndarray
@@ -363,6 +364,7 @@ class LinearMeasurement(MeasurementModel):
 
     This class is comptabile with ``VectorState``.
     """
+
     def __init__(self, C: np.ndarray, R: np.ndarray):
         """
         Parameters
@@ -385,238 +387,11 @@ class LinearMeasurement(MeasurementModel):
         return self._R
 
 
-class CompositeInput(Input):
-    """
-    <under development>
-    """
-    # TODO: add tests to new methods
-    def __init__(self, input_list: List[Input]) -> None:
-        self.input_list = input_list
-
-    @property
-    def dof(self) -> int:
-        return sum([input.dof for input in self.input_list])
-
-    @property
-    def stamp(self) -> float:
-        return self.input_list[0].stamp
-
-    def get_index_by_id(self, state_id):
-        """
-        Get index of a particular state_id in the list of inputs.
-        """
-        return [x.state_id for x in self.input_list].index(state_id)
-
-    def add_input(self, input: Input):
-        """
-        Adds an input to the composite input.
-        """
-        self.input_list.append(input)
-
-    def remove_input_by_id(self, state_id):
-        """
-        Removes a given input by ID.
-        """
-        idx = self.get_index_by_id(state_id)
-        self.input_list.pop(idx)
-
-    def get_input_by_id(self, state_id) -> Input:
-        """
-        Get input object by id.
-        """
-        idx = self.get_index_by_id(state_id)
-        return self.input_list[idx]
-
-    def get_dof_by_id(self, state_id) -> int:
-        """
-        Get degrees of freedom of sub-input by id.
-        """
-        idx = self.get_index_by_id(state_id)
-        return self.input_list[idx].dof
-
-    def get_stamp_by_id(self, state_id) -> float:
-        """
-        Get timestamp of sub-input by id.
-        """
-        idx = self.get_index_by_id(state_id)
-        return self.input_list[idx].stamp
-
-    def set_stamp_by_id(self, stamp: float, state_id):
-        """
-        Set the timestamp of a sub-input by id.
-        """
-        idx = self.get_index_by_id(state_id)
-        self.input_list[idx].stamp = stamp
-
-    def set_input_by_id(self, input: Input, state_id):
-        """
-        Set the whole sub-input by id.
-        """
-        idx = self.get_index_by_id(state_id)
-        self.input_list[idx] = input
-
-    def set_stamp_for_all(self, stamp: float):
-        """
-        Set the timestamp of all subinputs.
-        """
-        for input in self.input_list:
-            input.stamp = stamp
-
-    def to_list(self):
-        """
-        Converts the CompositeInput object back into a list of inputs.
-        """
-        return self.input_list
-
-    def copy(self) -> "CompositeInput":
-        return CompositeInput([input.copy() for input in self.input_list])
-
-    def plus(self, w: np.ndarray):
-        new = self.copy()
-        temp = w
-        for i, input in enumerate(self.input_list):
-            new.input_list[i] = input.plus(temp[: input.dof])
-            temp = temp[input.dof :]
-
-        return new
-
-
-class CompositeProcessModel(ProcessModel):
-    """
-    <under development>
-    Should this be called a StackedProcessModel?
-    # TODO: Add documentation and tests
-    """
-
-    # TODO: This needs to be expanded and/or changed. We have come across the
-    # following use cases:
-    # 1. Applying a completely seperate process model to each sub-state.
-    # 2. Applying a single process model to each sub-state (seperately).
-    # 3. Applying a single process model to one sub-state, and leaving the rest
-    #    unchanged.
-    # 4. Applying process model A to some sub-states, and process model B to
-    #    other sub-states
-    # 5. Receiving a CompositeInput, which is a list of synchronously-received
-    #    inputs, and applying each input to the corresponding sub-state.
-    # 6. Receiving the state-specific input asynchronously, applying to the
-    #    corresponding sub-state, and leaving the rest unchanged. Typically happens
-    #    with case 3.
-
-    # What they all have in common: list of decoupled process models, one per
-    # substate. For coupled process models, the user will have to define their
-    # own process model from scratch.
-
-    def __init__(
-        self,
-        model_list: List[ProcessModel],
-        shared_input: bool = False,
-    ):
-        self._model_list = model_list
-        self._shared_input = shared_input
-
-    def evaluate(
-        self,
-        x: CompositeState,
-        u: CompositeInput,
-        dt: float,
-    ) -> CompositeState:
-        x = x.copy()
-        for i, x_sub in enumerate(x.value):
-            if self._shared_input:
-                u_sub = u
-            else:
-                u_sub = u.input_list[i]
-            x.value[i] = self._model_list[i].evaluate(x_sub, u_sub, dt)
-
-        return x
-
-    def jacobian(
-        self,
-        x: CompositeState,
-        u: CompositeInput,
-        dt: float,
-    ) -> np.ndarray:
-        jac = []
-        for i, x_sub in enumerate(x.value):
-            if self._shared_input:
-                u_sub = u
-            else:
-                u_sub = u.input_list[i]
-            jac.append(self._model_list[i].jacobian(x_sub, u_sub, dt))
-
-        return block_diag(*jac)
-
-    def covariance(
-        self,
-        x: CompositeState,
-        u: CompositeInput,
-        dt: float,
-    ) -> np.ndarray:
-        cov = []
-        for i, x_sub in enumerate(x.value):
-            if self._shared_input:
-                u_sub = u
-            else:
-                u_sub = u.input_list[i]
-            cov.append(self._model_list[i].covariance(x_sub, u_sub, dt))
-
-        return block_diag(*cov)
-
-
-class CompositeMeasurementModel(MeasurementModel):
-    """
-    Wrapper for a standard measurement model that assigns the model to a specific
-    substate (referenced by `state_id`) inside a CompositeState.
-    """
-
-    def __init__(self, model: MeasurementModel, state_id):
-        self.model = model
-        self.state_id = state_id
-
-    def __repr__(self):
-        return f"{self.model}(of substate {self.state_id})"
-
-    def evaluate(self, x: CompositeState) -> np.ndarray:
-        return self.model.evaluate(x.get_state_by_id(self.state_id))
-
-    def jacobian(self, x: CompositeState) -> np.ndarray:
-        x_sub = x.get_state_by_id(self.state_id)
-        jac_sub = self.model.jacobian(x_sub)
-        jac = np.zeros((jac_sub.shape[0], x.dof))
-        slc = x.get_slice_by_id(self.state_id)
-        jac[:, slc] = jac_sub
-        return jac
-
-    def covariance(self, x: CompositeState) -> np.ndarray:
-        x_sub = x.get_state_by_id(self.state_id)
-        return self.model.covariance(x_sub)
-
-
-class CompositeMeasurement(Measurement):
-    def __init__(self, y: Measurement, state_id: Any):
-        """
-        Converts a standard Measurement into a CompositeMeasurement, which
-        replaces the model with a CompositeMeasurementModel.
-
-        Parameters
-        ----------
-        y : Measurement
-            Measurement to be converted.
-        state_id : Any
-            ID of the state that the measurement will be assigned to,
-            as per the CompositeMeasurementModel.
-        """
-        model = CompositeMeasurementModel(y.model, state_id)
-        super().__init__(
-            value=y.value, stamp=y.stamp, model=model, state_id=y.state_id
-        )
-
-
 class RangePointToAnchor(MeasurementModel):
     """
     Range measurement from a point state to an anchor (which is also another
     point). I.e., the state is a vector with the first ``dim`` elements being
-    the position of the point. This model is of the form 
+    the position of the point. This model is of the form
 
     .. math::
         y = ||\mathbf{r}_a - \mathbf{r}||
@@ -626,10 +401,10 @@ class RangePointToAnchor(MeasurementModel):
     """
 
     def __init__(self, anchor_position: List[float], R: float):
-        """ 
+        """
         Parameters
         ----------
-        
+
         anchor_position : np.ndarray or List[float]
             Position of anchor.
         R : float
@@ -920,13 +695,32 @@ class RangePoseToPose(MeasurementModel):
     """
     Range model given two absolute poses of rigid bodies, each containing a
     ranging tag.
-    """
 
-    # TODO. tag_body_positions should be optional. argh but this will be
-    # a breaking change since the argument order needs to be different.
+    Compatible with ``SE2State, SE3State, SE23State, IMUState``.
+    """
     def __init__(
         self, tag_body_position1, tag_body_position2, state_id1, state_id2, R
     ):
+        """ 
+        Parameters
+        ----------
+        tag_body_position1 : np.ndarray
+            Position of tag in body frame of Robot 1.
+        tag_body_position2 : np.ndarray
+            Position of tag in body frame of Robot 2. 
+        state_id1 : Any
+            State ID of Robot 1.
+        state_id2 : Any
+            State ID of Robot 2.
+        R : float or np.ndarray with size 1
+            Covariance associated with range measurement error.
+        """
+        # TODO. Make tag_body_position1 and tag_body_position2 optional, with a
+        # default value of either [0,0] or [0,0,0] (depending on the dimension
+        # of the passed state). Unfortunately, changing argument order is a
+        # breaking change.
+
+
         self.tag_body_position1 = np.array(tag_body_position1).flatten()
         self.tag_body_position2 = np.array(tag_body_position2).flatten()
         self.state_id1 = state_id1
@@ -1074,11 +868,14 @@ class AbsolutePosition(MeasurementModel):
         else:
             return self.R
 
+
 class GlobalPosition(AbsolutePosition):
-    """ 
+    """
     This class is deprecated. Use ``AbsolutePosition`` instead.
     """
-    pass # alias
+
+    pass  # alias
+
 
 class AbsoluteVelocity(MeasurementModel):
     """
