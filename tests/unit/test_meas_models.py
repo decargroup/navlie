@@ -15,8 +15,10 @@ from navlie.lib import (
     RangePoseToPose,
     Gravitometer,
     AbsoluteVelocity,
-    VectorState
+    VectorState,
+    CameraProjection,
 )
+from navlie.lib.camera import PinholeCamera
 from navlie import Measurement, MeasurementModel, CompositeState
 from pymlg import SO3, SE3, SE2, SE3, SE23
 import numpy as np
@@ -245,6 +247,28 @@ def test_magnetometer_se23(direction):
     _jacobian_test(x, model)
 
 
+def test_camera_projection(direction: str = "right"):
+    # TODO: Jacobians are only derived for the right pertubation
+    # Implement left perturbation Jacobians
+    pose = SE3State(
+        SE3.Exp([0, 1, 2, 4, 5, 6]),
+        stamp=0.0,
+        state_id="p",
+        direction=direction,
+    )
+    landmark = VectorState([1, 2, 3], 0.0, "l")
+    x = CompositeState([pose, landmark], stamp=0.0)
+    T_bc = SE3State(
+        value=SE3.from_components(
+            PinholeCamera.get_cam_to_enu(), np.array([0.0, 0.0, 0.0])
+        )
+    )
+    camera = PinholeCamera(385, 385, 325, 235, 640, 480, 1.0, T_bc)
+    model = CameraProjection(pose.state_id, landmark.state_id, camera)
+
+    _jacobian_test(x, model)
+
+
 def test_invariant_magnetometer_so3():
     x = SO3State(
         SO3.Exp([0.3, 0.1, 0.2]), stamp=0.0, state_id=2, direction="left"
@@ -341,4 +365,4 @@ def test_landmark_relative_position_se23(direction):
 
 
 if __name__ == "__main__":
-    test_range_pose_to_pose_se3()
+    test_camera_projection()

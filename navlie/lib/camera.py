@@ -1,4 +1,8 @@
-"""Module containing a basic pinhole camera model."""
+"""Module containing a basic pinhole camera model.
+
+See the `CameraProjection` measurement model for an example of how this can be
+used with navlie's `MeasurementModel` class.
+"""
 
 import numpy as np
 from navlie.lib import SE3State
@@ -23,7 +27,7 @@ class PoseMatrix:
         return PoseMatrix(self.pose.copy())
 
 
-class Camera:
+class PinholeCamera:
     """Class for a pinhole camera model.
 
     This class contains utilities for generating measurements
@@ -43,7 +47,7 @@ class Camera:
         T_bc: PoseMatrix = None,
         camera_id: Any = None,
     ):
-        """Instantiate a Camera
+        """Instantiate a PinholeCamera
 
         Parameters
         ----------
@@ -125,9 +129,9 @@ class Camera:
     def R_normalized_image_coords(self) -> np.ndarray:
         return self.sigma_normalized_image_coords**2
 
-    def copy(self) -> "Camera":
+    def copy(self) -> "PinholeCamera":
         """Returns a copy of the camera model."""
-        return Camera(
+        return PinholeCamera(
             self.fu,
             self.fv,
             self.cu,

@@ -39,6 +39,7 @@ from .models import (
     AbsoluteVelocity,
     AbsolutePosition,
     PointRelativePositionSLAM,
+    CameraProjection
 )
 
 from .preintegration import (
