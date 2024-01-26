@@ -28,6 +28,8 @@ class Residual(ABC):
     variable for optimization.
     """
 
+    jacobian_cache: List[np.ndarray] = None
+
     def __init__(self, keys: List[Hashable]):
         # If the hasn't supplied a list, make a list
         if isinstance(keys, list):
@@ -59,6 +61,60 @@ class Residual(ABC):
         # TODO: seems more appropriate to receive states as a dict with
         # corresponding state names than as a list.
         pass
+
+    def compute_hessians(
+        self,
+        states: List[State],
+        compute_hessians: List[bool],
+        use_jacobian_cache: bool = False,
+    ) -> List[np.ndarray]:
+        """Compute Hessians with respect to every state in states. In the generic case, the Hessian
+        is approximated as simply jac^\trans jac. In the robustified Hessian case, this
+        method will be overwritten.
+        For factors that are a function of many states, the offdiagonal blocks have to be computed.
+        A multidimensional array corresponding to
+        [\del J \del x_1x_1 \del J \del x_1x_2
+        \del J \del x_2x_1 \del J \del x_2x_2] and so on has to be returned.
+        Parameters
+        ----------
+        states : List[State]
+        compute_hessians : List[bool]
+        Returns
+        -------
+        List[np.ndarray]
+            List of Hessians for every state
+        """
+        hessians = [[None] * len(states) for lv1 in range(len(states))]
+        if not np.array(compute_hessians).any():
+            return hessians
+
+        if not use_jacobian_cache:
+            _, jac_list = self.evaluate(states, compute_jacobians=compute_hessians)
+        else:
+            jac_list = self.jacobian_cache.copy()
+        ny = [jac.shape[0] for jac in jac_list if jac is not None][0]
+
+        hessians = [[None] * len(states) for lv1 in range(len(states))]
+
+        for lv1, (state, jac) in enumerate(zip(states, jac_list)):
+            if jac is None:
+                jac_list[lv1] = np.zeros((ny, state.dof))
+
+        slice_list = []
+        start_slice = 0
+        for lv1 in range(len(states)):
+            end_slice = start_slice + states[lv1].dof
+            slice_list.append(slice(start_slice, end_slice))
+            start_slice = end_slice
+        jac = np.hstack([jacobian for jacobian in jac_list if jacobian is not None])
+        hessian = jac.T @ jac
+        for lv1 in range(len(states)):
+            for lv2 in range(len(states)):
+                if not compute_hessians[lv1] or not compute_hessians[lv2]:
+                    hessians[lv1][lv2] = None
+                else:
+                    hessians[lv1][lv2] = hessian[slice_list[lv1], slice_list[lv2]]
+        return hessians
 
     def jacobian_fd(self, states: List[State], step_size=1e-6) -> List[np.ndarray]:
         """

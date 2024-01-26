@@ -198,7 +198,6 @@ class Problem:
         Dict[Hashable, State]
             New dictionary of optimized variables.
         """
-        print("INSIDE GAUSS NEWTON")
         dx = 10
         iter_idx = 0
         cost_list = []
@@ -385,7 +384,11 @@ class Problem:
                     jacobian = sqrt_loss_weight * jacobian
 
                     H[self.residual_slices[i], self.variable_slices[key]] = jacobian
+        # import sys
 
+        # if np.linalg.cond(H.T @ H) > 1 / sys.float_info.epsilon:
+        #     print("Warning: Hessian exactly singular.")
+        #     raise Exception("Hessian exactly singular")
         # Sum up costs from each residual
         cost = np.sum(np.array(cost_list))
 
