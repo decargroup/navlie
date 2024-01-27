@@ -1,13 +1,13 @@
-from navlie.lib.camera import Camera, PoseMatrix
+from navlie.lib.camera import PinholeCamera, PoseMatrix
 import numpy as np
 from pymlg import SE3
 
 
 def test_valid_measurements():
     # Create camera with its z-axis pointing forward
-    C_bc = Camera.get_cam_to_enu()
+    C_bc = PinholeCamera.get_cam_to_enu()
     T_bc = PoseMatrix(SE3.from_components(C_bc, np.array([0, 0, 0])))
-    camera = Camera(385, 385, 323, 236, 480, 640, 0.1, T_bc)
+    camera = PinholeCamera(385, 385, 323, 236, 480, 640, 0.1, T_bc)
 
     # Create some invalid measurements
     invalid_meas = [
@@ -51,7 +51,7 @@ def test_valid_measurements():
 
 
 def test_project_function():
-    camera = Camera(385, 385, 323, 236, 480, 640, 0.1)
+    camera = PinholeCamera(385, 385, 323, 236, 480, 640, 0.1)
     # Define a landmark resolved in the camera frame
     r_pc_c = np.random.randn(3, 1)
     # Project onto image plane
@@ -69,7 +69,7 @@ def test_camera_intrinsics():
     fv = 385
     cu = 323
     cv = 236
-    camera = Camera(fu, fv, cu, cv, 480, 640, 0.1)
+    camera = PinholeCamera(fu, fv, cu, cv, 480, 640, 0.1)
     K = camera.intrinsics
 
     assert K[0, 0] == fu

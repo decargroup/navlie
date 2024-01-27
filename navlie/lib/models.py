@@ -12,7 +12,7 @@ from navlie.composite import CompositeState, CompositeMeasurementModel
 from pymlg import SO2, SO3
 import numpy as np
 from typing import List, Any
-
+from navlie.lib.camera import PinholeCamera
 from navlie.composite import (
     CompositeInput,
     CompositeProcessModel,
@@ -494,6 +494,7 @@ class PointRelativePosition(MeasurementModel):
     def covariance(self, x: MatrixLieGroupState) -> np.ndarray:
         return self._R
 
+
 class PointRelativePositionSLAM(MeasurementModel):
     """
     Measurement model describing the position of an unknown landmark relative
@@ -510,6 +511,7 @@ class PointRelativePositionSLAM(MeasurementModel):
 
     This class is comptabile with ``SE2State, SE3State, SE23State, IMUState``.
     """
+
     def __init__(
         self,
         pose_state_id: Any,
@@ -563,9 +565,118 @@ class PointRelativePositionSLAM(MeasurementModel):
         jac_dict[state_ids[0]] = pose_jacobian
         jac_dict[state_ids[1]] = landmark_jacobian
         return x.jacobian_from_blocks(jac_dict)
-    
+
     def covariance(self, x: CompositeState) -> np.ndarray:
         return self._R
+
+
+class CameraProjection(MeasurementModel):
+    """
+    Measurement model describing the projection of a landmark into a
+    camera. In thihs measurement model, the robot pose and the landmark are both states.
+
+    The camera is assumed to be a fixed transformation from the robot body frame,
+    where :math:`(\mathbf{C}_{bc} \in SO(3), \mathbf{r}_b^{bc} \in \mathbb{R}^3)` represent the extrinsic
+    transformation from the body to the camera frame. The measurement model is
+    then in the form
+
+    .. math::
+        \mathbf{y} = \mathbf{g} (\mathbf{r}_c^{\ell c}),
+    where :math:`\mathbf{r}_c^{\ell c}` is the position of the landmark resolved in the camera frame, written as
+
+    .. math::
+        \mathbf{r}_c^{\ell c} = \mathbf{C}_{bc}^T (\mathbf{C}_{ab}^T (\mathbf{r}_{\ell} - \mathbf{r}) - \mathbf{r}_b^{bc}).
+
+    Here, the robot pose is given by :math:`(\mathbf{C}_{ab} \in SO(3),
+    \mathbf{r} \in \mathbb{R}^3 )`, and the landmark position is given by :math:`\mathbf{r}_\ell \in \mathbb{R}^3`.
+    Also note that :math:`\mathbf{g} (\cdot)` is the standard pinhole projection
+    model, given by
+
+    .. math::
+        g([x, y, z]^T) = [f_u * (x / z) + c_u, f_v * (y / z) + c_v]^T,
+
+    where :math:`f_u, f_v, c_u, c_v` are the camera intrinsics.
+    """
+
+    def __init__(
+        self, pose_state_id: Any, landmark_state_id: Any, camera: PinholeCamera
+    ):
+        """
+        Parameters
+        ----------
+        pose_state_id : Any
+            The state ID of the pose state
+        landmark_state_id : Any
+            The state ID of the landmark state
+        camera : PinholeCamera model
+            The PinholeCamera model, containing the information about the camera
+            including the intrinsics and the extrinsics.
+        """
+        self._pose_state_id = pose_state_id
+        self._landmark_state_id = landmark_state_id
+        self._camera = camera
+
+        self._R = np.identity(2) * camera.sigma**2
+
+    def evaluate(self, x: CompositeState) -> np.ndarray:
+        pose: MatrixLieGroupState = x.get_state_by_id(self._pose_state_id)
+        landmark: VectorState = x.get_state_by_id(self._landmark_state_id)
+        return self._camera.evaluate(pose, landmark.value)
+
+    def jacobian(self, x: CompositeState) -> np.ndarray:
+        pose: MatrixLieGroupState = x.get_state_by_id(self._pose_state_id)
+        landmark: VectorState = x.get_state_by_id(self._landmark_state_id)
+
+        # Compute the Jacobian of the measurement model
+        if pose.direction == "right":
+            r_pc_c = self._camera.resolve_landmark_in_cam_frame(
+                pose, landmark.value
+            )
+            dg_dr = self._compute_jac_of_projection_model(r_pc_c)
+            # Extract relevant states
+            C_bc = self._camera.T_bc.attitude
+            C_ab = pose.attitude
+            r_zw_a = pose.position.reshape((-1, 1))
+            r_pw_a = landmark.value.reshape((-1, 1))
+
+            # Compute Jacobian with respect to the pose
+            jac_attitude = C_bc.T @ SO3.cross(C_ab.T @ (r_pw_a - r_zw_a))
+            jac_position = -C_bc.T
+            # Compute Jacobian with respect to the landmark
+            jac_landmark = C_bc.T @ C_ab.T
+
+            # Chain rule
+            jac_attitude = dg_dr @ jac_attitude
+            jac_position = dg_dr @ jac_position
+            jac_landmark = dg_dr @ jac_landmark
+
+            pose_jacobian = pose.jacobian_from_blocks(
+                attitude=jac_attitude, position=jac_position
+            )
+        if pose.direction == "left":
+            raise NotImplementedError("Left Jacobian not implemented")
+
+        # Build full Jacobian
+        jac_dict = {}
+        jac_dict[self._pose_state_id] = pose_jacobian
+        jac_dict[self._landmark_state_id] = jac_landmark
+        return x.jacobian_from_blocks(jac_dict)
+
+    def covariance(self, x: CompositeState) -> np.ndarray:
+        return self._R
+
+    def _compute_jac_of_projection_model(
+        self, r_pc_c: np.ndarray
+    ) -> np.ndarray:
+        x, y, z = r_pc_c.ravel()
+        fu = self._camera.fu
+        fv = self._camera.fv
+        dg_dr = (1.0 / z) * np.array(
+            [[fu, 0, -fu * x / z], [0, fv, -fv * y / z]]
+        )
+
+        return dg_dr
+
 
 class InvariantPointRelativePosition(MeasurementModel):
     def __init__(self, y: np.ndarray, model: PointRelativePosition):
@@ -698,16 +809,17 @@ class RangePoseToPose(MeasurementModel):
 
     Compatible with ``SE2State, SE3State, SE23State, IMUState``.
     """
+
     def __init__(
         self, tag_body_position1, tag_body_position2, state_id1, state_id2, R
     ):
-        """ 
+        """
         Parameters
         ----------
         tag_body_position1 : np.ndarray
             Position of tag in body frame of Robot 1.
         tag_body_position2 : np.ndarray
-            Position of tag in body frame of Robot 2. 
+            Position of tag in body frame of Robot 2.
         state_id1 : Any
             State ID of Robot 1.
         state_id2 : Any
@@ -719,7 +831,6 @@ class RangePoseToPose(MeasurementModel):
         # default value of either [0,0] or [0,0,0] (depending on the dimension
         # of the passed state). Unfortunately, changing argument order is a
         # breaking change.
-
 
         self.tag_body_position1 = np.array(tag_body_position1).flatten()
         self.tag_body_position2 = np.array(tag_body_position2).flatten()
