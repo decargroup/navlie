@@ -570,8 +570,8 @@ class CompositeMeasurementModel(MeasurementModel):
 class CompositeMeasurement(Measurement):
     def __init__(self, y: Measurement, state_id: Any):
         """
-        Converts a standard Measurement into a CompositeMeasurement, which
-        replaces the model with a CompositeMeasurementModel.
+        Converts a standard ``Measurement`` into a CompositeMeasurement, which
+        simply replaces the model with a CompositeMeasurementModel.
 
         Parameters
         ----------
