@@ -527,15 +527,29 @@ class CompositeProcessModel(ProcessModel):
 class CompositeMeasurementModel(MeasurementModel):
     """
     Wrapper for a standard measurement model that assigns the model to a specific
-    substate (referenced by `state_id`) inside a CompositeState.
+    substate (referenced by `state_id`) inside a CompositeState. This class
+    will take care of extracting the relevant substate from the CompositeState,
+    and then applying the measurement model to it. It will also take care of
+    padding the Jacobian with zeros appropriately to match the degrees of freedom
+    of the larger CompositeState.
     """
 
     def __init__(self, model: MeasurementModel, state_id):
+        """
+        Parameters
+        ----------
+        model : MeasurementModel
+            Standard measurement model, which is appropriate only for a single
+            substate in the CompositeState.
+        state_id : Any
+            The unique ID of the relevant substate in the CompositeState, to 
+            assign the measurement model to.
+        """
         self.model = model
         self.state_id = state_id
 
     def __repr__(self):
-        return f"{self.model}(of substate {self.state_id})"
+        return f"{self.model} (of substate '{self.state_id}')"
 
     def evaluate(self, x: CompositeState) -> np.ndarray:
         return self.model.evaluate(x.get_state_by_id(self.state_id))
@@ -556,8 +570,8 @@ class CompositeMeasurementModel(MeasurementModel):
 class CompositeMeasurement(Measurement):
     def __init__(self, y: Measurement, state_id: Any):
         """
-        Converts a standard Measurement into a CompositeMeasurement, which
-        replaces the model with a CompositeMeasurementModel.
+        Converts a standard ``Measurement`` into a CompositeMeasurement, which
+        simply replaces the model with a CompositeMeasurementModel.
 
         Parameters
         ----------

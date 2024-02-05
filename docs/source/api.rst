@@ -7,6 +7,7 @@ Below is a list of all the modules in the navlie package.  Click on any of the l
    :recursive:
    :template: custom-module-template.rst
 
+   navlie.composite
    navlie.datagen
    navlie.filters
    navlie.imm

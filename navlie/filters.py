@@ -449,8 +449,8 @@ class IteratedKalmanFilter(ExtendedKalmanFilter):
 def generate_sigmapoints(
     dof: int, method: str
 ) -> Tuple[np.ndarray, np.ndarray]:
-    """Generates unit sigma points from three available
-    methods.
+    """
+    Generates unit sigma points from three available methods.
 
     Parameters
     ----------
@@ -466,7 +466,8 @@ def generate_sigmapoints(
     Returns
     -------
     Tuple[np.ndarray, np.ndarray]
-        returns the unit sigma points and the weights
+        returns the unit sigma points and the weights, respectively. For the 
+        sigmapoints, each *column* will represent a sigma point.
     """
     if method == "unscented":
         kappa = 2
