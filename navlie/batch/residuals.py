@@ -94,26 +94,15 @@ class Residual(ABC):
             jac_list = self.jacobian_cache.copy()
         ny = [jac.shape[0] for jac in jac_list if jac is not None][0]
 
-        hessians = [[None] * len(states) for lv1 in range(len(states))]
-
         for lv1, (state, jac) in enumerate(zip(states, jac_list)):
             if jac is None:
                 jac_list[lv1] = np.zeros((ny, state.dof))
 
-        slice_list = []
-        start_slice = 0
-        for lv1 in range(len(states)):
-            end_slice = start_slice + states[lv1].dof
-            slice_list.append(slice(start_slice, end_slice))
-            start_slice = end_slice
-        jac = np.hstack([jacobian for jacobian in jac_list if jacobian is not None])
+        jac = np.hstack([jacobian for jacobian in jac_list])
+
         hessian = jac.T @ jac
-        for lv1 in range(len(states)):
-            for lv2 in range(len(states)):
-                if not compute_hessians[lv1] or not compute_hessians[lv2]:
-                    hessians[lv1][lv2] = None
-                else:
-                    hessians[lv1][lv2] = hessian[slice_list[lv1], slice_list[lv2]]
+        hessians = split_up_hessian_by_state(states, hessian, compute_hessians)
+
         return hessians
 
     def jacobian_fd(self, states: List[State], step_size=1e-6) -> List[np.ndarray]:
@@ -162,6 +151,31 @@ class Residual(ABC):
         Returns the information matrix
         """
         pass
+
+
+def split_up_hessian_by_state(
+    states: List[State], hessian: np.ndarray, compute_hessians: List[bool]
+):
+    hessians = [[None] * len(states) for lv1 in range(len(states))]
+
+    slice_list = []
+    start_slice = 0
+    for lv1 in range(len(states)):
+        end_slice = start_slice + states[lv1].dof
+        slice_list.append(slice(start_slice, end_slice))
+        start_slice = end_slice
+
+    for lv1 in range(len(states)):
+        for lv2 in range(len(states)):
+            if not compute_hessians[lv1] or not compute_hessians[lv2]:
+                hessians[lv1][lv2] = None
+            else:
+                hessians[lv1][lv2] = hessian[slice_list[lv1], slice_list[lv2]]
+            if hessians[lv1][lv2] is not None:
+                if not hessians[lv1][lv2].any():
+                    if hessians[lv1][lv2].size == 0:
+                        meow = 1
+    return hessians
 
 
 class PriorResidual(Residual):
