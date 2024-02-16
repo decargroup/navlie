@@ -171,10 +171,7 @@ def split_up_hessian_by_state(
                 hessians[lv1][lv2] = None
             else:
                 hessians[lv1][lv2] = hessian[slice_list[lv1], slice_list[lv2]]
-            if hessians[lv1][lv2] is not None:
-                if not hessians[lv1][lv2].any():
-                    if hessians[lv1][lv2].size == 0:
-                        meow = 1
+
     return hessians
 
 
