@@ -241,6 +241,7 @@ The following state types are currently part of the lib:
 - `SE2State`
 - `SE3State`
 - `SE23State`
+- 'SL3State'
 - `IMUState` (contains IMU biases as part of the state)
 - `CompositeState` (for holding many sub-states as a single state)
 
