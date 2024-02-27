@@ -189,7 +189,7 @@ if __name__ == "__main__":
         average_model_probabilities = np.average(
             np.array([t.model_probabilities for t in results.trial_results]),
             axis=0,
-        )
+        ).T
         fig, ax = plt.subplots(1, 1)
         for lv1 in range(n_models):
             ax.plot(results.stamp, average_model_probabilities[lv1, :])
