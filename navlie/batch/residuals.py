@@ -335,3 +335,11 @@ class MeasurementResidual(Residual):
             return e, jacobians
 
         return e
+
+    def sqrt_info_matrix(self, states: List[State]):
+        """
+        Returns the square root of the information matrix
+        """
+        x = states[0]
+        L = self._y.model.sqrt_information(x)
+        return L
