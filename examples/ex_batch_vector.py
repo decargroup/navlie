@@ -16,7 +16,7 @@ import matplotlib.pyplot as plt
 def main():
     # #############################################################################
     # Create the batch estimator with desired settings
-    estimator = nav.BatchEstimator(solver_type="GN", max_iters=5)
+    estimator = nav.BatchEstimator(solver_type="LM", max_iters=20, step_tol=None, gradient_tol=1e-7, ftol=1e-8, verbose=True)
 
     # ##############################################################################
     # Problem Setup

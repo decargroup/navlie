@@ -35,6 +35,8 @@ class BatchEstimator:
         solver_type: str = "GN",
         max_iters: int = 100,
         step_tol: float = 1e-7,
+        ftol: float = None,
+        gradient_tol: float = None,
         tau: float = 1e-11,
         verbose: bool = True,
     ):
@@ -47,7 +49,28 @@ class BatchEstimator:
         max_iters : int, optional
             Maximum number of optimization iterations, by default 100.
         step_tol : float, optional
-            Convergence tolerance, by default 1e7.
+            Convergence step tolerance, by default 1e-7.
+            The solver exits when
+
+            .. math::
+
+                ||\Delta x||_2 < \\text{step_tol}
+            where :math:`\Delta x` is the change in the state estimate for successive steps.
+        ftol : float, optional
+            Convergence relative cost decrease tolerance, by default None (not used).
+            The solver exits when  
+
+            .. math::
+
+                |\Delta C /C| < \\text{ftol} 
+            where :math:`\Delta C` is change in the cost function for successive accepted steps.
+        gradient_tol : float, optional
+            Convergence gradient infinity norm tolerance, by default None (not used).
+            The solver exits when  
+
+            .. math::
+            
+                \max_i |\\nabla J|_i = \max_i |\mathbf{e}^T \mathbf{H}|_i < \\text{gradient_tol} 
         tau : float, optional
             tau parameter in LM, by default 1e-11.
         verbose : bool, optional
@@ -56,6 +79,8 @@ class BatchEstimator:
         self.solver_type = solver_type
         self.max_iters = max_iters
         self.step_tol = step_tol
+        self.ftol = ftol
+        self.gradient_tol = gradient_tol
         self.tau = tau
         self.verbose = verbose
 
@@ -154,6 +179,8 @@ class BatchEstimator:
             max_iters=self.max_iters,
             solver=self.solver_type,
             step_tol=self.step_tol,
+            ftol=self.ftol,
+            gradient_tol=self.gradient_tol,
             tau=self.tau,
             verbose=self.verbose,
         )
