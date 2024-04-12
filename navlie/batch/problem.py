@@ -58,6 +58,8 @@ class Problem:
         solver: str = "GN",
         max_iters: int = 100,
         step_tol: float = 1e-7,
+        ftol: float = None,
+        gradient_tol: float = None,
         tau: float = 1e-11,
         verbose: bool = True,
     ):
@@ -65,6 +67,8 @@ class Problem:
         self.solver = solver
         self.max_iters = max_iters
         self.step_tol = step_tol
+        self.ftol = ftol
+        self.gradient_tol = gradient_tol
         self.tau = tau
         self.verbose = verbose
 
@@ -91,6 +95,27 @@ class Problem:
         # Inverse of information matrix
         self._covariance_matrix: np.ndarray = None
 
+    def is_converged(self, delta_cost, cost, dx, grad_norm) -> bool:
+        converged = False
+        if delta_cost is not None:
+            rel_cost_change = 0.0
+            if cost != 0:
+                rel_cost_change = delta_cost / cost
+
+            if self.step_tol is not None and dx < self.step_tol:
+                converged = True
+            if self.ftol is not None and delta_cost is not None:
+                if rel_cost_change < self.ftol:
+                    converged = True
+            if cost == 0.0:
+                converged = True
+            if dx == 0.0:
+                converged = True
+            if self.gradient_tol is not None and grad_norm is not None:
+                if grad_norm < self.gradient_tol:
+                    converged = True
+        return converged
+    
     def add_residual(self, residual: Residual, loss: LossFunction = L2Loss()):
         """Adds a residual to the problem, along with a robust loss
         function to use. Default loss function is the standard L2Loss.
@@ -182,6 +207,10 @@ class Problem:
         """
 
         dx = 10
+        delta_cost = None
+        rel_cost_decrease = None
+        grad_norm = None
+
         iter_idx = 0
         cost_list = []
 
@@ -193,7 +222,11 @@ class Problem:
             header = "Initial cost: " + str(cost)
             print(header)
 
-        while (iter_idx < self.max_iters) and (dx > self.step_tol):
+        while iter_idx < self.max_iters:
+
+            if self.is_converged(delta_cost, cost_list[-1], dx, grad_norm):
+                break
+    
             H_spr = sparse.csr_matrix(H)
 
             A = H_spr.T @ H_spr
@@ -208,8 +241,23 @@ class Problem:
             cost_list.append(cost)
 
             dx = np.linalg.norm(delta_x)
+            if len(cost_list) >= 2:
+                delta_cost = np.abs(cost_list[-1] - cost_list[-2])
+                if cost_list[-1] != 0:
+                    rel_cost_decrease = delta_cost / cost_list[-1]
+                else:
+                    rel_cost_decrease = 0
+            grad_norm = np.max(np.abs((e.T @ H).squeeze()))
+
             if self.verbose:
-                self._display_header(iter_idx, cost, dx)
+                self._display_header(
+                    iter_idx,
+                    cost,
+                    dx,
+                    delta_cost,
+                    rel_cost_decrease,
+                    grad_norm,
+                )
 
             iter_idx += 1
 
@@ -232,6 +280,10 @@ class Problem:
         """
 
         e, H, cost = self.compute_error_jac_cost()
+
+        delta_cost = None
+        rel_cost_decrease = None
+        grad_norm = None
         cost_list = [cost]
 
         H_spr = sparse.csr_matrix(H)
@@ -250,9 +302,12 @@ class Problem:
             print(header)
 
         # Main LM loop
-        while (iter_idx < self.max_iters) and (dx > self.step_tol):
+        while iter_idx < self.max_iters:
             A_solve = A + mu * sparse.identity(A.shape[0])
             delta_x = sparse.linalg.spsolve(A_solve, -b).reshape((-1, 1))
+            dx = np.linalg.norm(delta_x)
+            if self.is_converged(delta_cost, cost_list[-1], dx, grad_norm):
+                break
 
             variables_test = {k: v.copy() for k, v in self.variables.items()}
 
@@ -287,10 +342,26 @@ class Problem:
                 nu = 2 * nu
                 status = "Rejected."
 
-            dx = np.linalg.norm(delta_x)
+
+
+            if len(cost_list) >= 2:
+                delta_cost = np.abs(cost_list[-1] - cost_list[-2])
+                if cost_list[-1] != 0:
+                    rel_cost_decrease = delta_cost / cost_list[-1]
+                else:
+                    rel_cost_decrease = 0
+            grad_norm = np.max(np.abs((e.T @ H).squeeze()))
 
             if self.verbose:
-                self._display_header(iter_idx + 1, cost, dx, status=status)
+                self._display_header(
+                    iter_idx,
+                    cost,
+                    dx,
+                    delta_cost,
+                    rel_cost_decrease,
+                    grad_norm,
+                    status=status,
+                )
 
             iter_idx += 1
 
@@ -479,7 +550,14 @@ class Problem:
             return None
 
     def _display_header(
-        self, iter_idx: int, current_cost: float, dx: float, status: str = None
+        self,
+        iter_idx: int,
+        current_cost: float,
+        dx: float,
+        delta_cost: float = None,
+        delta_cost_rel: float = None,
+        grad_norm: float = None,
+        status: str = None,
     ):
         """Displays the optimization progress.
 
@@ -497,7 +575,12 @@ class Problem:
         header = ("Iter: {0} || Cost: {1:.4e} || Step size: {2:.4e}").format(
             iter_idx, current_cost, dx
         )
-
+        if delta_cost is not None:
+            header += " || dC: {0:.4e}".format(delta_cost)
+        if delta_cost_rel is not None:
+            header += " || dC/C: {0:.4e}".format(delta_cost_rel)
+        if grad_norm is not None:
+            header += " || |grad|_inf: {0:.4e}".format(grad_norm)
         if status is not None:
             header += " || Status: " + status
 
