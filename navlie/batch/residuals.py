@@ -100,7 +100,12 @@ class Residual(ABC):
             jac_list[state_num] = jac_fd
 
         return jac_list
-
+    
+    def sqrt_info_matrix(self, states: List[State]):
+        """
+        Returns the information matrix
+        """
+        pass
 
 class PriorResidual(Residual):
     """
@@ -146,6 +151,11 @@ class PriorResidual(Residual):
 
         return error
 
+    def sqrt_info_matrix(self, states: List[State]):
+        """
+        Returns the square root of the information matrix
+        """
+        return self._L
 
 class ProcessResidual(Residual):
     """

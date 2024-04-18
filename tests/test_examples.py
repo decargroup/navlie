@@ -21,6 +21,7 @@ examples/ex_ukf_se2.py
 examples/ex_ukf_vector.py
 examples/ex_varying_noise.py
 examples/ex_slam.py
+examples/ex_gaussian_mixture.py
 """
 
 
@@ -108,6 +109,13 @@ def test_ex_varying_noise():
     from ex_varying_noise import main
 
     main()
+
+
+def test_ex_gaussian_mixture():
+    from ex_gaussian_mixture import main
+
+    main()
+
 
 def test_ex_slam():
     from ex_slam import main
