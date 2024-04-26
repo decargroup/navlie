@@ -19,6 +19,7 @@ from .filters import (
 from . import batch
 from . import imm
 from . import lib
+from . import gsf
 from .batch import BatchEstimator
 
 from .datagen import DataGenerator, generate_measurement
