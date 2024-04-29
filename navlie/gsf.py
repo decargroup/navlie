@@ -12,10 +12,10 @@ from navlie.types import (
 )
 import numpy as np
 from tqdm import tqdm
-from filters import ExtendedKalmanFilter
+from navlie.filters import ExtendedKalmanFilter
 from scipy.stats import multivariate_normal
 from navlie.utils import GaussianResultList, GaussianResult, state_interp
-from .imm import gaussian_mixing
+from navlie.imm import gaussian_mixing
 
 class GMMState:
     __slots__ = ["states", "weights"]
@@ -69,6 +69,7 @@ class GaussianSumFilter:
     __slots__ = [
         "process_model",
         "reject_outliers",
+        "ekf",
     ]
 
     def __init__(

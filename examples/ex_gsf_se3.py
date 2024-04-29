@@ -1,5 +1,4 @@
 from navlie.lib import SE2State, BodyFrameVelocity, RangePoseToAnchor
-from navlie.gsf import GaussianSumFilter
 
 import navlie as nav
 import numpy as np
@@ -36,7 +35,7 @@ t_max = dt * 100
 measurement_freq = 5
 
 # gsf filter
-gsf = GaussianSumFilter(process_model)
+gsf = nav.gsf.GaussianSumFilter(process_model)
 
 dg = nav.DataGenerator(
     process_model,
