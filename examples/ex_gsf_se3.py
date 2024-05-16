@@ -4,6 +4,7 @@ import navlie as nav
 import numpy as np
 from typing import List
 
+
 """
 This example runs an Interacting Multiple Model filter to estimate the process model noise matrix
 for a state that is on a Lie group. The performance is compared to an EKF that knows the ground
@@ -53,51 +54,40 @@ def gsf_trial(trial_number: int) -> List[nav.GaussianResult]:
     """
     np.random.seed(trial_number)
     state_true, input_list, meas_list = dg.generate(x0, 0, t_max, True)
-
-    x0_check = x0.plus(nav.randvec(P0))
+    
+    # Initial state estimates
+    x = [SE2State([0, -5, 0], stamp=0.0),
+         SE2State([0,  5, 0], stamp=0.0)]
+    x = [x_.plus(nav.randvec(P0)) for x_ in x]
+    
+    weights = [1, 1]
+    x0_check = nav.gsf.GMMState(
+        [nav.StateWithCovariance(_x, P0) for _x in x], weights
+    )
 
     estimate_list = nav.gsf.run_gsf_filter(
         gsf, x0_check, P0, input_list, meas_list
     )
 
     results = [
-        nav.imm.IMMResult(estimate_list[i], state_true[i])
+        nav.gsf.GSFResult(estimate_list[i], state_true[i])
         for i in range(len(estimate_list))
     ]
 
-    return nav.imm.IMMResultList(results)
+    return nav.gsf.GSFResultList(results)
 
-N = 1
-results = nav.monte_carlo(gsf_trial, N)
+N = 2
+results = gsf_trial(0)
 
 if __name__ == "__main__":
     import matplotlib.pyplot as plt
     import seaborn as sns
 
     sns.set_theme(style="whitegrid")
-
-    fig, ax = plt.subplots(1, 1)
-    ax.plot(results.stamp, results.average_nees, label="IMM NEES")
-    ax.plot(
-        results.stamp, results.expected_nees, color="r", label="Expected NEES"
-    )
-    ax.plot(
-        results.stamp,
-        results.nees_lower_bound(0.99),
-        color="k",
-        linestyle="--",
-        label="99 percent c.i.",
-    )
-    ax.plot(
-        results.stamp,
-        results.nees_upper_bound(0.99),
-        color="k",
-        linestyle="--",
-    )
-    ax.set_title("{0}-trial average NEES".format(results.num_trials))
-    ax.set_ylim(0, None)
-    ax.set_xlabel("Time (s)")
-    ax.set_ylabel("NEES")
-    ax.legend()
-
+    fig, ax = nav.plot_error(results)
+    ax[0].set_title("Error plots")
+    ax[0].set_ylabel("Error (rad)")
+    ax[1].set_ylabel("Error (m)")
+    ax[2].set_ylabel("Error (m)")
+    ax[2].set_xlabel("Time (s)")
     plt.show()

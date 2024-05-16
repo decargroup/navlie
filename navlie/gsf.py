@@ -14,7 +14,7 @@ import numpy as np
 from tqdm import tqdm
 from navlie.filters import ExtendedKalmanFilter
 from scipy.stats import multivariate_normal
-from navlie.utils import GaussianResultList, GaussianResult, state_interp
+from navlie.utils import GaussianResult, GaussianResultList
 from navlie.imm import gaussian_mixing
 
 class GMMState:
@@ -34,7 +34,7 @@ class GMMState:
 
     def copy(self) -> "GMMState":
         x_copy = [x.copy() for x in self.states]
-        return GMMState(x_copy, self.weights.copy())
+        return GMMState(x_copy, self.weights.copy() / np.sum(self.weights))
 
 class GSFResult(GaussianResult):
     __slots__ = [
@@ -57,8 +57,30 @@ class GSFResult(GaussianResult):
             ),
             state_true,
         )
-
         self.weights = gsf_estimate.weights
+
+class GSFResultList(GaussianResultList):
+    __slots__ = [
+        "stamp",
+        "state",
+        "state_true",
+        "covariance",
+        "error",
+        "ees",
+        "nees",
+        "md",
+        "three_sigma",
+        "value",
+        "value_true",
+        "dof",
+        "weights",
+    ]
+
+    def __init__(self, result_list: List[GSFResult]):
+        super().__init__(result_list)
+        self.weights = np.array(
+            [r.weights for r in result_list]
+        )
 
 
 class GaussianSumFilter:
@@ -126,8 +148,8 @@ class GaussianSumFilter:
     def correct(
         self,
         x: GMMState,
-        u: Input,
         y: Measurement,
+        u: Input,
     ) -> GMMState:
         """
         Corrects the state estimate using a measurement. The user must provide
@@ -145,27 +167,29 @@ class GaussianSumFilter:
         GMMState
             Corrected states with associated weights.
         """
+        x_check = x.copy()
         n_modes = len(x.states)
         weights_check = x.weights.copy()
 
         x_hat = []
-        weights_hat = []
+        weights_hat = np.zeros(n_modes)
         for i in range(n_modes):
-            x, details_dict = self.ekf.correct(x.states[i], y, u)
+            x, details_dict = self.ekf.correct(x_check.states[i], y, u, 
+                                               output_details=True)
             x_hat.append(x)
             z = details_dict["z"]
             S = details_dict["S"]
             model_likelihood = multivariate_normal.pdf(
                 z.ravel(), mean=np.zeros(z.shape), cov=S
             )
-            weights_hat.append(weights_check[i] * model_likelihood)
+            weights_hat[i] = weights_check[i] * model_likelihood
 
         # If all model likelihoods are zero to machine tolerance, np.sum(mu_k)=0 and it fails
         # Add this fudge factor to get through those cases.
         if np.allclose(weights_hat, np.zeros(weights_hat.shape)):
             weights_hat = 1e-10 * np.ones(weights_hat.shape)
 
-        weights_hat = np.array(weights_hat) / np.sum(weights_hat)
+        weights_hat = weights_hat / np.sum(weights_hat)
             
         return GMMState(x_hat, weights_hat)    
 
@@ -195,8 +219,8 @@ def run_gsf_filter(
     meas_data : List[Measurement]
         _description_
     """
-    x = StateWithCovariance(x0, P0)
-    if x.state.stamp is None:
+    x = x0.copy()
+    if x.stamp is None:
         raise ValueError("x0 must have a valid timestamp.")
 
     # Sort the data by time
@@ -205,24 +229,18 @@ def run_gsf_filter(
 
     # Remove all that are before the current time
     for idx, u in enumerate(input_data):
-        if u.stamp >= x.state.stamp:
+        if u.stamp >= x.stamp:
             input_data = input_data[idx:]
             break
 
     for idx, y in enumerate(meas_data):
-        if y.stamp >= x.state.stamp:
+        if y.stamp >= x.stamp:
             meas_data = meas_data[idx:]
             break
 
     meas_idx = 0
     if len(meas_data) > 0:
         y = meas_data[meas_idx]
-
-    n_modes = 1
-    weights = [1.0]
-    x = GMMState(
-        [StateWithCovariance(x0, P0)] * n_modes, weights
-    )
 
     results_list = []
     for k in tqdm(range(len(input_data) - 1), disable=disable_progress_bar):
