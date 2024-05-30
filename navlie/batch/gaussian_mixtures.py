@@ -144,6 +144,11 @@ class GaussianMixtureResidual(Residual, ABC):
             sqrt_info_matrix_list.append(error.sqrt_info_matrix(cur_states))
         self.sqrt_info_matrix_list = sqrt_info_matrix_list
 
+        # For the not NLS-compatible HSM version, these values need to be reused for Hessian computation.
+        self.error_value_list_cache = error_value_list
+        self.jacobian_list_of_lists_cache = jacobian_list_of_lists
+        self.sqrt_info_matrix_list_cache = sqrt_info_matrix_list
+
         return error_value_list, jacobian_list_of_lists, sqrt_info_matrix_list
 
     def evaluate(
