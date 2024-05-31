@@ -1,8 +1,8 @@
 from pymlg import SO2, SO3, SE2, SE3, SE23, SL3
 from pymlg.numpy.base import MatrixLieGroup
 import numpy as np
-from navlie.types import State, Input
-from typing import Any
+from navlie.types import State, Input, StateWithCovariance
+from typing import Any, List
 
 try:
     # We do not want to make ROS a hard dependency, so we import it only if
@@ -651,6 +651,26 @@ class SL3State(MatrixLieGroupState):
         direction="right",
     ):
         super().__init__(value, self.group, stamp, state_id, direction)
+
+
+class IMMState:
+    __slots__ = ["model_states", "model_probabilities"]
+
+    def __init__(
+        self,
+        model_states: List[StateWithCovariance],
+        model_probabilities: List[float],
+    ):
+        self.model_states = model_states
+        self.model_probabilities = model_probabilities
+
+    @property
+    def stamp(self):
+        return self.model_states[0].state.stamp
+
+    def copy(self) -> "IMMState":
+        x_copy = [x.copy() for x in self.model_states]
+        return IMMState(x_copy, self.model_probabilities.copy())
 
 
 class VectorInput(Input):

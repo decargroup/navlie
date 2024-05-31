@@ -21,9 +21,8 @@ from pymlg import SE3
 
 import numpy as np
 from typing import List
-from navlie.imm import InteractingModelFilter, run_imm_filter
-from navlie.imm import IMMResultList
-from navlie.imm import IMMResult
+from navlie.filters import InteractingModelFilter, run_imm_filter
+from navlie.utils import IMMResult, IMMResultList
 
 # TODO this test is very complicated. we need to simplify this.
 
