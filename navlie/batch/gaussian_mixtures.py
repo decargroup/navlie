@@ -526,21 +526,25 @@ class HessianSumMixtureResidual(GaussianMixtureResidual):
     }
     """
 
-    sum_mixture_residual: SumMixtureResidual
     no_use_complex_numbers: bool
-    normalization_constant: float
 
     def __init__(
         self,
         errors: List[Residual],
         weights,
         no_use_complex_numbers=True,
-        normalization_constant=0.1,
     ):
         super().__init__(errors, weights)
         self.sum_mixture_residual = SumMixtureResidual(errors, weights)
         self.no_use_complex_numbers = no_use_complex_numbers
-        self.normalization_constant = normalization_constant
+
+    @staticmethod
+    def get_normalization_constant(alphas: List[float]):
+        alphas = np.array(alphas)
+        msm_constant = alphas.shape[0] * np.max(alphas)
+        log_constant = alphas.shape[0] * np.max(np.log(alphas))
+
+        return max(msm_constant, log_constant) + 1
 
     def mix_errors(
         self,
@@ -551,34 +555,31 @@ class HessianSumMixtureResidual(GaussianMixtureResidual):
             weight * np.linalg.det(sqrt_info_matrix)
             for weight, sqrt_info_matrix in zip(self.weights, sqrt_info_matrix_list)
         ]
-        error_value_list = [e.reshape(-1, 1) for e in error_value_list]
-        eTe_list = [e.T @ e for e in error_value_list]
+        normalization_constant = self.get_normalization_constant(alpha_list)
 
-        # Normalize all the exponent arguments to avoid numerical issues.
-        eTe_dom = min(eTe_list)
-
+        f_list = [0.5 * np.sum(e**2) for e in error_value_list]
+        kmax = np.argmin(np.array(f_list))
+        f_kmax = f_list[kmax]
         sum_exp = np.sum(
-            [
-                alpha * np.exp(0.5 * eTe_dom - 0.5 * e.T @ e)
-                for alpha, e in zip(alpha_list, error_value_list)
-            ]
+            [alpha * np.exp(f_kmax - f) for alpha, f in zip(alpha_list, f_list)]
         )
+
         drho_df_list = [
-            alpha * np.exp(0.5 * eTe_dom - 0.5 * eTe) / sum_exp
-            for alpha, eTe in zip(alpha_list, eTe_list)
+            alpha * np.exp(f_kmax - f) / sum_exp for alpha, f in zip(alpha_list, f_list)
         ]
 
         hsm_error = np.vstack(
-            [np.sqrt(drho) * e for drho, e in zip(drho_df_list, error_value_list)]
+            [
+                np.sqrt(drho) * e.reshape(-1, 1)
+                for drho, e in zip(drho_df_list, error_value_list)
+            ]
         ).squeeze()
 
-        desired_loss = np.sum(
-            self.sum_mixture_residual.mix_errors(
-                error_value_list, sqrt_info_matrix_list
-            )
-            ** 2
-        )
+        # When the loss is computed at the end, it is computed as 1/2 * e^\trans e.
+        # The normalization constant is a bound on 2*logsumexp minus the norm of hsm_error.
+        # This works out to at the end evaluate normalization_constant + f_kmax - np.log(sum_exp).
 
+        desired_loss = 2 * (normalization_constant + f_kmax - np.log(sum_exp))
         if not self.no_use_complex_numbers:
             current_loss = np.sum(hsm_error**2)
             diff = np.array(np.emath.sqrt(desired_loss - current_loss))
@@ -590,11 +591,7 @@ class HessianSumMixtureResidual(GaussianMixtureResidual):
             )
         if self.no_use_complex_numbers:
             current_loss = np.sum(hsm_error**2)
-
-            delta = self.normalization_constant + desired_loss - current_loss
-            if delta < 0:
-                self.normalization_constant = delta + 1
-                delta = self.normalization_constant + desired_loss - current_loss
+            delta = desired_loss - current_loss
 
             diff = np.array(np.sqrt(delta))
             hsm_error = np.concatenate(
