@@ -540,11 +540,12 @@ class HessianSumMixtureResidual(GaussianMixtureResidual):
 
     @staticmethod
     def get_normalization_constant(alphas: List[float]):
-        alphas = np.array(alphas)
-        msm_constant = alphas.shape[0] * np.max(alphas)
-        log_constant = alphas.shape[0] * np.max(np.log(alphas))
+        alpha_sum = np.sum(alphas)
+        log_sum = 0.0
+        for lv1 in range(alphas.shape[0]):
+            log_sum = log_sum + alphas[lv1] * np.exp(alpha_sum / alphas[lv1])
 
-        return max(msm_constant, log_constant) + 1
+        return np.log(log_sum)
 
     def mix_errors(
         self,
@@ -578,8 +579,8 @@ class HessianSumMixtureResidual(GaussianMixtureResidual):
         # When the loss is computed at the end, it is computed as 1/2 * e^\trans e.
         # The normalization constant is a bound on 2*logsumexp minus the norm of hsm_error.
         # This works out to at the end evaluate normalization_constant + f_kmax - np.log(sum_exp).
-
         desired_loss = 2 * (normalization_constant + f_kmax - np.log(sum_exp))
+
         if not self.no_use_complex_numbers:
             current_loss = np.sum(hsm_error**2)
             diff = np.array(np.emath.sqrt(desired_loss - current_loss))
