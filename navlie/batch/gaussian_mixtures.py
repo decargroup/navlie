@@ -542,7 +542,7 @@ class HessianSumMixtureResidual(GaussianMixtureResidual):
     def get_normalization_constant(alphas: List[float]):
         alpha_sum = np.sum(alphas)
         log_sum = 0.0
-        for lv1 in range(alphas.shape[0]):
+        for lv1 in range(len(alphas)):
             log_sum = log_sum + alphas[lv1] * np.exp(alpha_sum / alphas[lv1])
 
         return np.log(log_sum)
