@@ -3,6 +3,7 @@ import numpy as np
 from navlie import State
 from navlie.batch.residuals import Residual
 from abc import ABC, abstractmethod
+from typing import Dict
 
 
 class GaussianMixtureResidual(Residual, ABC):
@@ -60,7 +61,7 @@ class GaussianMixtureResidual(Residual, ABC):
         self,
         error_value_list: List[np.ndarray],
         sqrt_info_matrix_list: List[np.ndarray],
-    ) -> Tuple[np.ndarray, List[np.ndarray]]:
+    ) -> Tuple[np.ndarray]:
         """Each mixture must implement this method..
         Compute the factor error from the errors corresponding to each component
 
@@ -79,7 +80,7 @@ class GaussianMixtureResidual(Residual, ABC):
         error_value_list: List[np.ndarray],
         jacobian_list_of_lists: List[List[np.ndarray]],
         sqrt_info_matrix_list: List[np.ndarray],
-    ) -> Tuple[np.ndarray, List[np.ndarray]]:
+    ) -> Tuple[List[np.ndarray]]:
         """Each mixture must implement this method.
         For every state, compute Jacobian of the Gaussian mixture w.r.t. that state
 
@@ -161,10 +162,13 @@ class GaussianMixtureResidual(Residual, ABC):
             jacobian_list_of_lists,
             sqrt_info_matrix_list,
         ) = self.evaluate_component_residuals(states, compute_jacobians)
-        e = self.mix_errors(error_value_list, sqrt_info_matrix_list)
+        e, reused_values = self.mix_errors(error_value_list, sqrt_info_matrix_list)
         if compute_jacobians:
             jac_list = self.mix_jacobians(
-                error_value_list, jacobian_list_of_lists, sqrt_info_matrix_list
+                error_value_list,
+                jacobian_list_of_lists,
+                sqrt_info_matrix_list,
+                reused_values,
             )
             return e, jac_list
         return e
@@ -189,11 +193,12 @@ class MaxMixtureResidual(GaussianMixtureResidual):
         self,
         error_value_list: List[np.ndarray],
         sqrt_info_matrix_list: List[np.ndarray],
-    ) -> Tuple[np.ndarray, List[np.ndarray]]:
+    ) -> Tuple[np.ndarray, Dict]:
         alphas = [
             weight * np.linalg.det(sqrt_info_matrix)
             for weight, sqrt_info_matrix in zip(self.weights, sqrt_info_matrix_list)
         ]
+
         # Maximum component obtained as
         # K = argmax alpha_k exp(-0.5 e^\trans e)
         #   = argmin -2* log alpha_k + e^\trans e
@@ -212,25 +217,32 @@ class MaxMixtureResidual(GaussianMixtureResidual):
         nonlinear_part = np.array(np.log(alpha_max / alpha_k)).reshape(-1)
         nonlinear_part = np.sqrt(2) * np.sqrt(nonlinear_part)
         e_mix = np.concatenate([linear_part, nonlinear_part])
-        return e_mix
+
+        reused_values = {"alphas": alphas, "res_values": res_values}
+
+        return e_mix, reused_values
 
     def mix_jacobians(
         self,
         error_value_list: List[np.ndarray],
         jacobian_list_of_lists: List[List[np.ndarray]],
         sqrt_info_matrix_list: List[np.ndarray],
+        reused_values: Dict = None,
     ) -> Tuple[np.ndarray, List[np.ndarray]]:
-        alphas = [
-            weight * np.linalg.det(sqrt_info_matrix)
-            for weight, sqrt_info_matrix in zip(self.weights, sqrt_info_matrix_list)
-        ]
-
-        res_values = np.array(
-            [
-                -np.log(alpha) + 0.5 * e.T @ e
-                for alpha, e in zip(alphas, error_value_list)
+        if reused_values is not None:
+            alphas = reused_values["alphas"]
+            res_values = reused_values["res_values"]
+        else:
+            alphas = [
+                weight * np.linalg.det(sqrt_info_matrix)
+                for weight, sqrt_info_matrix in zip(self.weights, sqrt_info_matrix_list)
             ]
-        )
+            res_values = np.array(
+                [
+                    -np.log(alpha) + 0.5 * e.T @ e
+                    for alpha, e in zip(alphas, error_value_list)
+                ]
+            )
         dominant_idx = np.argmin(res_values)
         jac_list_linear_part: List[np.ndarray] = jacobian_list_of_lists[dominant_idx]
 
@@ -295,7 +307,14 @@ class MaxSumMixtureResidual(GaussianMixtureResidual):
         nonlinear_part = self.compute_nonlinear_part(scalar_errors_differences, alphas)
         e_mix = np.concatenate([linear_part, nonlinear_part])
 
-        return e_mix
+        reused_values = {
+            "alphas": alphas,
+            "nonlinear_part": nonlinear_part,
+            "scalar_errors_differences": scalar_errors_differences,
+            "res_values": res_values,
+        }
+
+        return e_mix, reused_values
 
     def compute_nonlinear_part(
         self, scalar_errors_differences: List[np.ndarray], alphas: List[float]
@@ -322,36 +341,51 @@ class MaxSumMixtureResidual(GaussianMixtureResidual):
         error_value_list: List[np.ndarray],
         jacobian_list_of_lists: List[List[np.ndarray]],
         sqrt_info_matrix_list: List[np.ndarray],
+        reused_values: Dict = None,
     ) -> Tuple[np.ndarray, List[np.ndarray]]:
         n_state_list = len(jacobian_list_of_lists[0])
 
-        alphas = [
-            weight * np.linalg.det(sqrt_info_matrix)
-            for weight, sqrt_info_matrix in zip(self.weights, sqrt_info_matrix_list)
-        ]
-
-        # LINEAR PART
-        res_values = np.array(
-            [
-                -np.log(alpha) + 0.5 * e.T @ e
-                for alpha, e in zip(alphas, error_value_list)
+        if reused_values is not None:
+            alphas = reused_values["alphas"]
+            scalar_errors_differences = reused_values["scalar_errors_differences"]
+            e_nl = reused_values["nonlinear_part"]
+            res_values = reused_values["res_values"]
+        else:
+            alphas = [
+                weight * np.linalg.det(sqrt_info_matrix)
+                for weight, sqrt_info_matrix in zip(self.weights, sqrt_info_matrix_list)
             ]
-        )
+            # LINEAR PART
+            res_values = np.array(
+                [
+                    -np.log(alpha) + 0.5 * e.T @ e
+                    for alpha, e in zip(alphas, error_value_list)
+                ]
+            )
+
+            scalar_errors_differences = [
+                -0.5 * e.T @ e + 0.5 * err_kmax.T @ err_kmax for e in error_value_list
+            ]
+
+            # NONLINEAR PART
+            # Compute error
+            e_nl = self.compute_nonlinear_part(scalar_errors_differences, alphas)
+
         dominant_idx = np.argmin(res_values)
-        jac_list_linear_part: List[np.ndarray] = jacobian_list_of_lists[dominant_idx]
-
         err_kmax = error_value_list[dominant_idx]
-
-        scalar_errors_differences = [
-            -0.5 * e.T @ e + 0.5 * err_kmax.T @ err_kmax for e in error_value_list
-        ]
-
-        # NONLINEAR PART
-        # Compute error
-        e_nl = self.compute_nonlinear_part(scalar_errors_differences, alphas)
-
+        jac_list_linear_part: List[np.ndarray] = jacobian_list_of_lists[dominant_idx]
         # Loop through every state to compute Jacobian with respect to it.
         jac_list_nl = []
+        denominator_list = [
+            alpha * np.exp(scal_err)
+            for alpha, scal_err in zip(alphas, scalar_errors_differences)
+        ]
+
+        denominator = 0.0
+        for term in denominator_list:
+            denominator += term
+        denominator = denominator * e_nl
+
         for lv1 in range(n_state_list):
             jacobian_list_components_wrt_cur_state = [
                 jac_list[lv1] for jac_list in jacobian_list_of_lists
@@ -360,7 +394,7 @@ class MaxSumMixtureResidual(GaussianMixtureResidual):
                 jac_dom = jacobian_list_components_wrt_cur_state[dominant_idx]
                 n_x = jacobian_list_components_wrt_cur_state[0].shape[1]
                 numerator = np.zeros((1, n_x))
-                denominator = 0.0
+
                 numerator_list = [
                     -alpha
                     * np.exp(scal_err)
@@ -375,17 +409,10 @@ class MaxSumMixtureResidual(GaussianMixtureResidual):
                         jacobian_list_components_wrt_cur_state,
                     )
                 ]
-                denominator_list = [
-                    alpha * np.exp(scal_err)
-                    for alpha, scal_err in zip(alphas, scalar_errors_differences)
-                ]
 
                 for term in numerator_list:
                     numerator += term
 
-                for term in denominator_list:
-                    denominator += term
-                denominator = denominator * e_nl
                 jac_list_nl.append(numerator / denominator)
             else:
                 jac_list_nl.append(None)
@@ -450,7 +477,8 @@ class SumMixtureResidual(GaussianMixtureResidual):
             )
         )
         e = np.sqrt(2) * np.sqrt(normalization_const + scalar_errors[kmax] - sum_term)
-        return e
+        reused_values = {"alphas": alphas, "scalar_errors": scalar_errors, "e_sm": e}
+        return e, reused_values
 
     def mix_jacobians(
         self,
@@ -459,13 +487,20 @@ class SumMixtureResidual(GaussianMixtureResidual):
             List[np.ndarray]
         ],  # outer list is components, inner list states
         sqrt_info_matrix_list: List[np.ndarray],
+        reused_values: Dict = None,
     ) -> Tuple[np.ndarray, List[np.ndarray]]:
+        if reused_values is not None:
+            alpha_list = reused_values["alphas"]
+            e_sm = reused_values["e_sm"]
+        else:
+            alpha_list = [
+                weight * np.linalg.det(sqrt_info_matrix)
+                for weight, sqrt_info_matrix in zip(self.weights, sqrt_info_matrix_list)
+            ]
+            e_sm, _ = self.mix_errors(error_value_list, sqrt_info_matrix_list)
+
         n_state_list = len(jacobian_list_of_lists[0])
-        alpha_list = [
-            weight * np.linalg.det(sqrt_info_matrix)
-            for weight, sqrt_info_matrix in zip(self.weights, sqrt_info_matrix_list)
-        ]
-        e_sm = self.mix_errors(error_value_list, sqrt_info_matrix_list)
+
         error_value_list = [e.reshape(-1, 1) for e in error_value_list]
         eTe_list = [e.T @ e for e in error_value_list]
         eTe_dom = min(eTe_list)
@@ -601,37 +636,47 @@ class HessianSumMixtureResidual(GaussianMixtureResidual):
                     np.atleast_1d(np.array(diff)),
                 ]
             )
-        return hsm_error
+        reused_values = {
+            "alphas": alpha_list,
+            "f_list": f_list,
+            "sum_exp": sum_exp,
+            "normalization_constant": normalization_constant,
+            "sum_exp": sum_exp,
+            "drho_df_list": drho_df_list,
+        }
+        return hsm_error, reused_values
 
     def mix_jacobians(
         self,
         error_value_list: List[np.ndarray],
         jacobian_list_of_lists: List[List[np.ndarray]],
         sqrt_info_matrix_list: List[np.ndarray],
+        reused_values: Dict = None,
     ) -> List[np.ndarray]:
         n_state_list = len(jacobian_list_of_lists[0])
-
-        alpha_list = [
-            weight * np.linalg.det(sqrt_info_matrix)
-            for weight, sqrt_info_matrix in zip(self.weights, sqrt_info_matrix_list)
-        ]
-        error_value_list = [e.reshape(-1, 1) for e in error_value_list]
-        eTe_list = [e.T @ e for e in error_value_list]
-
-        # Normalize all the exponent arguments to avoid numerical issues.
-        eTe_dom = min(eTe_list)
-        exp_list = [np.exp(0.5 * eTe_dom - 0.5 * e.T @ e) for e in error_value_list]
-        sum_exp = np.sum(
-            [
-                alpha * np.exp(0.5 * eTe_dom - 0.5 * e.T @ e)
-                for alpha, e in zip(alpha_list, error_value_list)
+        if reused_values is not None:
+            drho_df_list = reused_values["drho_df_list"]
+        else:
+            alpha_list = [
+                weight * np.linalg.det(sqrt_info_matrix)
+                for weight, sqrt_info_matrix in zip(self.weights, sqrt_info_matrix_list)
             ]
-        )
+            error_value_list = [e.reshape(-1, 1) for e in error_value_list]
+            eTe_list = [e.T @ e for e in error_value_list]
 
-        drho_df_list = [
-            alpha * np.exp(0.5 * eTe_dom - 0.5 * eTe) / sum_exp
-            for alpha, eTe in zip(alpha_list, eTe_list)
-        ]
+            # Normalize all the exponent arguments to avoid numerical issues.
+            eTe_dom = min(eTe_list)
+            sum_exp = np.sum(
+                [
+                    alpha * np.exp(0.5 * eTe_dom - 0.5 * e.T @ e)
+                    for alpha, e in zip(alpha_list, error_value_list)
+                ]
+            )
+
+            drho_df_list = [
+                alpha * np.exp(0.5 * eTe_dom - 0.5 * eTe) / sum_exp
+                for alpha, eTe in zip(alpha_list, eTe_list)
+            ]
 
         jac_list = []
         for lv1 in range(n_state_list):
