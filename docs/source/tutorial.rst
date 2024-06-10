@@ -25,3 +25,4 @@ All the dependencies should get installed by this command and the package should
    3. Toy Problem - Lie groups <./tutorial/lie_groups.ipynb>
    4. Specifying Jacobians <./tutorial/jacobians.ipynb>
    4. Composite States <./tutorial/composite.ipynb>
+   5. Batch Estimation <./tutorial/batch.ipynb>

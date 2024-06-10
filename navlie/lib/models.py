@@ -524,11 +524,6 @@ class PointRelativePositionSLAM(MeasurementModel):
 
     def evaluate(self, x: CompositeState) -> np.ndarray:
         """Evaluates the measurement model for the landmark state."""
-
-        # The pose is always assumed to be the first element
-        # TODO: is there a better way to do this? The
-        # Measurement class already hold on to the IDs of these two
-        # states
         pose: MatrixLieGroupState = x.get_state_by_id(self._pose_state_id)
         landmark: VectorState = x.get_state_by_id(self._landmark_state_id)
 
