@@ -362,7 +362,7 @@ class MaxSumMixtureResidual(GaussianMixtureResidual):
                     for alpha, e in zip(alphas, error_value_list)
                 ]
             )
-
+            err_kmax = error_value_list[dominant_idx]
             scalar_errors_differences = [
                 -0.5 * e.T @ e + 0.5 * err_kmax.T @ err_kmax for e in error_value_list
             ]
@@ -376,15 +376,18 @@ class MaxSumMixtureResidual(GaussianMixtureResidual):
         jac_list_linear_part: List[np.ndarray] = jacobian_list_of_lists[dominant_idx]
         # Loop through every state to compute Jacobian with respect to it.
         jac_list_nl = []
-        denominator_list = [
-            alpha * np.exp(scal_err)
-            for alpha, scal_err in zip(alphas, scalar_errors_differences)
-        ]
 
-        denominator = 0.0
-        for term in denominator_list:
-            denominator += term
-        denominator = denominator * e_nl
+        sum_exp = np.sum(
+            [
+                alpha * np.exp(delta)
+                for alpha, delta in zip(alphas, scalar_errors_differences)
+            ]
+        )
+
+        drho_df_list = [
+            alpha * np.exp(delta) / sum_exp
+            for alpha, delta in zip(alphas, scalar_errors_differences)
+        ]
 
         for lv1 in range(n_state_list):
             jacobian_list_components_wrt_cur_state = [
@@ -396,24 +399,18 @@ class MaxSumMixtureResidual(GaussianMixtureResidual):
                 numerator = np.zeros((1, n_x))
 
                 numerator_list = [
-                    -alpha
-                    * np.exp(scal_err)
-                    * (
-                        e_k.reshape(1, -1) @ -jac_e_i
-                        + err_kmax.reshape(1, -1) @ jac_dom
-                    )
-                    for alpha, scal_err, e_k, jac_e_i in zip(
-                        alphas,
-                        scalar_errors_differences,
+                    -drho * (e_k.reshape(1, -1) @ -jac_e_i)
+                    for e_k, jac_e_i, drho in zip(
                         error_value_list,
                         jacobian_list_components_wrt_cur_state,
+                        drho_df_list,
                     )
                 ]
 
                 for term in numerator_list:
                     numerator += term
-
-                jac_list_nl.append(numerator / denominator)
+                numerator -= err_kmax.reshape(1, -1) @ jac_dom
+                jac_list_nl.append(numerator / e_nl)
             else:
                 jac_list_nl.append(None)
 

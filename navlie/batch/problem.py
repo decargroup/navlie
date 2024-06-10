@@ -170,7 +170,7 @@ class Problem:
         """Solve the problem using either Gauss-Newton or Levenberg-Marquardt."""
 
         # Timing
-        start_t = time.time()
+        start_t = time.perf_counter()
 
         # Make a copy of the initial variables. This is done so that the
         # initial values of the variables are not modified by the solver.
@@ -189,7 +189,7 @@ class Problem:
             self._solve_LM()
 
         # Compute total time
-        total_time = time.time() - start_t
+        total_time = time.perf_counter() - start_t
 
         # Create optimization summary
         summary = OptimizationSummary(
