@@ -80,7 +80,7 @@ kf_list = [nav.ExtendedKalmanFilter(pm) for pm in imm_process_model_list]
 off_diag_p = 0.02
 Pi = np.ones((n_models, n_models)) * off_diag_p
 Pi = Pi + (1 - off_diag_p * (n_models)) * np.diag(np.ones(n_models))
-imm = nav.imm.InteractingModelFilter(kf_list, Pi)
+imm = nav.InteractingModelFilter(kf_list, Pi)
 
 
 dg = nav.DataGenerator(
@@ -102,16 +102,16 @@ def imm_trial(trial_number: int) -> List[nav.GaussianResult]:
 
     x0_check = x0.plus(nav.randvec(P0))
 
-    estimate_list = nav.imm.run_imm_filter(
+    estimate_list = nav.run_imm_filter(
         imm, x0_check, P0, input_list, meas_list
     )
 
     results = [
-        nav.imm.IMMResult(estimate_list[i], state_true[i])
+        nav.IMMResult(estimate_list[i], state_true[i])
         for i in range(len(estimate_list))
     ]
 
-    return nav.imm.IMMResultList(results)
+    return nav.IMMResultList(results)
 
 
 def ekf_trial(trial_number: int) -> List[nav.GaussianResult]:
