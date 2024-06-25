@@ -7,7 +7,7 @@ compared to an EKF that knows the ground truth process model noise.
 import navlie as nav
 from navlie.lib.models import DoubleIntegrator, RangePointToAnchor, VectorState
 from navlie.filters import InteractingModelFilter, run_imm_filter
-from navlie.utils import IMMResultList
+from navlie.utils import MixtureResultList
 import numpy as np
 from typing import List
 from matplotlib import pyplot as plt
@@ -80,7 +80,7 @@ def main():
 
     estimate_list = run_imm_filter(imm, x0_check, P0, input_list, meas_list)
 
-    results = IMMResultList.from_estimates(estimate_list, state_true)
+    results = MixtureResultList.from_estimates(estimate_list, state_true)
     return results
 
 

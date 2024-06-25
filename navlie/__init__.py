@@ -15,8 +15,10 @@ from .filters import (
     CubatureKalmanFilter,
     GaussHermiteKalmanFilter,
     InteractingModelFilter,
+    GaussianSumFilter,
     run_filter,
     run_imm_filter,
+    run_gsf_filter,
 )
 from . import batch
 from . import lib
@@ -40,8 +42,8 @@ from .utils.common import (
     GaussianResult,
     GaussianResultList,
     MonteCarloResult,
-    IMMResult,
-    IMMResultList,
+    MixtureResult,
+    MixtureResultList,
     monte_carlo,
     randvec,
     van_loans,

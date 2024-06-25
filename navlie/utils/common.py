@@ -5,7 +5,7 @@ Collection of miscellaneous utility functions and classes.
 from typing import Callable, List, Tuple, Union, Any
 from joblib import Parallel, delayed
 from navlie.types import State, StateWithCovariance
-from navlie.lib.states import IMMState
+from navlie.lib.states import MixtureState
 from navlie.utils.mixture import gaussian_mixing
 import numpy as np
 from scipy.interpolate import interp1d
@@ -554,7 +554,7 @@ class MonteCarloResult:
         )
 
 
-class IMMResult(GaussianResult):
+class MixtureResult(GaussianResult):
     __slots__ = [
         "stamp",
         "state",
@@ -568,7 +568,7 @@ class IMMResult(GaussianResult):
         "model_probabilities",
     ]
 
-    def __init__(self, imm_estimate: IMMState, state_true: State):
+    def __init__(self, imm_estimate: MixtureState, state_true: State):
         super().__init__(
             gaussian_mixing(
                 imm_estimate.model_probabilities, imm_estimate.model_states
@@ -579,7 +579,7 @@ class IMMResult(GaussianResult):
         self.model_probabilities = imm_estimate.model_probabilities
 
 
-class IMMResultList(GaussianResultList):
+class MixtureResultList(GaussianResultList):
     __slots__ = [
         "stamp",
         "state",
@@ -596,7 +596,7 @@ class IMMResultList(GaussianResultList):
         "model_probabilities",
     ]
 
-    def __init__(self, result_list: List[IMMResult]):
+    def __init__(self, result_list: List[MixtureResult]):
         super().__init__(result_list)
         self.model_probabilities = np.array(
             [r.model_probabilities for r in result_list]
@@ -604,18 +604,18 @@ class IMMResultList(GaussianResultList):
 
     @staticmethod
     def from_estimates(
-        estimate_list: List[IMMState],
+        estimate_list: List[MixtureState],
         state_true_list: List[State],
         method="nearest",
     ):
         """
-        A convenience function that creates a IMMResultList from a list of
-        IMMState and a list of true State objects
+        A convenience function that creates a MixtureResultList from a list of
+        MixtureState and a list of true State objects
 
         Parameters
         ----------
-        estimate_list : List[IMMState]
-            A list of IMMState objects
+        estimate_list : List[MixtureState]
+            A list of MixtureState objects
         state_true_list : List[State]
             A list of true State objects
         method : "nearest" or "linear", optional
@@ -624,15 +624,15 @@ class IMMResultList(GaussianResultList):
 
         Returns
         -------
-        IMMResultList
-            A IMMResultList object
+        MixtureResultList
+            A MixtureResultList object
         """
         stamps = [r.model_states[0].stamp for r in estimate_list]
 
         state_true_list = state_interp(stamps, state_true_list, method=method)
-        return IMMResultList(
+        return MixtureResultList(
             [
-                IMMResult(estimate, state_true)
+                MixtureResult(estimate, state_true)
                 for estimate, state_true in zip(estimate_list, state_true_list)
             ]
         )
@@ -1434,7 +1434,7 @@ class MonteCarloResult:
         )
 
 
-class IMMResult(GaussianResult):
+class MixtureResult(GaussianResult):
     __slots__ = [
         "stamp",
         "state",
@@ -1448,7 +1448,7 @@ class IMMResult(GaussianResult):
         "model_probabilities",
     ]
 
-    def __init__(self, imm_estimate: IMMState, state_true: State):
+    def __init__(self, imm_estimate: MixtureState, state_true: State):
         super().__init__(
             gaussian_mixing(
                 imm_estimate.model_probabilities, imm_estimate.model_states
@@ -1459,7 +1459,7 @@ class IMMResult(GaussianResult):
         self.model_probabilities = imm_estimate.model_probabilities
 
 
-class IMMResultList(GaussianResultList):
+class MixtureResultList(GaussianResultList):
     __slots__ = [
         "stamp",
         "state",
@@ -1476,7 +1476,7 @@ class IMMResultList(GaussianResultList):
         "model_probabilities",
     ]
 
-    def __init__(self, result_list: List[IMMResult]):
+    def __init__(self, result_list: List[MixtureResult]):
         super().__init__(result_list)
         self.model_probabilities = np.array(
             [r.model_probabilities for r in result_list]
@@ -1484,18 +1484,18 @@ class IMMResultList(GaussianResultList):
 
     @staticmethod
     def from_estimates(
-        estimate_list: List[IMMState],
+        estimate_list: List[MixtureState],
         state_true_list: List[State],
         method="nearest",
     ):
         """
-        A convenience function that creates a IMMResultList from a list of
-        IMMState and a list of true State objects
+        A convenience function that creates a MixtureResultList from a list of
+        MixtureState and a list of true State objects
 
         Parameters
         ----------
-        estimate_list : List[IMMState]
-            A list of IMMState objects
+        estimate_list : List[MixtureState]
+            A list of MixtureState objects
         state_true_list : List[State]
             A list of true State objects
         method : "nearest" or "linear", optional
@@ -1504,15 +1504,15 @@ class IMMResultList(GaussianResultList):
 
         Returns
         -------
-        IMMResultList
-            A IMMResultList object
+        MixtureResultList
+            A MixtureResultList object
         """
         stamps = [r.model_states[0].stamp for r in estimate_list]
 
         state_true_list = state_interp(stamps, state_true_list, method=method)
-        return IMMResultList(
+        return MixtureResultList(
             [
-                IMMResult(estimate, state_true)
+                MixtureResult(estimate, state_true)
                 for estimate, state_true in zip(estimate_list, state_true_list)
             ]
         )

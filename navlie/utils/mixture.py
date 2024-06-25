@@ -11,8 +11,7 @@ from navlie.types import (
     StateWithCovariance,
 )
 import numpy as np
-from navlie.lib import IMMState
-from tqdm import tqdm
+from navlie.lib import MixtureState
 
 
 # TODO. The IMM seems to have an issue when the user accidently modifies the

@@ -10,77 +10,12 @@ from navlie.types import (
     Measurement,
     StateWithCovariance,
 )
+from navlie.lib.states import MixtureState
 import numpy as np
 from tqdm import tqdm
 from navlie.filters import ExtendedKalmanFilter
 from scipy.stats import multivariate_normal
-from navlie.utils import GaussianResult, GaussianResultList
-from navlie.imm import gaussian_mixing
-
-class GMMState:
-    __slots__ = ["states", "weights"]
-
-    def __init__(
-        self,
-        states: List[StateWithCovariance],
-        weights: List[float],
-    ):
-        self.states = states
-        self.weights = weights
-
-    @property
-    def stamp(self):
-        return self.states[0].state.stamp
-
-    def copy(self) -> "GMMState":
-        x_copy = [x.copy() for x in self.states]
-        return GMMState(x_copy, self.weights.copy() / np.sum(self.weights))
-
-class GSFResult(GaussianResult):
-    __slots__ = [
-        "stamp",
-        "state",
-        "state_true",
-        "covariance",
-        "error",
-        "ees",
-        "nees",
-        "md",
-        "three_sigma",
-        "weights",
-    ]
-
-    def __init__(self, gsf_estimate: GMMState, state_true: State):
-        super().__init__(
-            gaussian_mixing(
-                gsf_estimate.weights, gsf_estimate.states
-            ),
-            state_true,
-        )
-        self.weights = gsf_estimate.weights
-
-class GSFResultList(GaussianResultList):
-    __slots__ = [
-        "stamp",
-        "state",
-        "state_true",
-        "covariance",
-        "error",
-        "ees",
-        "nees",
-        "md",
-        "three_sigma",
-        "value",
-        "value_true",
-        "dof",
-        "weights",
-    ]
-
-    def __init__(self, result_list: List[GSFResult]):
-        super().__init__(result_list)
-        self.weights = np.array(
-            [r.weights for r in result_list]
-        )
+from navlie.utils import GaussianResult, GaussianResultList, gaussian_mixing
 
 
 class GaussianSumFilter:
@@ -111,10 +46,10 @@ class GaussianSumFilter:
 
     def predict(
         self,
-        x: GMMState,
+        x: MixtureState,
         u: Input,
         dt: float = None,
-    ) -> GMMState:
+    ) -> MixtureState:
         """
         Propagates the state forward in time using a process model. The user
         must provide the current state, input, and time interval
@@ -125,7 +60,7 @@ class GaussianSumFilter:
 
         Parameters
         ----------
-        x : GMMState
+        x : MixtureState
             The current states and their associated weights.
         u : Input
             Input measurement to be given to process model
@@ -134,47 +69,47 @@ class GaussianSumFilter:
             with ``dt = u.stamp - x.state.stamp``.
         Returns
         -------
-        GMMState
+        MixtureState
             New predicted states with associated weights.
         """
 
-        n_modes = len(x.states)
+        n_modes = len(x.model_states)
 
         x_check = []
         for i in range(n_modes):
-            x_check.append(self.ekf.predict(x.states[i], u, dt))
-        return GMMState(x_check, x.weights)
+            x_check.append(self.ekf.predict(x.model_states[i], u, dt))
+        return MixtureState(x_check, x.model_probabilities)
     
     def correct(
         self,
-        x: GMMState,
+        x: MixtureState,
         y: Measurement,
         u: Input,
-    ) -> GMMState:
+    ) -> MixtureState:
         """
         Corrects the state estimate using a measurement. The user must provide
         the current state and measurement.
 
         Parameters
         ----------
-        x : GMMState
+        x : MixtureState
             The current states and their associated weights.
         y : Measurement
             Measurement to correct the state estimate.
 
         Returns
         -------
-        GMMState
+        MixtureState
             Corrected states with associated weights.
         """
         x_check = x.copy()
-        n_modes = len(x.states)
-        weights_check = x.weights.copy()
+        n_modes = len(x.model_states)
+        weights_check = x.model_probabilities.copy()
 
         x_hat = []
         weights_hat = np.zeros(n_modes)
         for i in range(n_modes):
-            x, details_dict = self.ekf.correct(x_check.states[i], y, u, 
+            x, details_dict = self.ekf.correct(x_check.model_states[i], y, u, 
                                                output_details=True)
             x_hat.append(x)
             z = details_dict["z"]
@@ -191,13 +126,12 @@ class GaussianSumFilter:
 
         weights_hat = weights_hat / np.sum(weights_hat)
             
-        return GMMState(x_hat, weights_hat)    
+        return MixtureState(x_hat, weights_hat)    
 
 
 def run_gsf_filter(
     filter: GaussianSumFilter,
-    x0: State,
-    P0: np.ndarray,
+    x0: StateWithCovariance,
     input_data: List[Input],
     meas_data: List[Measurement],
     disable_progress_bar: bool = False,
@@ -210,9 +144,7 @@ def run_gsf_filter(
     ----------
     filter : GaussianSumFilter
         _description_
-    x0 : State
-        _description_
-    P0 : np.ndarray
+    x0 : StateWithCovariance
         _description_
     input_data : List[Input]
         _description_

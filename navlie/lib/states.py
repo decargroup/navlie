@@ -653,7 +653,7 @@ class SL3State(MatrixLieGroupState):
         super().__init__(value, self.group, stamp, state_id, direction)
 
 
-class IMMState:
+class MixtureState:
     __slots__ = ["model_states", "model_probabilities"]
 
     def __init__(
@@ -668,9 +668,9 @@ class IMMState:
     def stamp(self):
         return self.model_states[0].state.stamp
 
-    def copy(self) -> "IMMState":
+    def copy(self) -> "MixtureState":
         x_copy = [x.copy() for x in self.model_states]
-        return IMMState(x_copy, self.model_probabilities.copy())
+        return MixtureState(x_copy, self.model_probabilities.copy())
 
 
 class VectorInput(Input):
