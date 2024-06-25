@@ -6,7 +6,8 @@ compared to an EKF that knows the ground truth process model noise.
 
 import navlie as nav
 from navlie.lib.models import DoubleIntegrator, RangePointToAnchor, VectorState
-from navlie.imm import InteractingModelFilter, run_imm_filter, IMMResultList
+from navlie.filters import InteractingModelFilter, run_imm_filter
+from navlie.utils import IMMResultList
 import numpy as np
 from typing import List
 from matplotlib import pyplot as plt

@@ -14,32 +14,17 @@ from .filters import (
     UnscentedKalmanFilter,
     CubatureKalmanFilter,
     GaussHermiteKalmanFilter,
+    InteractingModelFilter,
     run_filter,
+    run_imm_filter,
 )
 from . import batch
-from . import imm
 from . import lib
 from . import gsf
+from . import utils
 from .batch import BatchEstimator
 
 from .datagen import DataGenerator, generate_measurement
-from .utils import (
-    GaussianResult,
-    GaussianResultList,
-    MonteCarloResult,
-    plot_error,
-    plot_meas,
-    plot_poses,
-    plot_nees,
-    monte_carlo,
-    van_loans,
-    state_interp,
-    associate_stamps,
-    set_axes_equal,
-    find_nearest_stamp_idx,
-    randvec,
-    jacobian,
-)
 
 from .composite import (
     CompositeState,
@@ -49,3 +34,32 @@ from .composite import (
 )
 
 from .lib.states import StampedValue  # for backwards compatibility
+
+from .utils.common import (
+    state_interp,
+    GaussianResult,
+    GaussianResultList,
+    MonteCarloResult,
+    IMMResult,
+    IMMResultList,
+    monte_carlo,
+    randvec,
+    van_loans,
+    schedule_sequential_measurements,
+    associate_stamps,
+    find_nearest_stamp_idx,
+    jacobian,
+)
+
+from .utils.plot import (
+    plot_error,
+    plot_nees,
+    plot_meas,
+    plot_meas_by_model,
+    plot_poses,
+    set_axes_equal
+)
+
+from .utils.mixture import (
+    gaussian_mixing,
+)
