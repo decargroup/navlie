@@ -124,7 +124,7 @@ def test_ex_slam():
     main()
 
 
-def test_ex_gsf_se3():
-    from ex_gsf_se3 import main
+def test_ex_gsf_se2():
+    from ex_gsf_se2 import main
 
     main()
