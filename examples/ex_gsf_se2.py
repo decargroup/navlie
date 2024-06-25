@@ -66,7 +66,7 @@ def main():
             [nav.StateWithCovariance(_x, P0) for _x in x], [1/len(x) for _ in x]
         )
 
-        estimate_list = nav.gsf.run_gsf_filter(
+        estimate_list = nav.run_gsf_filter(
             gsf, x0_check, input_list, meas_list
         )
 
@@ -89,8 +89,8 @@ def main():
         np.random.seed(trial_number)
 
         state_true, input_list, meas_list = dg.generate(x0, 0, t_max, noise=True)
-        x0_est = SE2State([0, 5, 0], stamp=0.0)
-        x0_check = x0_est.plus(nav.randvec(P0))
+        x0_check = SE2State([0, 5, 0], stamp=0.0)
+        x0_check = x0_check.plus(nav.randvec(P0))
         ekf = nav.ExtendedKalmanFilter(BodyFrameVelocity(Q))
 
         estimate_list = nav.run_filter(ekf, x0_check, P0, input_list, meas_list)

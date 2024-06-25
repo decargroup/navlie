@@ -22,7 +22,6 @@ from .filters import (
 )
 from . import batch
 from . import lib
-from . import gsf
 from . import utils
 from .batch import BatchEstimator
 
