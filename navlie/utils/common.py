@@ -672,8 +672,14 @@ class GaussianResultList:
             out.nees = out.error**2 / out.covariance.flatten()
             out.dof = np.ones_like(out.stamp)
         else:
+            n_times = out.covariance.shape[0]
+            n_error = out.covariance.shape[1]
             out.nees = np.sum(
-                out.error * np.linalg.solve(out.covariance, out.error), axis=1
+                out.error
+                * np.linalg.solve(
+                    out.covariance, out.error.reshape((n_times, n_error, 1))
+                ).reshape((n_times, n_error)),
+                axis=1,
             )
             out.dof = out.error.shape[1] * np.ones_like(out.stamp)
 
