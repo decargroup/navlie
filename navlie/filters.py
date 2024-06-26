@@ -1071,7 +1071,9 @@ class GaussianSumFilter:
             The current states and their associated weights.
         y : Measurement
             Measurement to correct the state estimate.
-
+        u : Input
+            Input measurement to be given to process model
+            
         Returns
         -------
         MixtureState

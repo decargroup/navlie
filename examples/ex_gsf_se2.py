@@ -52,7 +52,7 @@ def main():
 
     def gsf_trial(trial_number: int) -> List[nav.GaussianResult]:
         """
-        A single Interacting Multiple Model Filter trial
+        A single Gaussian Sum Filter trial
         """
         np.random.seed(trial_number)
         state_true, input_list, meas_list = dg.generate(x0, 0, t_max, True)

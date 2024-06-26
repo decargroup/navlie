@@ -22,7 +22,7 @@ examples/ex_ukf_vector.py
 examples/ex_varying_noise.py
 examples/ex_slam.py
 examples/ex_gaussian_mixture.py
-examples/ex_gsf_se3.py
+examples/ex_gsf_se2.py
 """
 
 
