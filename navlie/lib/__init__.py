@@ -10,7 +10,7 @@ from .states import (
     SO3State,
     SE23State,
     SL3State,
-    IMMState,
+    MixtureState,
     CompositeState,
     MatrixLieGroupState,
     VectorInput,

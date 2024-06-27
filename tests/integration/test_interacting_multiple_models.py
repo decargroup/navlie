@@ -22,7 +22,7 @@ from pymlg import SE3
 import numpy as np
 from typing import List
 from navlie.filters import InteractingModelFilter, run_imm_filter
-from navlie.utils import IMMResult, IMMResultList
+from navlie.utils import MixtureResult, MixtureResultList
 
 # TODO this test is very complicated. we need to simplify this.
 
@@ -77,11 +77,11 @@ def make_filter_trial(dg, x0_true, P0, t_max, imm, process_model, Q_profile):
         estimate_list = run_imm_filter(imm, x0_check, P0, input_list, meas_list)
 
         results = [
-            IMMResult(estimate_list[i], state_true[i])
+            MixtureResult(estimate_list[i], state_true[i])
             for i in range(len(estimate_list))
         ]
 
-        return IMMResultList(results)
+        return MixtureResultList(results)
 
     return imm_trial
 

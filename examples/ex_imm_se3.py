@@ -107,11 +107,11 @@ def imm_trial(trial_number: int) -> List[nav.GaussianResult]:
     )
 
     results = [
-        nav.IMMResult(estimate_list[i], state_true[i])
+        nav.MixtureResult(estimate_list[i], state_true[i])
         for i in range(len(estimate_list))
     ]
 
-    return nav.IMMResultList(results)
+    return nav.MixtureResultList(results)
 
 
 def ekf_trial(trial_number: int) -> List[nav.GaussianResult]:
