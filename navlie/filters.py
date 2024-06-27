@@ -982,13 +982,26 @@ class InteractingModelFilter:
 
 class GaussianSumFilter:
     """
-    On-manifold Gaussian Sum Filter.
+    On-manifold Gaussian Sum Filter (GSF).
+
+    References for the GSF:
+
+    D. Alspach and H. Sorenson, "Nonlinear Bayesian estimation using 
+    Gaussian sum approximations," in IEEE Transactions on Automatic 
+    Control, vol. 17, no. 4, pp. 439-448, August 1972.
+
+    The GSF involves Gaussian mixtures. Reference for mixing Gaussians on
+    manifolds:
+
+    J. Ćesić, I. Marković and I. Petrović, "Mixture Reduction on Matrix Lie
+    Groups," in IEEE Signal Processing Letters, vol. 24, no. 11, pp.
+    1719-1723, Nov. 2017, doi: 10.1109/LSP.2017.2723765.
     """
 
     __slots__ = [
         "process_model",
         "reject_outliers",
-        "ekf",
+        "_ekf",
     ]
 
     def __init__(
@@ -1004,7 +1017,7 @@ class GaussianSumFilter:
         reject_outliers : bool, optional
             whether to apply the NIS test to measurements, by default False
         """
-        self.ekf = ExtendedKalmanFilter(process_model, reject_outliers)
+        self._ekf = ExtendedKalmanFilter(process_model, reject_outliers)
 
     def predict(
         self,
@@ -1039,7 +1052,7 @@ class GaussianSumFilter:
 
         x_check = []
         for i in range(n_modes):
-            x_check.append(self.ekf.predict(x.model_states[i], u, dt))
+            x_check.append(self._ekf.predict(x.model_states[i], u, dt))
         return MixtureState(x_check, x.model_probabilities)
     
     def correct(
@@ -1071,7 +1084,7 @@ class GaussianSumFilter:
         x_hat = []
         weights_hat = np.zeros(n_modes)
         for i in range(n_modes):
-            x, details_dict = self.ekf.correct(x_check.model_states[i], y, u, 
+            x, details_dict = self._ekf.correct(x_check.model_states[i], y, u, 
                                                output_details=True)
             x_hat.append(x)
             z = details_dict["z"]
@@ -1158,6 +1171,9 @@ def run_filter(
 
     return results_list
 
+
+# TODO. The IMM seems to have an issue when the user accidently modifies the
+# provided state in the process model.
 
 def run_imm_filter(
     filter: InteractingModelFilter,
