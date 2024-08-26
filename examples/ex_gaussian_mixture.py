@@ -1,19 +1,16 @@
-from navlie.batch.gaussian_mixtures import (
-    GaussianMixtureResidual,
-    MaxMixtureResidual,
-    SumMixtureResidual,
-    MaxSumMixtureResidual,
-    HessianSumMixtureResidual,
-)
-from navlie.batch.residuals import PriorResidual
-
-from navlie.lib.states import VectorState
-import os
 import matplotlib.pyplot as plt
 import numpy as np
-import seaborn as sns
-from pathlib import Path
+
+from navlie.batch.gaussian_mixtures import (
+    GaussianMixtureResidual,
+    HessianSumMixtureResidual,
+    MaxMixtureResidual,
+    MaxSumMixtureResidual,
+    SumMixtureResidual,
+)
 from navlie.batch.problem import Problem
+from navlie.batch.residuals import PriorResidual
+from navlie.lib.states import VectorState
 
 
 def main():
@@ -36,7 +33,7 @@ def main():
         "Sum-Mixture": SumMixtureResidual(component_residuals, weights),
         "Max-Sum-Mixture": MaxSumMixtureResidual(component_residuals, weights, 10),
         "Hessian-Sum-Mixture": HessianSumMixtureResidual(
-            component_residuals, weights, True, 0.1
+            component_residuals, weights, True
         ),
     }
 
