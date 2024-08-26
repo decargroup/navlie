@@ -6,18 +6,9 @@ from typing import List
 
 from navlie.types import (
     State,
-    Input,
-    Measurement,
     StateWithCovariance,
 )
 import numpy as np
-from navlie.lib import IMMState
-from tqdm import tqdm
-
-
-# TODO. The IMM seems to have an issue when the user accidently modifies the
-# provided state in the process model.
-
 
 
 def gaussian_mixing_vectorspace(

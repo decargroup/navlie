@@ -10,7 +10,7 @@ from navlie.types import (
     Measurement,
     StateWithCovariance,
 )
-from navlie.lib.states import IMMState
+from navlie.lib.states import MixtureState
 from navlie.utils.mixture import gaussian_mixing
 import numpy as np
 from scipy.stats.distributions import chi2
@@ -859,17 +859,17 @@ class InteractingModelFilter:
 
     def interaction(
         self,
-        x: IMMState,
+        x: MixtureState,
     ):
         """The interaction (mixing) step of the IMM.
 
         Parameters
         ----------
-        x : IMMState
+        x : MixtureState
 
         Returns
         -------
-        IMMState
+        MixtureState
         """
 
         x_km_models = x.model_states.copy()
@@ -890,15 +890,15 @@ class InteractingModelFilter:
             weights = list(mu_mix[:, j])
             x_mix.append(gaussian_mixing(weights, x_km_models))
 
-        return IMMState(x_mix, mu_models)
+        return MixtureState(x_mix, mu_models)
 
-    def predict(self, x_km: IMMState, u: Input, dt: float):
+    def predict(self, x_km: MixtureState, u: Input, dt: float):
         """
         Carries out prediction step for each model of the IMM.
 
         Parameters
         ----------
-        x_km : IMMState
+        x_km : MixtureState
             Model estimates from previous timestep, after mixing.
         u : Input
             Input
@@ -907,18 +907,18 @@ class InteractingModelFilter:
 
         Returns
         -------
-        IMMState
+        MixtureState
         """
 
         x_km_models = x_km.model_states.copy()
         x_check = []
         for lv1, kf in enumerate(self.kf_list):
             x_check.append(kf.predict(x_km_models[lv1], u, dt))
-        return IMMState(x_check, x_km.model_probabilities)
+        return MixtureState(x_check, x_km.model_probabilities)
 
     def correct(
         self,
-        x_check: IMMState,
+        x_check: MixtureState,
         y: Measurement,
         u: Input,
     ):
@@ -928,7 +928,7 @@ class InteractingModelFilter:
 
         Parameters
         ----------
-        x_check: IMMState mu_km_models : List[Float]
+        x_check: MixtureState mu_km_models : List[Float]
             Probabilities for each model from previous timestep.
         y : Measurement
             Measurement to be fused into the current state estimate.
@@ -939,7 +939,7 @@ class InteractingModelFilter:
 
         Returns
         -------
-        IMMState
+        MixtureState
             Corrected state estimates and probabilities
         """
         x_models_check = x_check.model_states.copy()
@@ -977,7 +977,133 @@ class InteractingModelFilter:
 
         mu_k = mu_k / np.sum(mu_k)
 
-        return IMMState(x_hat, mu_k)
+        return MixtureState(x_hat, mu_k)
+
+
+class GaussianSumFilter:
+    """
+    On-manifold Gaussian Sum Filter (GSF).
+
+    References for the GSF:
+
+    D. Alspach and H. Sorenson, "Nonlinear Bayesian estimation using 
+    Gaussian sum approximations," in IEEE Transactions on Automatic 
+    Control, vol. 17, no. 4, pp. 439-448, August 1972.
+
+    The GSF involves Gaussian mixtures. Reference for mixing Gaussians on
+    manifolds:
+
+    J. Ćesić, I. Marković and I. Petrović, "Mixture Reduction on Matrix Lie
+    Groups," in IEEE Signal Processing Letters, vol. 24, no. 11, pp.
+    1719-1723, Nov. 2017, doi: 10.1109/LSP.2017.2723765.
+    """
+
+    __slots__ = [
+        "process_model",
+        "reject_outliers",
+        "_ekf",
+    ]
+
+    def __init__(
+        self,
+        process_model: ProcessModel,
+        reject_outliers=False,
+    ):
+        """
+        Parameters
+        ----------
+        process_models : List[ProcessModel]
+            process models to be used in the prediction step
+        reject_outliers : bool, optional
+            whether to apply the NIS test to measurements, by default False
+        """
+        self._ekf = ExtendedKalmanFilter(process_model, reject_outliers)
+
+    def predict(
+        self,
+        x: MixtureState,
+        u: Input,
+        dt: float = None,
+    ) -> MixtureState:
+        """
+        Propagates the state forward in time using a process model. The user
+        must provide the current state, input, and time interval
+
+        .. note::
+            If the time interval ``dt`` is not provided in the arguments, it will
+            be taken as the difference between the input stamp and the state stamp.
+
+        Parameters
+        ----------
+        x : MixtureState
+            The current states and their associated weights.
+        u : Input
+            Input measurement to be given to process model
+        dt : float, optional
+            Duration to next time step. If not provided, dt will be calculated
+            with ``dt = u.stamp - x.state.stamp``.
+        Returns
+        -------
+        MixtureState
+            New predicted states with associated weights.
+        """
+
+        n_modes = len(x.model_states)
+
+        x_check = []
+        for i in range(n_modes):
+            x_check.append(self._ekf.predict(x.model_states[i], u, dt))
+        return MixtureState(x_check, x.model_probabilities)
+    
+    def correct(
+        self,
+        x: MixtureState,
+        y: Measurement,
+        u: Input,
+    ) -> MixtureState:
+        """
+        Corrects the state estimate using a measurement. The user must provide
+        the current state and measurement.
+
+        Parameters
+        ----------
+        x : MixtureState
+            The current states and their associated weights.
+        y : Measurement
+            Measurement to correct the state estimate.
+        u : Input
+            Input measurement to be given to process model
+            
+        Returns
+        -------
+        MixtureState
+            Corrected states with associated weights.
+        """
+        x_check = x.copy()
+        n_modes = len(x.model_states)
+        weights_check = x.model_probabilities.copy()
+
+        x_hat = []
+        weights_hat = np.zeros(n_modes)
+        for i in range(n_modes):
+            x, details_dict = self._ekf.correct(x_check.model_states[i], y, u, 
+                                               output_details=True)
+            x_hat.append(x)
+            z = details_dict["z"]
+            S = details_dict["S"]
+            model_likelihood = multivariate_normal.pdf(
+                z.ravel(), mean=np.zeros(z.shape), cov=S
+            )
+            weights_hat[i] = weights_check[i] * model_likelihood
+
+        # If all model likelihoods are zero to machine tolerance, np.sum(mu_k)=0 and it fails
+        # Add this fudge factor to get through those cases.
+        if np.allclose(weights_hat, np.zeros(weights_hat.shape)):
+            weights_hat = 1e-10 * np.ones(weights_hat.shape)
+
+        weights_hat = weights_hat / np.sum(weights_hat)
+            
+        return MixtureState(x_hat, weights_hat)  
 
 
 def run_filter(
@@ -1048,6 +1174,9 @@ def run_filter(
     return results_list
 
 
+# TODO. The IMM seems to have an issue when the user accidently modifies the
+# provided state in the process model.
+
 def run_imm_filter(
     filter: InteractingModelFilter,
     x0: State,
@@ -1101,7 +1230,7 @@ def run_imm_filter(
     results_list = []
     n_models = filter.transition_matrix.shape[0]
 
-    x = IMMState(
+    x = MixtureState(
         [StateWithCovariance(x0, P0)] * n_models,
         1.0 / n_models * np.array(np.ones(n_models)),
     )
@@ -1119,6 +1248,71 @@ def run_imm_filter(
                 if meas_idx < len(meas_data):
                     y = meas_data[meas_idx]
         dt = input_data[k + 1].stamp - x.model_states[0].stamp
+        x = filter.predict(x, u, dt)
+
+    return results_list
+
+
+def run_gsf_filter(
+    filter: GaussianSumFilter,
+    x0: StateWithCovariance,
+    input_data: List[Input],
+    meas_data: List[Measurement],
+    disable_progress_bar: bool = False,
+) -> List[StateWithCovariance]:
+    """
+    Executes a predict-correct-style filter given lists of input and measurement
+    data.
+
+    Parameters
+    ----------
+    filter : GaussianSumFilter
+        _description_
+    x0 : StateWithCovariance
+        _description_
+    input_data : List[Input]
+        _description_
+    meas_data : List[Measurement]
+        _description_
+    """
+    x = x0.copy()
+    if x.stamp is None:
+        raise ValueError("x0 must have a valid timestamp.")
+
+    # Sort the data by time
+    input_data.sort(key=lambda x: x.stamp)
+    meas_data.sort(key=lambda x: x.stamp)
+
+    # Remove all that are before the current time
+    for idx, u in enumerate(input_data):
+        if u.stamp >= x.stamp:
+            input_data = input_data[idx:]
+            break
+
+    for idx, y in enumerate(meas_data):
+        if y.stamp >= x.stamp:
+            meas_data = meas_data[idx:]
+            break
+
+    meas_idx = 0
+    if len(meas_data) > 0:
+        y = meas_data[meas_idx]
+
+    results_list = []
+    for k in tqdm(range(len(input_data) - 1), disable=disable_progress_bar):
+        u = input_data[k]
+        # Fuse any measurements that have occurred.
+        if len(meas_data) > 0:
+            while y.stamp < input_data[k + 1].stamp and meas_idx < len(
+                meas_data
+            ):
+                x = filter.correct(x, y, u)
+                meas_idx += 1
+                if meas_idx < len(meas_data):
+                    y = meas_data[meas_idx]
+
+        results_list.append(x)
+        dt = input_data[k + 1].stamp - x.stamp
         x = filter.predict(x, u, dt)
 
     return results_list
