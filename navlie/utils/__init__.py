@@ -20,6 +20,7 @@ from .plot import (
     plot_meas,
     plot_meas_by_model,
     plot_poses,
+    plot_camera_poses,
     set_axes_equal
 )
 
