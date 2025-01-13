@@ -217,7 +217,7 @@ class MaxMixtureResidual(GaussianMixtureResidual):
 
         nonlinear_part = np.array(np.log(alpha_max / alpha_k)).reshape(-1)
         nonlinear_part = np.sqrt(2) * np.sqrt(nonlinear_part)
-        e_mix = np.concatenate([linear_part, nonlinear_part])
+        e_mix = np.concatenate([linear_part.reshape(-1), nonlinear_part])
 
         reused_values = {"alphas": alphas, "res_values": res_values}
 
