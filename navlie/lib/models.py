@@ -472,29 +472,20 @@ class PointRelativePosition(MeasurementModel):
         r_pw_a = self._landmark_position.reshape((-1, 1))
         y = C_ab.T @ (r_pw_a - r_zw_a).reshape(-1, 1)
 
-        if isinstance(x, SE2State):
-            P = np.array([[0, -1], [1, 0]])
-            if x.direction == "right":
-                return x.jacobian_from_blocks(
-                    attitude=-P @ C_ab.T @ (r_pw_a - r_zw_a).reshape(-1, 1),
-                    position=-np.eye(2),
-                )
-            if x.direction == "left":
-                return x.jacobian_from_blocks(
-                    attitude=-C_ab.T @ P @ (r_pw_a).reshape(-1, 1),
-                    position=-C_ab.T,
-                )
+        if C_ab.shape[0] == 2:
+            group = SO2
+        if C_ab.shape[0] == 3:
+            group = SO3
 
-        if isinstance(x, SE3State) or isinstance(x, SE23State):  # SE2
-            if x.direction == "right":
-                return x.jacobian_from_blocks(
-                    attitude=-SO3.odot(y), position=-np.identity(r_zw_a.shape[0])
-                )
+        if x.direction == "right":
+            return x.jacobian_from_blocks(
+                attitude=-group.odot(y), position=-np.identity(r_zw_a.shape[0])
+            )
 
-            elif x.direction == "left":
-                return x.jacobian_from_blocks(
-                    attitude=-C_ab.T @ SO3.odot(r_pw_a), position=-C_ab.T
-                )
+        elif x.direction == "left":
+            return x.jacobian_from_blocks(
+                attitude=-C_ab.T @ group.odot(r_pw_a), position=-C_ab.T
+            )
 
     def covariance(self, x: MatrixLieGroupState) -> np.ndarray:
         return self._R
