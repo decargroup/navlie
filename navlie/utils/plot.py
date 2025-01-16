@@ -2,12 +2,13 @@
 Collection of miscellaneous plotting functions.
 """
 
-from typing import List, Tuple, Dict
+from typing import List, Tuple, Dict, Any
 from navlie.types import State, Measurement, StateWithCovariance
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.interpolate import interp1d
 from navlie.utils.common import GaussianResultList
+
 
 def plot_error(
     results: GaussianResultList,
@@ -238,9 +239,7 @@ def plot_meas(
         axs[i].scatter(
             y_stamps, y_meas[:, i], color="b", alpha=0.7, s=2, label="Measured"
         )
-        axs[i].plot(
-            y_stamps, y_true[:, i], color="r", alpha=1, label="Modelled"
-        )
+        axs[i].plot(y_stamps, y_true[:, i], color="r", alpha=1, label="Modelled")
         axs[i].fill_between(
             y_stamps,
             y_true[:, i] + three_sigma[:, i],
@@ -369,9 +368,7 @@ def plot_camera_poses(
         color=color,
     )
     for i in range(0, len(poses), step):
-        fig, ax = cam_pose_viz.plot_pose(
-            poses[i].attitude, poses[i].position, ax=ax
-        )
+        fig, ax = cam_pose_viz.plot_pose(poses[i].attitude, poses[i].position, ax=ax)
 
     set_axes_equal(ax)
     return fig, ax
@@ -379,6 +376,7 @@ def plot_camera_poses(
 
 class CameraPoseVisualizer:
     """A class to plot camera poses in 3D using matplotlib."""
+
     def __init__(
         self,
         line_thickness: float = 1,
@@ -465,19 +463,20 @@ class CameraPoseVisualizer:
 def plot_poses(
     poses,
     ax: plt.Axes = None,
-    line_color: str = None,
     triad_color: str = None,
     arrow_length: float = 1,
     step: int = 5,
     label: str = None,
     linewidth=None,
-    plot_2d: bool =False,
+    plot_2d: bool = False,
+    axes_equal=True,
+    kwargs_line: Dict[str, Any] = {"linestyle": "-"},
 ):
     """
     Plots a pose trajectory, representing the attitudes by triads
     plotted along the trajectory.
 
-    The poses may be either elements of SE(2), 
+    The poses may be either elements of SE(2),
     representing planar 2D poses, or elements of SE(3), representing 3D poses.
 
     Parameters
@@ -500,6 +499,10 @@ def plot_poses(
         Optional label for the triad
     plot_2d: bool, optional
         Flag to plot a 3D pose trajectory in 2D bird's eye view.
+    set_axes_equal: bool optional
+        Flag to set the axis ratio equal.
+    kwargs_line: Dict[str, Any], optional
+        Keyword arguments for the line position plot.
     """
     if isinstance(poses, GaussianResultList):
         poses = poses.state
@@ -539,9 +542,15 @@ def plot_poses(
     # Plot a line for the positions
     r = np.array([pose.position for pose in poses])
     if plot_2d:
-        ax.plot(r[:, 0], r[:, 1], color=line_color, label=label)
+        ax.plot(r[:, 0], r[:, 1], label=label, **kwargs_line)
     else:
-        ax.plot3D(r[:, 0], r[:, 1], r[:, 2], color=line_color, label=label)
+        ax.plot3D(
+            r[:, 0],
+            r[:, 1],
+            r[:, 2],
+            label=label,
+            **kwargs_line,
+        )
 
     # Plot triads using quiver
     if step is not None:
@@ -550,7 +559,8 @@ def plot_poses(
         if plot_2d:
             x, y = r[:, 0], r[:, 1]
             ax.quiver(
-                x, y,
+                x,
+                y,
                 C[:, 0, 0],
                 C[:, 0, 1],
                 color=colors[0],
@@ -559,14 +569,15 @@ def plot_poses(
             )
 
             ax.quiver(
-                x, y,
+                x,
+                y,
                 C[:, 1, 0],
                 C[:, 1, 1],
                 color=colors[1],
                 scale=20.0,
                 headwidth=2,
             )
-        else: 
+        else:
             x, y, z = r[:, 0], r[:, 1], r[:, 2]
             ax.quiver(
                 x,
@@ -605,10 +616,11 @@ def plot_poses(
                 linewidths=linewidth,
             )
 
-    if plot_2d:
-        ax.axis("equal")
-    else:
-        set_axes_equal(ax)
+    if axes_equal:
+        if plot_2d:
+            ax.axis("equal")
+        else:
+            set_axes_equal(ax)
     return fig, ax
 
 
@@ -634,4 +646,3 @@ def set_axes_equal(ax: plt.Axes):
     ax.set_xlim3d([x_middle - length, x_middle + length])
     ax.set_ylim3d([y_middle - length, y_middle + length])
     ax.set_zlim3d([z_middle - length, z_middle + length])
-    

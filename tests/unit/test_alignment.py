@@ -7,7 +7,12 @@ from navlie.utils import plot_poses
 from pymlg import SO3, SE3
 import matplotlib.pyplot as plt
 
-from navlie.utils.alignment import associate_and_align_trajectories, state_list_to_evo_traj, evo_traj_to_state_list
+from navlie.utils.alignment import (
+    associate_and_align_trajectories,
+    state_list_to_evo_traj,
+    evo_traj_to_state_list,
+)
+
 
 def test_conversion_to_evo():
     """Converts a list of SE3State to an evo trajectory and back."""
@@ -20,6 +25,7 @@ def test_conversion_to_evo():
         assert np.allclose(pose_1.position, pose_2.position, atol=1e-5)
         assert np.allclose(pose_1.attitude, pose_2.attitude, atol=1e-5)
         assert np.allclose(pose_1.stamp, pose_2.stamp, atol=1e-5)
+
 
 def test_associate_and_align_trajectories():
     """Test utilizing evo to associate and align two trajectories."""
@@ -45,10 +51,17 @@ def test_associate_and_align_trajectories():
         poses_2.append(new_pose)
 
     fig, ax = plot_poses(
-        poses_1, line_color="tab:blue", step=None, label="Original Trajectory"
+        poses_1,
+        step=None,
+        label="Original Trajectory",
+        kwargs_line={"color": "tab:blue"},
     )
     fig, ax = plot_poses(
-        poses_2, ax=ax, line_color="tab:red", step=None, label="Transformed Trajectory"
+        poses_2,
+        ax=ax,
+        step=None,
+        label="Transformed Trajectory",
+        kwargs_line={"color": "tab:red"},
     )
     ax.set_xlabel("x (m)")
     ax.set_ylabel("y (m)")
@@ -56,11 +69,7 @@ def test_associate_and_align_trajectories():
 
     # Try aligning the first trajectory to the second
     traj_ref, aligned_traj_sim3, transformation_info = associate_and_align_trajectories(
-        poses_2,
-        poses_1,
-        correct_scale=True,
-        align=True,
-        verbose=True
+        poses_2, poses_1, correct_scale=True, align=True, verbose=True
     )
 
     # Check that the computed transformation matches the true one
@@ -72,14 +81,15 @@ def test_associate_and_align_trajectories():
     fig, ax = plot_poses(
         aligned_traj_sim3,
         ax=ax,
-        line_color="tab:green",
         step=None,
         label="Aligned Trajectory (Sim3)",
-    )   
+        kwargs_line={"color": "tab:green"},
+    )
 
     ax.legend()
     fig.tight_layout()
     plt.show()
+
 
 if __name__ == "__main__":
     test_conversion_to_evo()
