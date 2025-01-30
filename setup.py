@@ -18,6 +18,7 @@ setup(
         "pymlg @ git+https://github.com/decargroup/pymlg@main",
         "tqdm>=4.64.1",
         "seaborn>=0.11.2",
+        "evo>=1.31.0"
     ],
     url="https://github.com/decargroup/navlie",
     classifiers=[
