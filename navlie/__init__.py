@@ -27,6 +27,8 @@ from .batch import BatchEstimator
 
 from .datagen import DataGenerator, generate_measurement
 
+from .bspline import SE3Bspline
+
 from .composite import (
     CompositeState,
     CompositeProcessModel,
