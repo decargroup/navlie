@@ -34,6 +34,21 @@ class SE3Bspline:
         verbose: bool = False,
         max_dt: float = 0.1,
     ):
+        """
+        Creates a B-Spline on SE(3) from a list of SE3State poses. 
+
+        Will interopolate the poses at uniform intervals to create the control points.
+
+        Parameters
+        ----------
+        traj_points : List[SE3State]
+            List of SE3State poses to use to generate the B-Spline
+        verbose : bool, optional
+            Whether to print out debug information, by default False
+        max_dt : float, optional
+            Maximum time interval between control points, by default 0.1
+        """
+        
         self.traj_points = traj_points
         # self.verbose = verbose
 
@@ -83,7 +98,18 @@ class SE3Bspline:
             print(f"Trajectory end time: {self.end_time:.3f}")
 
     def get_pose(self, stamp: float) -> SE3State:
-        """Query the B-Spline to get the pose at a given timestamp."""
+        """Query the B-Spline to get the pose at a given timestamp.
+        
+        Parameters
+        ----------
+        stamp : float
+            Query timestamp
+        
+        Returns
+        -------
+        SE3State
+            The pose at the given timestamp
+        """
         # Get the bounding control points
         control_points = self._find_bounding_control_points(
             stamp, self.control_points
@@ -111,13 +137,21 @@ class SE3Bspline:
         )
         return pose_interp
 
-    def get_velocity(self, stamp) -> typing.Tuple[np.ndarray, np.ndarray]:
+    def get_velocity(self, stamp: float) -> typing.Tuple[np.ndarray, np.ndarray]:
         """Gets the angular and translational velocity at a given timestamp.
 
-        The returned quantity is a tuple of numpy arrays, where the first
-        quantity is the angular velocity :math:`\mathbf{\omega}_b^{ba}`,
-        resolved in the body frame. The second quantity is the translational
-        velocity resolved in the inertial frame :math:`\mathbf{v}_a^{ba}`.
+        The the angular velocity is resolved in the body frame, :math:`\mathbf{\omega}_b^{ba}`,
+        whereas the translational velocity resolved in the inertial frame :math:`\mathbf{v}_a^{ba}`.
+
+        Parameters
+        ----------
+        stamp : float
+            Query timestamp
+        
+        Returns
+        -------
+        Tuple[np.ndarray, np.ndarray]
+            Angular and translational velocity.
         """
 
         control_points = self._find_bounding_control_points(
@@ -160,14 +194,22 @@ class SE3Bspline:
         vel_a_ba = vel_interp_mat[0:3, 3].reshape((-1, 1))
         return omega_b_ba, vel_a_ba
 
-    def get_acceleration(self, stamp) -> typing.Tuple[np.ndarray, np.ndarray]:
+    def get_acceleration(self, stamp: float) -> typing.Tuple[np.ndarray, np.ndarray]:
         """Computes the angular and translational acceleration at a given
         timestamp.
-        
-        The returned quantity is a tuple of numpy array with dimension [6 x 1],
-        where the first entry is the angular acceleration :math:`\alpha_b^{ba}`,
-        and the second entry is the translational acceleration resolved in the
-        global frame, :math:`\mathbf{a}_a^{ba}`.
+
+        Returns the angular acceleration resolved in the body frame, :math:`\mathbf{\\alpha}_b^{ba}`,
+        and the translational acceleration resolved in the global frame, :math:`\mathbf{a}_a^{ba}`.
+
+        Parameters
+        ----------
+        stamp : float
+            Query timestamp
+    
+        Returns
+        -------
+        Tuple[np.ndarray, np.ndarray]
+            Angular and translational acceleration.
         """
         control_points = self._find_bounding_control_points(
             stamp, self.control_points
