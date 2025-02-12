@@ -10,8 +10,8 @@ Below is a list of all the modules in the navlie package.  Click on any of the l
    navlie.composite
    navlie.datagen
    navlie.filters
-   navlie.imm
    navlie.types
    navlie.utils
    navlie.batch
    navlie.lib
+   navlie.bspline

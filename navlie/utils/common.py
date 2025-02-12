@@ -7,10 +7,40 @@ from joblib import Parallel, delayed
 from navlie.types import State, StateWithCovariance
 from navlie.lib.states import MixtureState
 from navlie.utils.mixture import gaussian_mixing
+from navlie.lib.states import SE3State
+from pymlg import SO3, SE3
+
 import numpy as np
 from scipy.interpolate import interp1d
 from scipy.linalg import block_diag, expm
 from scipy.stats.distributions import chi2
+
+def load_tum_trajectory(fpath: str) -> List[SE3State]:
+    """Loads a TUM trajectory file into a list of SE3State objects.
+    
+    Each row in the file should have 8 entries separated by spaces with the 
+    following format:
+    timestamp px py pz qx qy qz qw
+
+    where px, py, and pz are the position components of the robot pose,
+    and qx, qy, qz, and qw are the quaternion components of the robot pose 
+    corresponding to the DCM C_ab.
+    """
+    txt_file = np.loadtxt(fpath, delimiter=" ", comments="#")
+    
+    if txt_file.shape[1] != 8:
+        raise ValueError("TUM trajectory file must have 8 columns")
+
+    pose_list: List[SE3State] = []
+    for i in range(txt_file.shape[0]):
+        data_row = txt_file[i, :]
+        position = data_row[1:4]
+        quat = data_row[4:]
+        C_ab = SO3.from_quat(quat, order="xyzw")
+        pose_list.append(SE3State(
+            value=SE3.from_components(C_ab, position),
+              stamp=data_row[0]))
+    return pose_list
 
 def state_interp(
     query_stamps: Union[float, List[float], Any],

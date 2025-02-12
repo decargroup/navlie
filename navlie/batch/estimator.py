@@ -1,4 +1,5 @@
-"""Batch estimator to construct batch problems composed of prior residuals, process residuals, and 
+"""
+Batch estimator to construct batch problems composed of prior residuals, process residuals, and 
 measurement residuals.
 
 The BatchEstimator.solve() method constructs and solves a batch problem over a sequence
