@@ -11,6 +11,18 @@ from navlie.lib.states import CompositeState
 
 
 class MarginalizationProblem(Problem):
+    """
+    Problem class to handle marginalization of variables.
+
+    Parameters
+    ----------
+    original_problem : Problem
+        Original batch problem to marginalize from.
+    marginalized_keys : List[Hashable]
+        List of variable keys to marginalize.
+    sort_keys : Callable
+        Function to sort the remaining variable keys.
+    """
 
     def __init__(
         self,
@@ -56,7 +68,21 @@ class MarginalizationProblem(Problem):
 
         self.constant_variable_keys = original_problem.constant_variable_keys.copy()
 
-    def marginalize(self):
+    def marginalize(self) -> Dict[str, np.ndarray, Dict[Hashable, State]]:
+        """
+        Perform marginalization and return prior information.
+
+        Returns
+        -------
+        marg_info : Dict[str, np.ndarray, Dict[Hashable, State]]
+            Dictionary containing:
+            - 'Am': (np.ndarray)
+                Marginalized information matrix.
+            - 'bm': (np.ndarray)
+                Marginalized information vector.
+            - 'prior_states': (Dict[Hashable, State])
+                Remaining states after marginalization with associated keys.
+        """
 
         e_m, H_m, _ = self.compute_error_jac_cost()
         slice_mm = slice(
@@ -94,15 +120,39 @@ def compute_schur_complement(
     slice_mm: slice,
     slice_rr: slice,
     eps: float = 1e-8,
-):
+) -> Tuple[np.ndarray, np.ndarray]:
+    """
+    Compute Schur complement for marginalization.
 
+    Parameters
+    ----------
+    A : np.ndarray
+        Information matrix.
+    b : np.ndarray
+        Information vector.
+    slice_mm : slice
+        Slice for marginalized variables.
+    slice_rr : slice
+        Slice for remaining variables.
+    eps : float, optional
+        Small value to ensure numerical stability, by default 1e-8.
+
+    Returns
+    -------
+    Am : np.ndarray
+        Marginalized information matrix.
+    bm : np.ndarray
+        Marginalized information vector.
+    """
+
+    # Form submatrices for Schur complement
     A_mm = A[slice_mm, slice_mm]
     A_mr = A[slice_mm, slice_rr]
     A_rm = A[slice_rr, slice_mm]
     A_rr = A[slice_rr, slice_rr]
     b_mm = b[slice_mm]
     b_rr = b[slice_rr]
-    A_mm = (A_mm + A_mm.T) / 2
+    A_mm = (A_mm + A_mm.T) / 2  # ensure symmetry
 
     A_mm_inv = solve(
         A_mm,
@@ -132,6 +182,21 @@ def compute_schur_complement(
 
 
 class MarginalizedPriorResidual(residuals.Residual):
+    """
+    Marginalized prior residual for remaining variables after marginalization.
+
+    Parameters
+    ----------
+    marginalization_info : Dict[str, np.ndarray, Dict[Hashable, State]]
+        Dictionary containing:
+        - 'Am': (np.ndarray)
+            Marginalized information matrix.
+        - 'bm': (np.ndarray)
+            Marginalized information vector.
+        - 'prior_states': (Dict[Hashable, State])
+            Remaining states after marginalization with associated keys.
+    """
+
     def __init__(
         self,
         marginalization_info: Dict[str, np.ndarray, Dict[Hashable, State]],
@@ -143,14 +208,18 @@ class MarginalizedPriorResidual(residuals.Residual):
         self._prior_states = marginalization_info["prior_states"]
         super().__init__(keys)
 
-    def evaluate(self, states, compute_jacobian=None):
-        return super().evaluate(states, compute_jacobian)
-
     def evaluate(
         self,
         states: List[State],
         compute_jacobians: List[bool] = None,
     ) -> Tuple[np.ndarray, List[np.ndarray]]:
+        """
+        Evaluates the marginalized prior residual of the form
+
+            e = Am @ (x.minus(x_p)) + bm,
+
+        where :math:`\mathbf{x}` is our operating point and :math:`\mathbf{x}_p` is the prior state.
+        """
 
         x_p = CompositeState(self._prior_states)
         x = CompositeState(states)
