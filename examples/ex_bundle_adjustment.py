@@ -218,8 +218,8 @@ def plot_bundle_adjustment(
         ax=ax,
         arrow_length=0.1,
         step=1,
-        line_color="tab:blue",
         label="Initial",
+        kwargs_line={"linestyle": "-", "color": "tab:blue"},
     )
     ax.set_xlabel("x (m)")
     ax.set_ylabel("y (m)")
