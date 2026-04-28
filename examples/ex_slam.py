@@ -1,11 +1,11 @@
-"""A toy SLAM example where we are interested in estimating robot poses and 
-3D landmark positions from IMU measurements and relative position measurements 
+"""A toy SLAM example where we are interested in estimating robot poses and
+3D landmark positions from IMU measurements and relative position measurements
 to the landmarks.
 
 Here, the purpose is simply to show how the default EKF provided in navlie
 can be used in SLAM-type problem settings. The structure of the SLAM problem
 is not exploited by doing this. For a more efficient EKF implementation for
-SLAM, see the document: 
+SLAM, see the document:
     Simulataneous localization and mapping with the extended Kalman filter by Joan
     Solà (2014).
 """
@@ -16,8 +16,13 @@ import navlie as nav
 from navlie.lib.imu import IMUState
 from navlie.lib.datasets import SimulatedInertialLandmarkDataset
 from navlie.lib.states import VectorState, CompositeState
-from navlie.lib.models import PointRelativePositionSLAM, CompositeInput, CompositeProcessModel
+from navlie.lib.models import (
+    PointRelativePositionSLAM,
+    CompositeInput,
+    CompositeProcessModel,
+)
 from scipy.linalg import block_diag
+
 
 class LandmarkProcessModel(nav.ProcessModel):
     def evaluate(self, x: VectorState, t: float, u: np.ndarray):
@@ -25,7 +30,7 @@ class LandmarkProcessModel(nav.ProcessModel):
 
     def jacobian(self, x: VectorState, t: float, u: np.ndarray):
         return np.eye(3)
-    
+
     def covariance(self, x: VectorState, t: float, u: np.ndarray):
         return np.zeros((3, 3))
 
@@ -98,9 +103,11 @@ def main():
         composite_inputs.append(CompositeInput(input_list))
 
     # ###########################################################################
-    # Create and run filter    
+    # Create and run filter
     ekf = nav.ExtendedKalmanFilter(process_model)
-    estimate_list = nav.run_filter(ekf, init_state, init_cov, composite_inputs, meas_data)
+    estimate_list = nav.run_filter(
+        ekf, init_state, init_cov, composite_inputs, meas_data
+    )
 
     # Extract the IMU state estimates from the estimate list
     imu_state_list: typing.List[IMUState] = []
@@ -137,15 +144,27 @@ if __name__ == "__main__":
     ax = plt.axes(projection="3d")
     landmarks = np.array(dataset.get_groundtruth_landmarks())
     est_landmarks = np.array(landmark_est_list)
-    ax.scatter(est_landmarks[:, 0], est_landmarks[:, 1], est_landmarks[:, 2], marker="x", color="tab:blue")
+    ax.scatter(
+        est_landmarks[:, 0],
+        est_landmarks[:, 1],
+        est_landmarks[:, 2],
+        marker="x",
+        color="tab:blue",
+    )
     ax.scatter(landmarks[:, 0], landmarks[:, 1], landmarks[:, 2], color="tab:red")
-    nav.plot_poses(imu_results.state, ax, line_color="tab:blue", step=500, label="Estimate")
+    nav.plot_poses(
+        imu_results.state,
+        ax,
+        step=500,
+        label="Estimate",
+        kwargs_line={"linestyle": "-", "color": "tab:blue"},
+    )
     nav.plot_poses(
         imu_results.state_true,
         ax,
-        line_color="tab:red",
         step=500,
         label="Groundtruth",
+        kwargs_line={"linestyle": "--", "color": "k"},
     )
     ax.legend()
 

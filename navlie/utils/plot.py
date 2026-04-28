@@ -1,4 +1,4 @@
-""" 
+"""
 Collection of miscellaneous plotting functions.
 """
 
@@ -470,7 +470,7 @@ def plot_poses(
     linewidth=None,
     plot_2d: bool = False,
     axes_equal=True,
-    kwargs_line: Dict[str, Any] = {"linestyle": "-"},
+    kwargs_line: Dict[str, Any] = None,
 ):
     """
     Plots a pose trajectory, representing the attitudes by triads
@@ -487,8 +487,6 @@ def plot_poses(
         Can either be 2D or 3D poses.
     ax : plt.Axes, optional
         Axes to plot on, if none, 3D axes are created.
-    line_color : str, optional
-        Color of the position trajectory.
     triad_color : str, optional
         Triad color. If none are specified, defaults to RGB.
     arrow_length : int, optional
@@ -504,6 +502,10 @@ def plot_poses(
     kwargs_line: Dict[str, Any], optional
         Keyword arguments for the line position plot.
     """
+
+    if kwargs_line is None:
+        kwargs_line = {}
+
     if isinstance(poses, GaussianResultList):
         poses = poses.state
 
@@ -542,7 +544,12 @@ def plot_poses(
     # Plot a line for the positions
     r = np.array([pose.position for pose in poses])
     if plot_2d:
-        ax.plot(r[:, 0], r[:, 1], label=label, **kwargs_line)
+        ax.plot(
+            r[:, 0],
+            r[:, 1],
+            label=label,
+            **kwargs_line,
+        )
     else:
         ax.plot3D(
             r[:, 0],

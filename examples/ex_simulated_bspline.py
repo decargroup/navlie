@@ -260,16 +260,16 @@ if __name__ == "__main__":
     nav.plot_poses(
         results.state,
         ax,
-        line_color="tab:blue",
         step=None,
         label="Estimate",
+        kwargs_line={"linestyle": "-", "color": "tab:blue"}
     )
     nav.plot_poses(
         results.state_true,
         ax,
-        line_color="tab:red",
         step=None,
         label="Groundtruth",
+        kwargs_line={"linestyle": "--", "color": "k"},
     )
     ax.legend()
     ax.set_xlabel("x (m)")

@@ -387,7 +387,7 @@ def inverse_IE3(X):
     X_inv[:3, :3] = R.T
     X_inv[:3, 3] = np.ravel(-R.T @ a)
     X_inv[:3, 4] = np.ravel(R.T @ (c * a - b))
-    X_inv[3, 4] = np.ravel(-c)
+    X_inv[3, 4] = -c
     return X_inv
 
 

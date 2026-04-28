@@ -1,10 +1,12 @@
-""" 
+"""
 A slightly more complicated example of a robot localizing itself from relative
 position measurements to known landmarks.
 """
+
 import numpy as np
 import navlie as nav
 from navlie.lib.datasets import SimulatedInertialLandmarkDataset
+
 
 def main():
     np.set_printoptions(precision=3, suppress=True, linewidth=200)
@@ -15,7 +17,7 @@ def main():
     input_data = dataset.get_input_data()
     meas_data = dataset.get_measurement_data()
 
-    # Filter initialization 
+    # Filter initialization
     P0 = np.eye(15)
     P0[0:3, 0:3] *= 0.1**2
     P0[3:6, 3:6] *= 0.1**2
@@ -33,6 +35,7 @@ def main():
     results = nav.GaussianResultList.from_estimates(estimate_list, gt_states)
     return results, dataset
 
+
 if __name__ == "__main__":
     results, dataset = main()
     import matplotlib.pyplot as plt
@@ -43,14 +46,18 @@ if __name__ == "__main__":
     landmarks = np.array(dataset.get_groundtruth_landmarks())
     ax.scatter(landmarks[:, 0], landmarks[:, 1], landmarks[:, 2])
     nav.plot_poses(
-        results.state, ax, line_color="tab:blue", step=500, label="Estimate"
+        results.state,
+        ax,
+        step=500,
+        label="Estimate",
+        kwargs_line={"linestyle": "-", "color": "tab:blue"}
     )
     nav.plot_poses(
         results.state_true,
         ax,
-        line_color="tab:red",
         step=500,
         label="Groundtruth",
+        kwargs_line={"linestyle": "--", "color": "k"}
     )
     ax.legend()
 
