@@ -876,7 +876,7 @@ class InteractingModelFilter:
         mu_models = np.array(x.model_probabilities)
 
         n_modes = self.transition_matrix.shape[0]
-        c = self.transition_matrix.T @ mu_models.reshape(-1, 1)
+        c = (self.transition_matrix.T @ mu_models).flatten()
 
         mu_mix = np.zeros((n_modes, n_modes))
         for i in range(n_modes):
