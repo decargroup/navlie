@@ -9,7 +9,7 @@ navlie
     :target: https://github.com/decargroup/navlie/actions/workflows/publish_docs.yml
     :alt: Docs
 
-.. image:: https://img.shields.io/badge/python-3.8%20%7C%203.9%20%7C%203.10-blue
+.. image:: https://img.shields.io/badge/python-3.9%20--%203.13-blue
     :target: https://www.python.org/downloads/
     :alt: Python Version
     
